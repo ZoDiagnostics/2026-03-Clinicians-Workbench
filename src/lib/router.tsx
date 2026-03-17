@@ -1,5 +1,9 @@
 import React from 'react';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import {
+  createBrowserRouter,
+  RouterProvider,
+  Navigate,
+} from 'react-router-dom';
 import { Dashboard } from '../screens/Dashboard';
 import { Worklist } from '../screens/Worklist';
 import { Patients } from '../screens/Patients';
@@ -18,27 +22,177 @@ import { Summary } from '../screens/Summary';
 import { Report } from '../screens/Report';
 import { SignDeliver } from '../screens/SignDeliver';
 import { PatientOverview } from '../screens/PatientOverview';
+import LoginScreen from '../screens/Login';
+import { useAuth } from './hooks';
+
+const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <div>Loading...</div>; // Or a spinner component
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+};
 
 export const router = createBrowserRouter([
-  { path: '/', element: <Dashboard /> },
-  { path: '/dashboard', element: <Dashboard /> },
-  { path: '/worklist', element: <Worklist /> },
-  { path: '/patients', element: <Patients /> },
-  { path: '/procedures', element: <Procedures /> },
-  { path: '/reports-hub', element: <ReportsHub /> },
-  { path: '/education', element: <Education /> },
-  { path: '/admin', element: <Admin /> },
-  { path: '/activity', element: <ActivityLog /> },
-  { path: '/qa', element: <AIQA /> },
-  { path: '/operations', element: <Operations /> },
-  { path: '/analytics', element: <Analytics /> },
-  { path: '/checkin', element: <CheckIn /> },
-  { path: '/capsule-upload', element: <CapsuleUpload /> },
-  { path: '/viewer', element: <Viewer /> },
-  { path: '/summary', element: <Summary /> },
-  { path: '/report', element: <Report /> },
-  { path: '/sign-deliver', element: <SignDeliver /> },
-  { path: '/patient/:id', element: <PatientOverview /> },
+  { path: '/login', element: <LoginScreen /> },
+  {
+    path: '/',
+    element: (
+      <ProtectedRoute>
+        <Dashboard />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/dashboard',
+    element: (
+      <ProtectedRoute>
+        <Dashboard />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/worklist',
+    element: (
+      <ProtectedRoute>
+        <Worklist />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/patients',
+    element: (
+      <ProtectedRoute>
+        <Patients />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/procedures',
+    element: (
+      <ProtectedRoute>
+        <Procedures />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/reports-hub',
+    element: (
+      <ProtectedRoute>
+        <ReportsHub />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/education',
+    element: (
+      <ProtectedRoute>
+        <Education />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/admin',
+    element: (
+      <ProtectedRoute>
+        <Admin />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/activity',
+    element: (
+      <ProtectedRoute>
+        <ActivityLog />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/qa',
+    element: (
+      <ProtectedRoute>
+        <AIQA />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/operations',
+    element: (
+      <ProtectedRoute>
+        <Operations />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/analytics',
+    element: (
+      <ProtectedRoute>
+        <Analytics />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/checkin',
+    element: (
+      <ProtectedRoute>
+        <CheckIn />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/capsule-upload',
+    element: (
+      <ProtectedRoute>
+        <CapsuleUpload />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/viewer',
+    element: (
+      <ProtectedRoute>
+        <Viewer />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/summary',
+    element: (
+      <ProtectedRoute>
+        <Summary />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/report',
+    element: (
+      <ProtectedRoute>
+        <Report />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/sign-deliver',
+    element: (
+      <ProtectedRoute>
+        <SignDeliver />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/patient/:id',
+    element: (
+      <ProtectedRoute>
+        <PatientOverview />
+      </ProtectedRoute>
+    ),
+  },
 ]);
 
 export const Router = () => <RouterProvider router={router} />;

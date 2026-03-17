@@ -1,12 +1,12 @@
 {
   "projects": {
-    "default": "clinicians-workbench"
+    "default": "cw-e7c19"
   },
   "targets": {
-    "clinicians-workbench": {
+    "cw-e7c19": {
       "hosting": {
         "zocw-web": [
-          "clinicians-workbench"
+          "cw-e7c19"
         ]
       }
     }
