@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { useAuth } from '../lib/hooks';
 
@@ -19,6 +19,18 @@ export default function LoginScreen() {
       navigate('/dashboard');
     } catch (error) {
       setError("Invalid email or password");
+      console.error(error);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError(null);
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      navigate('/dashboard');
+    } catch (error) {
+      setError("Failed to sign in with Google");
       console.error(error);
     }
   };
@@ -84,6 +96,22 @@ export default function LoginScreen() {
             </button>
           </div>
         </form>
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300" />
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-white text-gray-500">Or continue with</span>
+          </div>
+        </div>
+        <div>
+          <button
+            onClick={handleGoogleSignIn}
+            className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+          >
+            Sign in with Google
+          </button>
+        </div>
       </div>
     </div>
   );
