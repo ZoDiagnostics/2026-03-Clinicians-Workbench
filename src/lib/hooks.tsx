@@ -1,13 +1,27 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect } from 'react';
 import { User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
-import { collection, query, where, onSnapshot, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  doc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp,
+} from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { auth, db } from './firebase';
 import { useStore } from './store';
 import { UserRole } from '../types/enums';
 import { User } from '../types/user';
 import { Procedure } from '../types/procedure';
 import { Finding } from '../types/finding';
+import { Report } from '../types/report';
 import { COLLECTIONS } from '../types/firestore-paths';
+
+const functions = getFunctions();
 
 export interface AuthState {
   user: FirebaseUser | null;
@@ -179,4 +193,58 @@ export const updateProcedure = async (procedureId: string, updates: Partial<Proc
     ...updates,
     updatedAt: serverTimestamp(),
   });
+};
+
+// --- Report Hooks ---
+
+export function useReport(procedureId: string | undefined) {
+  const [report, setReport] = useState<Report | null>(null);
+  const { practiceId } = useAuth();
+
+  useEffect(() => {
+    if (!procedureId || !practiceId) {
+      setReport(null);
+      return;
+    }
+
+    const reportsRef = collection(db, 'reports');
+    const q = query(reportsRef, where('procedureId', '==', procedureId), where('practiceId', '==', practiceId));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      if (querySnapshot.empty) {
+        setReport(null);
+      } else {
+        const reportDoc = querySnapshot.docs[0];
+        setReport({ id: reportDoc.id, ...reportDoc.data() } as Report);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [procedureId, practiceId]);
+
+  return report;
+}
+
+export const generateReport = async (procedureId: string) => {
+  // TODO: External Infrastructure
+  const generateAutoDraft = httpsCallable(functions, 'generateAutoDraft');
+  return generateAutoDraft({ procedureId });
+};
+
+export const updateReport = async (reportId: string, updates: Partial<Report>) => {
+  const reportRef = doc(db, 'reports', reportId);
+  return updateDoc(reportRef, {
+    ...updates,
+    updatedAt: serverTimestamp(),
+  });
+};
+
+export const signReport = async (reportId: string) => {
+  const signReportFunction = httpsCallable(functions, 'signReport');
+  return signReportFunction({ reportId });
+};
+
+export const deliverReport = async (reportId: string, methods: any[]) => {
+  const deliverReportFunction = httpsCallable(functions, 'deliverReport');
+  return deliverReportFunction({ reportId, methods });
 };

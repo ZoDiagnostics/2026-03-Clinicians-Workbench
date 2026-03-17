@@ -19,8 +19,8 @@ import { CheckIn } from '../screens/CheckIn';
 import { CapsuleUpload } from '../screens/CapsuleUpload';
 import { Viewer } from '../screens/Viewer';
 import { Summary } from '../screens/Summary';
-import { Report } from '../screens/Report';
-import { SignDeliver } from '../screens/SignDeliver';
+import Report from '../screens/Report';
+import SignDeliver from '../screens/SignDeliver';
 import { PatientOverview } from '../screens/PatientOverview';
 import LoginScreen from '../screens/Login';
 import { useAuth } from './hooks';
@@ -154,7 +154,7 @@ export const router = createBrowserRouter([
     ),
   },
   {
-    path: '/viewer',
+    path: '/viewer/:procedureId',
     element: (
       <ProtectedRoute>
         <Viewer />
@@ -162,7 +162,7 @@ export const router = createBrowserRouter([
     ),
   },
   {
-    path: '/summary',
+    path: '/summary/:procedureId',
     element: (
       <ProtectedRoute>
         <Summary />
@@ -170,7 +170,7 @@ export const router = createBrowserRouter([
     ),
   },
   {
-    path: '/report',
+    path: '/report/:procedureId',
     element: (
       <ProtectedRoute>
         <Report />
@@ -178,7 +178,7 @@ export const router = createBrowserRouter([
     ),
   },
   {
-    path: '/sign-deliver',
+    path: '/sign-deliver/:procedureId',
     element: (
       <ProtectedRoute>
         <SignDeliver />

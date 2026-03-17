@@ -13,31 +13,32 @@
  * Procedure status represents the current state in the procedure workflow.
  * Defined in Screen Registry SCR-03 and ZCW-BRD-0293.
  */
-export type ProcedureStatus =
-  | 'capsule_return_pending'  // Capsule sent to patient, awaiting return
-  | 'capsule_received'         // Capsule received; processing/uploading
-  | 'ready_for_review'         // Video processed; ready for clinician review
-  | 'draft'                    // Report in draft state
-  | 'appended_draft'           // Report has appended section in draft
-  | 'completed'                // Report signed
-  | 'completed_appended'       // Report signed with appended section
-  | 'closed'                   // Procedure archived/closed
-  | 'void';                    // Procedure voided/cancelled
+export enum ProcedureStatus {
+  CAPSULE_RETURN_PENDING = 'capsule_return_pending',
+  CAPSULE_RECEIVED = 'capsule_received',
+  READY_FOR_REVIEW = 'ready_for_review',
+  DRAFT = 'draft',
+  APPENDED_DRAFT = 'appended_draft',
+  COMPLETED = 'completed',
+  COMPLETED_APPENDED = 'completed_appended',
+  CLOSED = 'closed',
+  VOID = 'void',
+}
 
 /**
  * Display labels for procedure status (user-facing strings).
  * Maps each status to a human-readable label for UI rendering.
  */
 export const PROCEDURE_STATUS_LABELS: Record<ProcedureStatus, string> = {
-  capsule_return_pending: 'Awaiting Capsule Return',
-  capsule_received: 'Capsule Received',
-  ready_for_review: 'Ready for Review',
-  draft: 'Report Draft',
-  appended_draft: 'Appended Draft',
-  completed: 'Completed',
-  completed_appended: 'Completed (Amended)',
-  closed: 'Closed',
-  void: 'Voided',
+  [ProcedureStatus.CAPSULE_RETURN_PENDING]: 'Awaiting Capsule Return',
+  [ProcedureStatus.CAPSULE_RECEIVED]: 'Capsule Received',
+  [ProcedureStatus.READY_FOR_REVIEW]: 'Ready for Review',
+  [ProcedureStatus.DRAFT]: 'Report Draft',
+  [ProcedureStatus.APPENDED_DRAFT]: 'Appended Draft',
+  [ProcedureStatus.COMPLETED]: 'Completed',
+  [ProcedureStatus.COMPLETED_APPENDED]: 'Completed (Amended)',
+  [ProcedureStatus.CLOSED]: 'Closed',
+  [ProcedureStatus.VOID]: 'Voided',
 };
 
 /**
@@ -46,15 +47,15 @@ export const PROCEDURE_STATUS_LABELS: Record<ProcedureStatus, string> = {
  * Maps to colors defined in tailwind.config.ts.
  */
 export const PROCEDURE_STATUS_COLORS: Record<ProcedureStatus, string> = {
-  capsule_return_pending: 'bg-status-pending text-white',
-  capsule_received: 'bg-status-received text-white',
-  ready_for_review: 'bg-status-ready text-white',
-  draft: 'bg-status-draft text-white',
-  appended_draft: 'bg-status-appended text-white',
-  completed: 'bg-status-completed text-white',
-  completed_appended: 'bg-status-appended-completed text-white',
-  closed: 'bg-status-closed text-white',
-  void: 'bg-status-void text-white',
+  [ProcedureStatus.CAPSULE_RETURN_PENDING]: 'bg-status-pending text-white',
+  [ProcedureStatus.CAPSULE_RECEIVED]: 'bg-status-received text-white',
+  [ProcedureStatus.READY_FOR_REVIEW]: 'bg-status-ready text-white',
+  [ProcedureStatus.DRAFT]: 'bg-status-draft text-white',
+  [ProcedureStatus.APPENDED_DRAFT]: 'bg-status-appended text-white',
+  [ProcedureStatus.COMPLETED]: 'bg-status-completed text-white',
+  [ProcedureStatus.COMPLETED_APPENDED]: 'bg-status-appended-completed text-white',
+  [ProcedureStatus.CLOSED]: 'bg-status-closed text-white',
+  [ProcedureStatus.VOID]: 'bg-status-void text-white',
 };
 
 /**
@@ -62,15 +63,15 @@ export const PROCEDURE_STATUS_COLORS: Record<ProcedureStatus, string> = {
  * Defines which statuses can transition to other statuses.
  */
 export const VALID_PROCEDURE_TRANSITIONS: Record<ProcedureStatus, ProcedureStatus[]> = {
-  capsule_return_pending: ['capsule_received', 'void'],
-  capsule_received: ['ready_for_review', 'void'],
-  ready_for_review: ['draft', 'void'],
-  draft: ['appended_draft', 'completed', 'void'],
-  appended_draft: ['completed_appended', 'draft', 'void'],
-  completed: ['appended_draft', 'closed', 'void'],
-  completed_appended: ['closed', 'void'],
-  closed: ['void'],
-  void: [],
+  [ProcedureStatus.CAPSULE_RETURN_PENDING]: [ProcedureStatus.CAPSULE_RECEIVED, ProcedureStatus.VOID],
+  [ProcedureStatus.CAPSULE_RECEIVED]: [ProcedureStatus.READY_FOR_REVIEW, ProcedureStatus.VOID],
+  [ProcedureStatus.READY_FOR_REVIEW]: [ProcedureStatus.DRAFT, ProcedureStatus.VOID],
+  [ProcedureStatus.DRAFT]: [ProcedureStatus.APPENDED_DRAFT, ProcedureStatus.COMPLETED, ProcedureStatus.VOID],
+  [ProcedureStatus.APPENDED_DRAFT]: [ProcedureStatus.COMPLETED_APPENDED, ProcedureStatus.DRAFT, ProcedureStatus.VOID],
+  [ProcedureStatus.COMPLETED]: [ProcedureStatus.APPENDED_DRAFT, ProcedureStatus.CLOSED, ProcedureStatus.VOID],
+  [ProcedureStatus.COMPLETED_APPENDED]: [ProcedureStatus.CLOSED, ProcedureStatus.VOID],
+  [ProcedureStatus.CLOSED]: [ProcedureStatus.VOID],
+  [ProcedureStatus.VOID]: [],
 };
 
 // ============================================================================

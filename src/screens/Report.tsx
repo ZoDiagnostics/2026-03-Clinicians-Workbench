@@ -1,39 +1,38 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth, useProcedures } from '../lib/hooks';
-import { Sidebar } from '../components/Sidebar';
-import { Header } from '../components/Header';
-import { WorkflowStepper } from '../components/WorkflowStepper';
+import { useParams } from 'react-router-dom';
+import { useReport, useFindings } from '../lib/hooks';
+import CopilotAutoDraft from '../components/CopilotAutoDraft';
+import ICDCodeSuggestions from '../components/ICDCodeSuggestions';
 
-// SCR-12: Report — extracted from Demo v3.1.0
-// This is a stub component. The actual rendering logic needs to be extracted
-// from the minified demo code and reconstructed.
-
-export const Report: React.FC = () => {
-  const navigate = useNavigate();
-  const currentUser = useAuth();
-  const procedures = useProcedures();
-
-  // FIREBASE: Connect to Firestore for real data
-  // const { data: screenData } = useScreenData('SCR-12');
+const Report: React.FC = () => {
+  const { procedureId } = useParams<{ procedureId: string }>();
+  const report = useReport(procedureId);
+  const findings = useFindings(procedureId);
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Header />
-        <main className="flex-1 overflow-auto">
-          <div className="container mx-auto py-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-6">
-              Report
-            </h1>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-              <p className="text-yellow-800">
-                ⚠️ Component extraction in progress.
-                Placeholder content shown while component logic is being reconstructed.
-              </p>
+    <div className="flex h-screen bg-gray-100">
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-200 p-4">
+          <h1 className="text-2xl font-bold">Report</h1>
+          <div className="flex flex-wrap">
+            <div className="w-full lg:w-3/4 pr-4">
+              <div className="bg-white rounded-lg shadow p-4 mb-4">
+                <h2 className="text-lg font-bold mb-2">Findings</h2>
+                {/* Findings will be displayed here */}
+              </div>
+              <div className="bg-white rounded-lg shadow p-4 mb-4">
+                <h2 className="text-lg font-bold mb-2">Clinical Impression</h2>
+                {/* Editable clinical impression */}
+              </div>
+              <div className="bg-white rounded-lg shadow p-4">
+                <h2 className="text-lg font-bold mb-2">Recommendations</h2>
+                {/* Editable recommendations */}
+              </div>
             </div>
-            {/* Component content will be filled in after AST extraction */}
+            <div className="w-full lg:w-1/4">
+              <CopilotAutoDraft />
+              <ICDCodeSuggestions />
+            </div>
           </div>
         </main>
       </div>

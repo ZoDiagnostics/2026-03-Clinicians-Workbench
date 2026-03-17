@@ -1,41 +1,79 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth, useProcedures } from '../lib/hooks';
-import { Sidebar } from '../components/Sidebar';
-import { Header } from '../components/Header';
-import { WorkflowStepper } from '../components/WorkflowStepper';
+import { useParams } from 'react-router-dom';
+import { useReport } from '../lib/hooks';
+import { LockClosedIcon, DocumentCheckIcon } from '@heroicons/react/24/solid';
 
-// SCR-13: SignDeliver — extracted from Demo v3.1.0
-// This is a stub component. The actual rendering logic needs to be extracted
-// from the minified demo code and reconstructed.
+const SignDeliver: React.FC = () => {
+  const { procedureId } = useParams<{ procedureId: string }>();
+  const report = useReport(procedureId);
 
-export const SignDeliver: React.FC = () => {
-  const navigate = useNavigate();
-  const currentUser = useAuth();
-  const procedures = useProcedures();
+  const handleSign = () => {
+    // TODO: Implement sign functionality
+    console.log('Signing report...');
+  };
 
-  // FIREBASE: Connect to Firestore for real data
-  // const { data: screenData } = useScreenData('SCR-13');
+  const handleDeliver = (method: string) => {
+    // TODO: Implement deliver functionality
+    console.log(`Delivering report via ${method}...`);
+  };
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Header />
-        <main className="flex-1 overflow-auto">
-          <div className="container mx-auto py-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-6">
-              SignDeliver
-            </h1>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-              <p className="text-yellow-800">
-                ⚠️ Component extraction in progress.
-                Placeholder content shown while component logic is being reconstructed.
-              </p>
-            </div>
-            {/* Component content will be filled in after AST extraction */}
+    <div className="container mx-auto p-8">
+      <h1 className="text-3xl font-bold mb-8">Sign & Deliver</h1>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 bg-white rounded-lg shadow p-6">
+          <h2 className="text-2xl font-bold mb-4 flex items-center">
+            <DocumentCheckIcon className="h-6 w-6 mr-2" />
+            Final Report Preview
+          </h2>
+          <div className="prose max-w-none">
+            {/* Full report content will be displayed here */}
+            <p>This is where the full, finalized report content will be rendered for preview before signing.</p>
           </div>
-        </main>
+        </div>
+
+        <div className="space-y-8">
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-2xl font-bold mb-4 flex items-center">
+              <LockClosedIcon className="h-6 w-6 mr-2" />
+              E-Signature
+            </h2>
+            <p className="text-sm text-gray-600 mb-4">
+              By signing below, you attest that you have reviewed this report and confirm its accuracy.
+            </p>
+            <button
+              onClick={handleSign}
+              className="w-full flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Sign Report
+            </button>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-2xl font-bold mb-4">Delivery Options</h2>
+            <div className="space-y-4">
+              <button
+                onClick={() => handleDeliver('ehr')}
+                className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Deliver to EHR
+              </button>
+              <button
+                onClick={() => handleDeliver('pacs')}
+                className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Deliver to PACS
+              </button>
+              <button
+                onClick={() => handleDeliver('print')}
+                className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Print PDF
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
