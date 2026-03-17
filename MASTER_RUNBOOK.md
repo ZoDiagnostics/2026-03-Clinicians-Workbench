@@ -1,15 +1,22 @@
 # ZoCW Master Runbook — Step-by-Step Build Guide
 **For:** Cameron (non-developer, guided by Claude)
-**Last Updated:** March 16, 2026
+**Last Updated:** March 17, 2026
 **Rule:** Before every step, Claude re-reads this file to maintain context.
 
 ---
 
 ## WHERE WE ARE RIGHT NOW
 
-**Current Step:** STEP 1 — Push repo to GitHub
-**Status:** Not started
-**Blockers:** None
+**Current Step:** STEP 7 — Phase 1: Auth & Patients (finishing seed script + Google sign-in)
+**Status:** In progress — Gemini completed Steps 1-5 of 6, seed script needs tsx fix
+**Blockers:** Gemini rate limits (temporary)
+
+### Key References
+- **GitHub Repo:** https://github.com/ZoDiagnostics/2026-03-Clinicians-Workbench
+- **Firebase Studio Workspace:** 2026-03-CW
+- **GitHub Account:** ZoDiagnostics
+- **Firebase Project ID:** cw-e7c19
+- **Firebase Project Display Name:** 2026-03-CW
 
 ---
 
@@ -17,13 +24,13 @@
 
 | # | Step | Where | Time Est. | Status |
 |---|------|-------|-----------|--------|
-| 1 | Push repo to GitHub | Your Mac (Terminal) | 5 min | NOT STARTED |
-| 2 | Import repo into Firebase Studio | firebase.studio (browser) | 3 min | NOT STARTED |
-| 3 | Verify workspace boots | Firebase Studio terminal | 5 min | NOT STARTED |
-| 4 | Firebase Console setup (project, auth, Firestore) | console.firebase.google.com | 15 min | NOT STARTED |
-| 5 | Create .env with real credentials | Firebase Studio terminal | 5 min | NOT STARTED |
-| 6 | Phase 0 — Verify app boots | Firebase Studio AI | 10 min | NOT STARTED |
-| 7 | Phase 1 — Auth & Patients | Firebase Studio AI | 30-60 min | NOT STARTED |
+| 1 | Push repo to GitHub | Your Mac (Terminal) | 5 min | ✅ DONE |
+| 2 | Import repo into Firebase Studio | firebase.studio (browser) | 3 min | ✅ DONE |
+| 3 | Verify workspace boots | Firebase Studio terminal | 5 min | ✅ DONE |
+| 4 | Firebase Console setup (project, auth, Firestore) | console.firebase.google.com | 15 min | ✅ DONE |
+| 5 | Create .env with real credentials | Firebase Studio terminal | 5 min | ✅ DONE |
+| 6 | Phase 0 — Verify app boots | Firebase Studio AI | 10 min | ✅ DONE |
+| 7 | Phase 1 — Auth & Patients | Firebase Studio AI | 30-60 min | IN PROGRESS |
 | 8 | Phase 2 — Clinical Workflow | Firebase Studio AI | 30-60 min | NOT STARTED |
 | 9 | Phase 3 — Viewer & Findings | Firebase Studio AI | 30-60 min | NOT STARTED |
 | 10 | Phases 4-7 — Remaining features | Firebase Studio AI | 2-4 hrs | NOT STARTED |
@@ -83,10 +90,10 @@ Confirming that npm install ran, the file structure is correct, and `npm run dev
 Creating (or verifying) the Firebase project, registering the web app, enabling Email/Password auth, provisioning Firestore, and copying the real API credentials. This is the step that consumed 80 turns last time because it was skipped.
 
 ### Success criteria
-- Firebase project `clinicians-workbench` exists
-- Web app registered with real API key (starts with AIzaSy)
-- Email/Password auth enabled
-- Firestore database provisioned in test mode
+- Firebase project `cw-e7c19` (display name: 2026-03-CW) exists
+- Web app `zocw-web` registered with real API key (starts with AIzaSy)
+- Email/Password and Google auth enabled
+- Firestore database provisioned in test mode (us-west2)
 - All 6 credential values copied and ready
 
 ---
@@ -132,8 +139,19 @@ Pasting the Phase 0 prompt into Gemini to verify the app boots. The entry points
 ### What we're doing
 Wiring up real Firebase Auth (login/logout), protected routes, patient data from Firestore, and a seed script for test data.
 
+### Phase 1 Sub-steps (Gemini)
+| # | Sub-step | Status |
+|---|----------|--------|
+| 1 | Firebase Auth listener in hooks.tsx | ✅ DONE |
+| 2 | Login screen (Login.tsx) | ✅ DONE |
+| 3 | ProtectedRoute in router.tsx | ✅ DONE |
+| 4 | Patients screen (Patients.tsx) | ✅ DONE |
+| 5 | PatientOverview screen | ✅ DONE |
+| 6 | Seed script (seed.ts) | NEEDS FIX — use `npx tsx` instead of `ts-node` |
+| 7 | Google sign-in on Login | PENDING |
+
 ### Success criteria
-- Can log in with email/password
+- Can log in with email/password or Google
 - Dashboard shows real patient data from Firestore
 - `grep -r "useCurrentUser" src/` returns 0 results
 
@@ -177,6 +195,14 @@ Re-open firebase.studio. Your workspace should persist. If not, re-import from G
 | Mar 16 | Use GitHub import not zip upload | Preserves file structure, provides reset point |
 | Mar 16 | Source code in src/ not root | Matches tsconfig/vite/tailwind expectations |
 | Mar 16 | Rename i18n.ts → i18n.tsx | Contains JSX, prevents build error |
+| Mar 17 | GitHub repo: ZoDiagnostics/2026-03-Clinicians-Workbench | Organization repo, pushed 101 files |
+| Mar 17 | Firebase Studio workspace: 2026-03-CW | Imported via "Import Repo" flow |
+| Mar 17 | gh CLI auth via browser flow | ZoDiagnostics account, HTTPS protocol |
+| Mar 17 | Firebase project ID: cw-e7c19 | Firebase added suffix to "2026-03-CW" |
+| Mar 17 | Web app registered: zocw-web | Real API key obtained |
+| Mar 17 | Firestore location: us-west2 | Match image pipeline location |
+| Mar 17 | Use tsx instead of ts-node for seed | ts-node has ESM/CommonJS conflicts with Vite config |
+| Mar 17 | User prefers Google sign-in | Add GoogleAuthProvider + signInWithPopup to Login |
 
 ---
 
