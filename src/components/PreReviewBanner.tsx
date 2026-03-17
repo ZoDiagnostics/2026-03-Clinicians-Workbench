@@ -1,16 +1,17 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../lib/hooks';
-import { Menu, Bell, LogOut, Settings } from 'lucide-react';
-
-// Progressive disclosure configuration banner
 
 export const PreReviewBanner: React.FC = () => {
   return (
-    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-      <p className="text-blue-800 text-sm">
-        Review settings are configured. <button className="font-semibold underline">Edit</button>
-      </p>
+    <div className="bg-blue-900 text-white p-4 flex justify-between items-center">
+        <div>
+            <h3 className="font-bold">Pre-Review Checklist</h3>
+            <p className="text-sm text-blue-200">Confirm settings before starting the review.</p>
+        </div>
+        <button 
+            className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded"
+        >
+            Confirm & Begin Review
+        </button>
     </div>
   );
 };

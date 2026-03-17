@@ -1,11 +1,13 @@
 import { useState, useEffect, useContext } from 'react';
 import { User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
-import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { useStore } from './store';
 import { UserRole } from '../types/enums';
 import { User } from '../types/user';
 import { Procedure } from '../types/procedure';
+import { Finding } from '../types/finding';
+import { COLLECTIONS } from '../types/firestore-paths';
 
 export interface AuthState {
   user: FirebaseUser | null;
@@ -123,3 +125,58 @@ export function useNotifications() {
   const { state } = useStore();
   return state.notifications;
 }
+
+export function useFindings(procedureId: string | undefined) {
+  const [findings, setFindings] = useState<Finding[]>([]);
+
+  useEffect(() => {
+    if (!procedureId) {
+      setFindings([]);
+      return;
+    }
+
+    const findingsRef = collection(db, COLLECTIONS.FINDINGS(procedureId));
+    const q = query(findingsRef);
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const findingsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Finding));
+      setFindings(findingsData);
+    });
+
+    return () => unsubscribe();
+  }, [procedureId]);
+
+  return findings;
+}
+
+export const createFinding = async (procedureId: string, findingData: Omit<Finding, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const findingsRef = collection(db, COLLECTIONS.FINDINGS(procedureId));
+  const now = serverTimestamp();
+  const docRef = await addDoc(findingsRef, {
+    ...findingData,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return docRef.id;
+};
+
+export const updateFinding = async (procedureId: string, findingId: string, updates: Partial<Finding>) => {
+  const findingRef = doc(db, COLLECTIONS.FINDINGS(procedureId), findingId);
+  await updateDoc(findingRef, {
+    ...updates,
+    updatedAt: serverTimestamp(),
+  });
+};
+
+export const deleteFinding = async (procedureId: string, findingId: string) => {
+  const findingRef = doc(db, COLLECTIONS.FINDINGS(procedureId), findingId);
+  await deleteDoc(findingRef);
+};
+
+export const updateProcedure = async (procedureId: string, updates: Partial<Procedure>) => {
+  const procedureRef = doc(db, 'procedures', procedureId);
+  await updateDoc(procedureRef, {
+    ...updates,
+    updatedAt: serverTimestamp(),
+  });
+};
