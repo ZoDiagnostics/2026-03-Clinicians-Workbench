@@ -1,0 +1,299 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================================================================
+    // HELPER FUNCTIONS
+    // ============================================================================
+
+    /**
+     * Check if the current request has valid authentication.
+     */
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    /**
+     * Check if the authenticated user has a specific role.
+     * Roles are stored in custom claims: request.auth.token.role
+     */
+    function hasRole(role) {
+      return isAuthenticated() && request.auth.token.role == role;
+    }
+
+    /**
+     * Check if the authenticated user's role is one of the provided roles (supports multiple).
+     */
+    function hasAnyRole(roles) {
+      return isAuthenticated() && request.auth.token.role in roles;
+    }
+
+    /**
+     * Check if the authenticated user belongs to a specific practice.
+     * Practice membership is stored in custom claims: request.auth.token.practiceId
+     */
+    function inPractice(practiceId) {
+      return isAuthenticated() && request.auth.token.practiceId == practiceId;
+    }
+
+    /**
+     * Check if the authenticated user is the assigned clinician for a procedure.
+     * Handles both assigned and covering clinicians.
+     */
+    function isAssignedClinician(procedureData) {
+      return isAuthenticated() && (
+        request.auth.uid == procedureData.assignedClinicianId ||
+        request.auth.uid == procedureData.get('coveringClinicianId')
+      );
+    }
+
+    /**
+     * Check if the authenticated user is a clinician authorized to sign reports.
+     */
+    function canSign() {
+      return isAuthenticated() && request.auth.token.role in [
+        'clinician_auth',
+        'clinician_admin',
+        'admin'
+      ];
+    }
+
+    /**
+     * Check if the authenticated user has admin or clinician_admin role.
+     */
+    function isAdminOrClinicianAdmin() {
+      return hasAnyRole(['admin', 'clinician_admin']);
+    }
+
+    /**
+     * Check if the authenticated user has clinical_staff role.
+     */
+    function isClinicalStaff() {
+      return hasRole('clinical_staff');
+    }
+
+    /**
+     * Check if the authenticated user is a clinician (any clinician role).
+     */
+    function isClinician() {
+      return hasAnyRole(['clinician_auth', 'clinician_noauth', 'clinician_admin']);
+    }
+
+    // ============================================================================
+    // PRACTICE COLLECTION
+    // ============================================================================
+
+    /**
+     * Practices: Admin and clinician_admin can write; all authenticated users in practice can read.
+     */
+    match /practices/{practiceId} {
+      allow read: if inPractice(practiceId);
+      allow create, update, delete: if inPractice(practiceId) && isAdminOrClinicianAdmin();
+
+      /**
+       * Practice Settings: Only admin and clinician_admin can read/write.
+       */
+      match /settings/{doc} {
+        allow read, write: if inPractice(practiceId) && isAdminOrClinicianAdmin();
+      }
+
+      /**
+       * Clinics (sub-collection): clinician_admin and admin can manage; all in practice can read.
+       */
+      match /clinics/{clinicId} {
+        allow read: if inPractice(practiceId);
+        allow create, update, delete: if inPractice(practiceId) && isAdminOrClinicianAdmin();
+      }
+
+      /**
+       * Capsule Inventory (sub-collection): clinical_staff and clinician roles can read;
+       * admin/clinician_admin can manage.
+       */
+      match /capsuleInventory/{inventoryId} {
+        allow read: if inPractice(practiceId) && hasAnyRole([
+          'clinical_staff',
+          'clinician_auth',
+          'clinician_noauth',
+          'clinician_admin',
+          'admin'
+        ]);
+        allow create, update, delete: if inPractice(practiceId) && isAdminOrClinicianAdmin();
+      }
+    }
+
+    // ============================================================================
+    // PATIENTS COLLECTION
+    // ============================================================================
+
+    /**
+     * Patients: All authenticated roles in the same practice can read.
+     * Clinical staff and clinician roles can create/update.
+     */
+    match /patients/{patientId} {
+      allow read: if inPractice(resource.data.practiceId) && hasAnyRole([
+        'clinical_staff',
+        'clinician_auth',
+        'clinician_noauth',
+        'clinician_admin',
+        'admin'
+      ]);
+      allow create: if isAuthenticated() && isClinicalStaff();
+      allow update: if inPractice(resource.data.practiceId) && hasAnyRole([
+        'clinical_staff',
+        'clinician_auth',
+        'clinician_noauth',
+        'clinician_admin'
+      ]);
+    }
+
+    // ============================================================================
+    // PROCEDURES COLLECTION
+    // ============================================================================
+
+    /**
+     * Procedures: All authenticated roles in the same practice can read.
+     * Clinical staff can create; assigned clinician or covering clinician can update;
+     * clinician_admin can update any procedure in their practice.
+     */
+    match /procedures/{procedureId} {
+      let procedureData = resource.data;
+
+      allow read: if inPractice(procedureData.practiceId) && hasAnyRole([
+        'clinical_staff',
+        'clinician_auth',
+        'clinician_noauth',
+        'clinician_admin',
+        'admin'
+      ]);
+
+      allow create: if isClinicalStaff();
+
+      allow update: if inPractice(procedureData.practiceId) && (
+        isAssignedClinician(procedureData) ||
+        isAdminOrClinicianAdmin()
+      );
+
+      /**
+       * Findings (sub-collection): Assigned clinician has full CRUD;
+       * clinical staff has read-only access.
+       */
+      match /findings/{findingId} {
+        let finding = resource.data;
+
+        allow read: if inPractice(procedureData.practiceId) && hasAnyRole([
+          'clinical_staff',
+          'clinician_auth',
+          'clinician_noauth',
+          'clinician_admin',
+          'admin'
+        ]);
+
+        allow create, update, delete: if inPractice(procedureData.practiceId) && (
+          isAssignedClinician(procedureData) ||
+          isAdminOrClinicianAdmin()
+        );
+      }
+    }
+
+    // ============================================================================
+    // REPORTS COLLECTION
+    // ============================================================================
+
+    /**
+     * Reports: All authenticated roles in the same practice can read signed reports.
+     * Clinician_auth can create and update own reports; clinician_noauth can draft only.
+     */
+    match /reports/{reportId} {
+      let reportData = resource.data;
+      let inReportPractice = inPractice(reportData.practiceId);
+
+      // Read: All authenticated users in practice can read signed reports
+      allow read: if inReportPractice && hasAnyRole([
+        'clinical_staff',
+        'clinician_auth',
+        'clinician_noauth',
+        'clinician_admin',
+        'admin'
+      ]) && reportData.status == 'signed';
+
+      // Draft read: Clinician can read own drafts
+      allow read: if inReportPractice && (
+        isClinician() &&
+        request.auth.uid == reportData.clinicianId &&
+        reportData.status in ['draft', 'auto_drafted', 'in_review']
+      );
+
+      // Create: Authorized clinicians and admins
+      allow create: if inReportPractice && hasAnyRole([
+        'clinician_auth',
+        'clinician_admin',
+        'admin'
+      ]);
+
+      // Update: Clinician can edit own reports until signed; admin/clinician_admin can amend
+      allow update: if inReportPractice && (
+        (request.auth.uid == reportData.clinicianId &&
+         reportData.status in ['draft', 'auto_drafted', 'in_review']) ||
+        isAdminOrClinicianAdmin()
+      );
+    }
+
+    // ============================================================================
+    // USERS COLLECTION
+    // ============================================================================
+
+    /**
+     * Users: Self-read access. Admin can manage all users.
+     */
+    match /users/{userId} {
+      allow read: if request.auth.uid == userId || isAdminOrClinicianAdmin();
+      allow create, update, delete: if isAdminOrClinicianAdmin();
+    }
+
+    // ============================================================================
+    // AUDIT LOG COLLECTION
+    // ============================================================================
+
+    /**
+     * Audit Log: System write-only (via Cloud Functions);
+     * admin and clinician_admin can read practice audit logs.
+     */
+    match /auditLog/{entry} {
+      allow read: if inPractice(resource.data.practiceId) && isAdminOrClinicianAdmin();
+      allow write: if false; // Only Cloud Functions can write via admin SDK
+    }
+
+    // ============================================================================
+    // NOTIFICATIONS COLLECTION
+    // ============================================================================
+
+    /**
+     * Notifications: Owner can read and update; system creates via Cloud Functions.
+     */
+    match /notifications/{notifId} {
+      allow read, update: if request.auth.uid == resource.data.userId;
+      allow write: if false; // Only Cloud Functions can create via admin SDK
+    }
+
+    // ============================================================================
+    // EDUCATION MATERIALS COLLECTION
+    // ============================================================================
+
+    /**
+     * Education Materials: All authenticated users in practice can read;
+     * admin/clinician_admin can create/manage.
+     */
+    match /educationMaterials/{materialId} {
+      allow read: if inPractice(resource.data.practiceId) && isAuthenticated();
+      allow create, update, delete: if inPractice(resource.data.practiceId) && isAdminOrClinicianAdmin();
+    }
+
+    // ============================================================================
+    // DEFAULT DENY
+    // ============================================================================
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

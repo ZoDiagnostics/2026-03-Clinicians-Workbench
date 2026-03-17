@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "clinicians-workbench"
+  },
+  "targets": {
+    "clinicians-workbench": {
+      "hosting": {
+        "zocw-web": [
+          "clinicians-workbench"
+        ]
+      }
+    }
+  }
+}
