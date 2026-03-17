@@ -1,10 +1,11 @@
 import { useState, useEffect, useContext } from 'react';
 import { User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
-import { auth } from './firebase';
-import { useStore, Procedure } from './store';
-import { USERS, PATIENTS, PROCEDURES } from './mockData';
+import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
+import { auth, db } from './firebase';
+import { useStore } from './store';
 import { UserRole } from '../types/enums';
 import { User } from '../types/user';
+import { Procedure } from '../types/procedure';
 
 export interface AuthState {
   user: FirebaseUser | null;
@@ -60,22 +61,65 @@ export function useAuth(): AuthState {
 }
 
 
-export function useProcedures(): Procedure[] {
-  // FIREBASE: Replace with Firestore hook
-  return PROCEDURES;
+export function useProcedures() {
+  const [procedures, setProcedures] = useState<Procedure[]>([]);
+  const { practiceId } = useAuth();
+
+  useEffect(() => {
+    if (!practiceId) return;
+
+    const proceduresRef = collection(db, 'procedures');
+    const q = query(proceduresRef, where('practiceId', '==', practiceId));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const proceduresData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Procedure));
+      setProcedures(proceduresData);
+    });
+
+    return () => unsubscribe();
+  }, [practiceId]);
+
+  return procedures;
+}
+
+export function useActiveProcedure(procedureId: string | undefined) {
+  const [procedure, setProcedure] = useState<Procedure | null>(null);
+  const { practiceId } = useAuth();
+
+  useEffect(() => {
+    if (!practiceId || !procedureId) {
+      setProcedure(null);
+      return;
+    }
+
+    const procedureRef = doc(db, 'procedures', procedureId);
+
+    const unsubscribe = onSnapshot(procedureRef, (doc) => {
+      if (doc.exists()) {
+        const procedureData = { id: doc.id, ...doc.data() } as Procedure;
+        if (procedureData.practiceId === practiceId) {
+          setProcedure(procedureData);
+        } else {
+          setProcedure(null);
+          console.warn('Attempted to fetch procedure from another practice');
+        }
+      } else {
+        setProcedure(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [practiceId, procedureId]);
+
+  return procedure;
 }
 
 export function useUsers(): User[] {
   // FIREBASE: Replace with Firestore hook
-  return USERS;
+  return [];
 }
 
 export function useNotifications() {
   const { state } = useStore();
   return state.notifications;
-}
-
-export function useActiveProcedure() {
-  const { state } = useStore();
-  return state.activeProcedure;
 }
