@@ -1,6 +1,6 @@
 import React from 'react';
 
-const ActivityLog: React.FC = () => {
+export const ActivityLog: React.FC = () => {
   return (
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold text-gray-900 mb-6">Activity Log</h1>
@@ -29,5 +29,3 @@ const ActivityLog: React.FC = () => {
     </div>
   );
 };
-
-export default ActivityLog;

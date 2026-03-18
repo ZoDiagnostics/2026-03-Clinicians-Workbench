@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Operations: React.FC = () => {
+export const Operations: React.FC = () => {
   return (
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold text-gray-900 mb-6">Operations Dashboard</h1>
@@ -35,5 +35,3 @@ const Operations: React.FC = () => {
     </div>
   );
 };
-
-export default Operations;
