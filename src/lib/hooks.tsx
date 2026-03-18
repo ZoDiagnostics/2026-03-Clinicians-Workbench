@@ -19,6 +19,7 @@ import { User } from '../types/user';
 import { Procedure } from '../types/procedure';
 import { Finding } from '../types/finding';
 import { Report } from '../types/report';
+import { Clinic, PracticeSettings } from '../types/practice';
 import { COLLECTIONS } from '../types/firestore-paths';
 
 const functions = getFunctions();
@@ -130,9 +131,69 @@ export function useActiveProcedure(procedureId: string | undefined) {
   return procedure;
 }
 
-export function useUsers(): User[] {
-  // FIREBASE: Replace with Firestore hook
-  return [];
+export function useStaff(): User[] {
+  const [staff, setStaff] = useState<User[]>([]);
+  const { practiceId } = useAuth();
+
+  useEffect(() => {
+    if (!practiceId) return;
+
+    const usersRef = collection(db, COLLECTIONS.USERS);
+    const q = query(usersRef, where('practiceId', '==', practiceId));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const staffData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+      setStaff(staffData);
+    });
+
+    return () => unsubscribe();
+  }, [practiceId]);
+
+  return staff;
+}
+
+export function useClinics(): Clinic[] {
+  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const { practiceId } = useAuth();
+
+  useEffect(() => {
+    if (!practiceId) return;
+
+    const clinicsRef = collection(db, COLLECTIONS.CLINICS(practiceId));
+    const q = query(clinicsRef);
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const clinicsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Clinic));
+      setClinics(clinicsData);
+    });
+
+    return () => unsubscribe();
+  }, [practiceId]);
+
+  return clinics;
+}
+
+export function usePracticeSettings(): PracticeSettings | null {
+  const [settings, setSettings] = useState<PracticeSettings | null>(null);
+  const { practiceId } = useAuth();
+
+  useEffect(() => {
+    if (!practiceId) return;
+
+    const settingsRef = doc(db, COLLECTIONS.PRACTICE_SETTINGS(practiceId), 'default');
+
+    const unsubscribe = onSnapshot(settingsRef, (doc) => {
+      if (doc.exists()) {
+        setSettings({ id: doc.id, ...doc.data() } as PracticeSettings);
+      } else {
+        setSettings(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [practiceId]);
+
+  return settings;
 }
 
 export function useNotifications() {

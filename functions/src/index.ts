@@ -32,6 +32,7 @@ export { exportDashboard } from './callable/exportDashboard';
 export { initiateCapsuleRecall } from './callable/initiateCapsuleRecall';
 export { scheduleAnalyticsReport } from './callable/scheduleAnalyticsReport';
 export { setInitialUserClaims } from './callable/setInitialUserClaims';
+export { createUser, updateUser } from './callable/userManagement';
 
 // Export Utilities for direct use if needed
 export * from './utils/auditLogger';

@@ -11,6 +11,11 @@ import { Procedures } from '../screens/Procedures';
 import { ReportsHub } from '../screens/ReportsHub';
 import { Education } from '../screens/Education';
 import { Admin } from '../screens/Admin';
+import ManageStaff from '../screens/admin/ManageStaff';
+import ManagePractice from '../screens/admin/ManagePractice';
+import ManageClinics from '../screens/admin/ManageClinics';
+import ManageSubscription from '../screens/admin/ManageSubscription';
+import ManageICDCodes from '../screens/admin/ManageICDCodes';
 import { ActivityLog } from '../screens/ActivityLog';
 import { AIQA } from '../screens/AIQA';
 import { Operations } from '../screens/Operations';
@@ -102,6 +107,46 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <Admin />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/admin/staff',
+    element: (
+      <ProtectedRoute>
+        <ManageStaff />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/admin/practice',
+    element: (
+      <ProtectedRoute>
+        <ManagePractice />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/admin/clinics',
+    element: (
+      <ProtectedRoute>
+        <ManageClinics />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/admin/subscription',
+    element: (
+      <ProtectedRoute>
+        <ManageSubscription />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/admin/icd-codes',
+    element: (
+      <ProtectedRoute>
+        <ManageICDCodes />
       </ProtectedRoute>
     ),
   },
