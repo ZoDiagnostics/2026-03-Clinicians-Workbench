@@ -1,41 +1,17 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth, useProcedures } from '../lib/hooks';
-import { Sidebar } from '../components/Sidebar';
-import { Header } from '../components/Header';
-import { WorkflowStepper } from '../components/WorkflowStepper';
 
-// SCR-05: Education — extracted from Demo v3.1.0
-// This is a stub component. The actual rendering logic needs to be extracted
-// from the minified demo code and reconstructed.
-
-export const Education: React.FC = () => {
-  const navigate = useNavigate();
-  const currentUser = useAuth();
-  const procedures = useProcedures();
-
-  // FIREBASE: Connect to Firestore for real data
-  // const { data: screenData } = useScreenData('SCR-05');
-
+const Education: React.FC = () => {
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Header />
-        <main className="flex-1 overflow-auto">
-          <div className="container mx-auto py-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-6">
-              Education
-            </h1>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-              <p className="text-yellow-800">
-                ⚠️ Component extraction in progress.
-                Placeholder content shown while component logic is being reconstructed.
-              </p>
-            </div>
-            {/* Component content will be filled in after AST extraction */}
-          </div>
-        </main>
+    <div className="container mx-auto py-8">
+      <h1 className="text-3xl font-bold text-gray-900 mb-6">Education Library</h1>
+      {/* Placeholder for search and filter bar */}
+      <div className="bg-white p-4 rounded-lg shadow-md mb-6">
+        <h2 className="text-lg font-semibold text-gray-700">Search & Filter</h2>
+        {/* Search and filter controls will be implemented here */}
+      </div>
+      {/* Placeholder for material list */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Education materials will be populated here */}
       </div>
     </div>
   );

@@ -1,8 +1,7 @@
 /**
- * Shared TypeScript Enums and Union Types for ZoCW Data Model
+ * Shared TypeScript Enums for ZoCW Data Model
  *
- * All enums are defined as union types for better tree-shaking and runtime flexibility.
- * Each has an associated display label map and color map for UI consistency.
+ * Each enum has an associated display label map and color map for UI consistency.
  */
 
 // ============================================================================
@@ -27,7 +26,6 @@ export enum ProcedureStatus {
 
 /**
  * Display labels for procedure status (user-facing strings).
- * Maps each status to a human-readable label for UI rendering.
  */
 export const PROCEDURE_STATUS_LABELS: Record<ProcedureStatus, string> = {
   [ProcedureStatus.CAPSULE_RETURN_PENDING]: 'Awaiting Capsule Return',
@@ -43,8 +41,6 @@ export const PROCEDURE_STATUS_LABELS: Record<ProcedureStatus, string> = {
 
 /**
  * Color classes for procedure status badges.
- * Uses Tailwind color utilities for consistent styling across the application.
- * Maps to colors defined in tailwind.config.ts.
  */
 export const PROCEDURE_STATUS_COLORS: Record<ProcedureStatus, string> = {
   [ProcedureStatus.CAPSULE_RETURN_PENDING]: 'bg-status-pending text-white',
@@ -60,7 +56,6 @@ export const PROCEDURE_STATUS_COLORS: Record<ProcedureStatus, string> = {
 
 /**
  * Valid state transitions for the procedure workflow.
- * Defines which statuses can transition to other statuses.
  */
 export const VALID_PROCEDURE_TRANSITIONS: Record<ProcedureStatus, ProcedureStatus[]> = {
   [ProcedureStatus.CAPSULE_RETURN_PENDING]: [ProcedureStatus.CAPSULE_RECEIVED, ProcedureStatus.VOID],
@@ -80,37 +75,34 @@ export const VALID_PROCEDURE_TRANSITIONS: Record<ProcedureStatus, ProcedureStatu
 
 /**
  * Study type indicates the primary clinical focus for the procedure.
- * Defined in ZCW-BRD-0226 and ZCW-BRD-0227.
- *
- * All procedures capture full pan-GI imaging regardless of study type;
- * study type only affects the primary focus region for AI analysis and reporting.
  */
-export type StudyType =
-  | 'upper_gi'           // Upper GI Evaluation (esophagus, stomach, GEJ focus)
-  | 'sb_diagnostic'      // Small Bowel Diagnostic
-  | 'crohns_monitor'     // Small Bowel Crohn's Monitoring
-  | 'colon_eval';        // Colon Evaluation
+export enum StudyType {
+  UPPER_GI = 'upper_gi',
+  SB_DIAGNOSTIC = 'sb_diagnostic',
+  CROHNS_MONITOR = 'crohns_monitor',
+  COLON_EVAL = 'colon_eval',
+}
 
 /**
  * Display labels for study types.
  */
 export const STUDY_TYPE_LABELS: Record<StudyType, string> = {
-  upper_gi: 'Upper GI — Evaluation',
-  sb_diagnostic: 'Small Bowel — Diagnostic',
-  crohns_monitor: 'Small Bowel — Crohn\'s Monitoring',
-  colon_eval: 'Colon — Evaluation',
+  [StudyType.UPPER_GI]: 'Upper GI — Evaluation',
+  [StudyType.SB_DIAGNOSTIC]: 'Small Bowel — Diagnostic',
+  [StudyType.CROHNS_MONITOR]: 'Small Bowel — Crohn\'s Monitoring',
+  [StudyType.COLON_EVAL]: 'Colon — Evaluation',
 };
 
 /**
  * Primary anatomical focus regions by study type.
- * Used to configure AI analysis emphasis and report templates.
  */
 export const STUDY_TYPE_PRIMARY_FOCUS: Record<StudyType, string> = {
-  upper_gi: 'Esophagus, Stomach, GEJ',
-  sb_diagnostic: 'Small Bowel',
-  crohns_monitor: 'Small Bowel (Inflammatory)',
-  colon_eval: 'Colon',
+    [StudyType.UPPER_GI]: 'Esophagus, Stomach, GEJ',
+    [StudyType.SB_DIAGNOSTIC]: 'Small Bowel',
+    [StudyType.CROHNS_MONITOR]: 'Small Bowel (Inflammatory)',
+    [StudyType.COLON_EVAL]: 'Colon',
 };
+
 
 // ============================================================================
 // USER ROLES (5-Role RBAC)
@@ -118,36 +110,35 @@ export const STUDY_TYPE_PRIMARY_FOCUS: Record<StudyType, string> = {
 
 /**
  * User role defines permissions and access levels across the platform.
- * Implemented as Firestore custom claims in Firebase Auth tokens.
  */
-export type UserRole =
-  | 'clinician_auth'      // Licensed clinician authorized to sign reports
-  | 'clinician_noauth'    // Licensed clinician; cannot sign independently
-  | 'clinician_admin'     // Clinician with administrative privileges
-  | 'admin'               // System administrator
-  | 'clinical_staff';     // Technician, staff (no clinical decision authority)
+export enum UserRole {
+  CLINICIAN_AUTH = 'clinician_auth',
+  CLINICIAN_NOAUTH = 'clinician_noauth',
+  CLINICIAN_ADMIN = 'clinician_admin',
+  ADMIN = 'admin',
+  CLINICAL_STAFF = 'clinical_staff',
+}
 
 /**
  * Display labels for user roles.
  */
 export const USER_ROLE_LABELS: Record<UserRole, string> = {
-  clinician_auth: 'Authorized Clinician',
-  clinician_noauth: 'Clinician (Non-Authorized)',
-  clinician_admin: 'Clinician Administrator',
-  admin: 'Administrator',
-  clinical_staff: 'Clinical Staff',
+  [UserRole.CLINICIAN_AUTH]: 'Authorized Clinician',
+  [UserRole.CLINICIAN_NOAUTH]: 'Clinician (Non-Authorized)',
+  [UserRole.CLINICIAN_ADMIN]: 'Clinician Administrator',
+  [UserRole.ADMIN]: 'Administrator',
+  [UserRole.CLINICAL_STAFF]: 'Clinical Staff',
 };
 
 /**
  * Role hierarchy for permission checking.
- * Higher index = higher privilege level.
  */
 export const ROLE_HIERARCHY: Record<UserRole, number> = {
-  clinical_staff: 1,
-  clinician_noauth: 2,
-  clinician_auth: 3,
-  clinician_admin: 4,
-  admin: 5,
+  [UserRole.CLINICAL_STAFF]: 1,
+  [UserRole.CLINICIAN_NOAUTH]: 2,
+  [UserRole.CLINICIAN_AUTH]: 3,
+  [UserRole.CLINICIAN_ADMIN]: 4,
+  [UserRole.ADMIN]: 5,
 };
 
 // ============================================================================
@@ -156,20 +147,20 @@ export const ROLE_HIERARCHY: Record<UserRole, number> = {
 
 /**
  * Finding provenance indicates the source/origin of a finding.
- * Used for transparency and audit trails.
  */
-export type FindingProvenance =
-  | 'ai_detected'         // Initially identified by AI/Copilot
-  | 'clinician_marked'    // Manually marked by clinician
-  | 'clinician_modified'; // AI finding modified by clinician
+export enum FindingProvenance {
+  AI_DETECTED = 'ai_detected',
+  CLINICIAN_MARKED = 'clinician_marked',
+  CLINICIAN_MODIFIED = 'clinician_modified',
+}
 
 /**
  * Display labels for finding provenance.
  */
 export const FINDING_PROVENANCE_LABELS: Record<FindingProvenance, string> = {
-  ai_detected: 'AI-Detected',
-  clinician_marked: 'Clinician-Marked',
-  clinician_modified: 'AI-Detected (Modified)',
+  [FindingProvenance.AI_DETECTED]: 'AI-Detected',
+  [FindingProvenance.CLINICIAN_MARKED]: 'Clinician-Marked',
+  [FindingProvenance.CLINICIAN_MODIFIED]: 'AI-Detected (Modified)',
 };
 
 // ============================================================================
@@ -178,24 +169,24 @@ export const FINDING_PROVENANCE_LABELS: Record<FindingProvenance, string> = {
 
 /**
  * Finding review status tracks the clinician's decision on a finding.
- * Used in the Procedure Summary workflow.
  */
-export type FindingReviewStatus =
-  | 'pending'      // Awaiting clinician review
-  | 'confirmed'    // Clinician confirmed the finding
-  | 'rejected'     // Clinician rejected the finding
-  | 'modified'     // Clinician modified the finding (size, location, etc.)
-  | 'deferred';    // Clinician deferred decision (mark for follow-up)
+export enum FindingReviewStatus {
+  PENDING = 'pending',
+  CONFIRMED = 'confirmed',
+  REJECTED = 'rejected',
+  MODIFIED = 'modified',
+  DEFERRED = 'deferred',
+}
 
 /**
  * Display labels for finding review status.
  */
 export const FINDING_REVIEW_STATUS_LABELS: Record<FindingReviewStatus, string> = {
-  pending: 'Pending Review',
-  confirmed: 'Confirmed',
-  rejected: 'Rejected',
-  modified: 'Modified',
-  deferred: 'Deferred',
+  [FindingReviewStatus.PENDING]: 'Pending Review',
+  [FindingReviewStatus.CONFIRMED]: 'Confirmed',
+  [FindingReviewStatus.REJECTED]: 'Rejected',
+  [FindingReviewStatus.MODIFIED]: 'Modified',
+  [FindingReviewStatus.DEFERRED]: 'Deferred',
 };
 
 // ============================================================================
@@ -203,27 +194,27 @@ export const FINDING_REVIEW_STATUS_LABELS: Record<FindingReviewStatus, string> =
 // ============================================================================
 
 /**
- * Report delivery method specifies how the report is distributed to patient/provider.
- * Defined in ZCW-BRD-0298 (Delivery Defaults).
+ * Report delivery method specifies how the report is distributed.
  */
-export type DeliveryMethod =
-  | 'pdf_download'   // Download as PDF from portal
-  | 'print'          // Print at clinic
-  | 'email_patient'  // Email to patient
-  | 'email_referring' // Email to referring physician
-  | 'hl7_fhir'       // HL7 v2 / FHIR integration
-  | 'dicom_sr';      // DICOM Structured Report export
+export enum DeliveryMethod {
+  PDF_DOWNLOAD = 'pdf_download',
+  PRINT = 'print',
+  EMAIL_PATIENT = 'email_patient',
+  EMAIL_REFERRING = 'email_referring',
+  HL7_FHIR = 'hl7_fhir',
+  DICOM_SR = 'dicom_sr',
+}
 
 /**
  * Display labels for delivery methods.
  */
 export const DELIVERY_METHOD_LABELS: Record<DeliveryMethod, string> = {
-  pdf_download: 'PDF Download',
-  print: 'Print',
-  email_patient: 'Email to Patient',
-  email_referring: 'Email to Referring Physician',
-  hl7_fhir: 'HL7/FHIR Integration',
-  dicom_sr: 'DICOM SR Export',
+  [DeliveryMethod.PDF_DOWNLOAD]: 'PDF Download',
+  [DeliveryMethod.PRINT]: 'Print',
+  [DeliveryMethod.EMAIL_PATIENT]: 'Email to Patient',
+  [DeliveryMethod.EMAIL_REFERRING]: 'Email to Referring Physician',
+  [DeliveryMethod.HL7_FHIR]: 'HL7/FHIR Integration',
+  [DeliveryMethod.DICOM_SR]: 'DICOM SR Export',
 };
 
 // ============================================================================
@@ -232,29 +223,29 @@ export const DELIVERY_METHOD_LABELS: Record<DeliveryMethod, string> = {
 
 /**
  * Urgency level for procedures and referrals.
- * Used in notification prioritization and display.
  */
-export type UrgencyLevel =
-  | 'routine'       // Standard processing
-  | 'urgent'        // Expedited review needed
-  | 'emergent';     // Immediate action required
+export enum UrgencyLevel {
+  ROUTINE = 'routine',
+  URGENT = 'urgent',
+  EMERGENT = 'emergent',
+}
 
 /**
  * Display labels for urgency levels.
  */
 export const URGENCY_LEVEL_LABELS: Record<UrgencyLevel, string> = {
-  routine: 'Routine',
-  urgent: 'Urgent',
-  emergent: 'Emergent',
+  [UrgencyLevel.ROUTINE]: 'Routine',
+  [UrgencyLevel.URGENT]: 'Urgent',
+  [UrgencyLevel.EMERGENT]: 'Emergent',
 };
 
 /**
  * Color classes for urgency level badges.
  */
 export const URGENCY_LEVEL_COLORS: Record<UrgencyLevel, string> = {
-  routine: 'bg-gray-200 text-gray-900',
-  urgent: 'bg-yellow-200 text-yellow-900',
-  emergent: 'bg-red-200 text-red-900',
+  [UrgencyLevel.ROUTINE]: 'bg-gray-200 text-gray-900',
+  [UrgencyLevel.URGENT]: 'bg-yellow-200 text-yellow-900',
+  [UrgencyLevel.EMERGENT]: 'bg-red-200 text-red-900',
 };
 
 // ============================================================================
@@ -263,20 +254,20 @@ export const URGENCY_LEVEL_COLORS: Record<UrgencyLevel, string> = {
 
 /**
  * Consent method indicates how informed consent was obtained.
- * Tracked for regulatory compliance and audit.
  */
-export type ConsentMethod =
-  | 'digital'   // Digital signature / checkbox
-  | 'paper'     // Paper form scanned
-  | 'video';    // Video recorded consent
+export enum ConsentMethod {
+    DIGITAL = 'digital',
+    PAPER = 'paper',
+    VIDEO = 'video',
+}
 
 /**
  * Display labels for consent methods.
  */
 export const CONSENT_METHOD_LABELS: Record<ConsentMethod, string> = {
-  digital: 'Digital',
-  paper: 'Paper',
-  video: 'Video',
+    [ConsentMethod.DIGITAL]: 'Digital',
+    [ConsentMethod.PAPER]: 'Paper',
+    [ConsentMethod.VIDEO]: 'Video',
 };
 
 // ============================================================================
@@ -285,30 +276,30 @@ export const CONSENT_METHOD_LABELS: Record<ConsentMethod, string> = {
 
 /**
  * Anatomical regions for GI findings.
- * Used for finding classification and reporting.
  */
-export type AnatomicalRegion =
-  | 'esophagus'
-  | 'stomach'
-  | 'duodenum'
-  | 'jejunum'
-  | 'ileum'
-  | 'cecum'
-  | 'colon'
-  | 'rectum';
+export enum AnatomicalRegion {
+    ESOPHAGUS = 'esophagus',
+    STOMACH = 'stomach',
+    DUODENUM = 'duodenum',
+    JEJUNUM = 'jejunum',
+    ILEUM = 'ileum',
+    CECUCM = 'cecum',
+    COLON = 'colon',
+    RECTUM = 'rectum',
+}
 
 /**
  * Display labels for anatomical regions.
  */
 export const ANATOMICAL_REGION_LABELS: Record<AnatomicalRegion, string> = {
-  esophagus: 'Esophagus',
-  stomach: 'Stomach',
-  duodenum: 'Duodenum',
-  jejunum: 'Jejunum',
-  ileum: 'Ileum',
-  cecum: 'Cecum',
-  colon: 'Colon',
-  rectum: 'Rectum',
+    [AnatomicalRegion.ESOPHAGUS]: 'Esophagus',
+    [AnatomicalRegion.STOMACH]: 'Stomach',
+    [AnatomicalRegion.DUODENUM]: 'Duodenum',
+    [AnatomicalRegion.JEJUNUM]: 'Jejunum',
+    [AnatomicalRegion.ILEUM]: 'Ileum',
+    [AnatomicalRegion.CECUCM]: 'Cecum',
+    [AnatomicalRegion.COLON]: 'Colon',
+    [AnatomicalRegion.RECTUM]: 'Rectum',
 };
 
 // ============================================================================
@@ -317,30 +308,30 @@ export const ANATOMICAL_REGION_LABELS: Record<AnatomicalRegion, string> = {
 
 /**
  * Notification type categorizes the business event triggering the notification.
- * Used for filtering and prioritization.
  */
-export type NotificationType =
-  | 'study_assigned'          // New study assigned to clinician
-  | 'signature_required'      // Report awaiting signature
-  | 'qa_alert'                // QA/AI drift alert
-  | 'recall_notice'           // Capsule recall notice
-  | 'transfer_request'        // Review transfer request
-  | 'delivery_confirmed'      // Report delivery confirmed
-  | 'system'                  // System maintenance / informational
-  | 'education_assigned';     // Patient education assigned
+export enum NotificationType {
+  STUDY_ASSIGNED = 'study_assigned',
+  SIGNATURE_REQUIRED = 'signature_required',
+  QA_ALERT = 'qa_alert',
+  RECALL_NOTICE = 'recall_notice',
+  TRANSFER_REQUEST = 'transfer_request',
+  DELIVERY_CONFIRMED = 'delivery_confirmed',
+  SYSTEM = 'system',
+  EDUCATION_ASSIGNED = 'education_assigned',
+}
 
 /**
  * Display labels for notification types.
  */
 export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
-  study_assigned: 'Study Assigned',
-  signature_required: 'Signature Required',
-  qa_alert: 'QA Alert',
-  recall_notice: 'Recall Notice',
-  transfer_request: 'Transfer Request',
-  delivery_confirmed: 'Delivery Confirmed',
-  system: 'System Message',
-  education_assigned: 'Education Assigned',
+  [NotificationType.STUDY_ASSIGNED]: 'Study Assigned',
+  [NotificationType.SIGNATURE_REQUIRED]: 'Signature Required',
+  [NotificationType.QA_ALERT]: 'QA Alert',
+  [NotificationType.RECALL_NOTICE]: 'Recall Notice',
+  [NotificationType.TRANSFER_REQUEST]: 'Transfer Request',
+  [NotificationType.DELIVERY_CONFIRMED]: 'Delivery Confirmed',
+  [NotificationType.SYSTEM]: 'System Message',
+  [NotificationType.EDUCATION_ASSIGNED]: 'Education Assigned',
 };
 
 // ============================================================================
@@ -350,24 +341,25 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
 /**
  * Report status tracks the state of a report in its lifecycle.
  */
-export type ReportStatus =
-  | 'draft'           // Initial draft created
-  | 'auto_drafted'    // Auto-drafted by Copilot
-  | 'in_review'       // Clinician reviewing
-  | 'signed'          // Signed by authorized clinician
-  | 'amended'         // Amendment appended
-  | 'voided';         // Report voided
+export enum ReportStatus {
+  DRAFT = 'draft',
+  AUTO_DRAFTED = 'auto_drafted',
+  IN_REVIEW = 'in_review',
+  SIGNED = 'signed',
+  AMENDED = 'amended',
+  VOIDED = 'voided',
+}
 
 /**
  * Display labels for report status.
  */
 export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
-  draft: 'Draft',
-  auto_drafted: 'Auto-Drafted',
-  in_review: 'In Review',
-  signed: 'Signed',
-  amended: 'Amended',
-  voided: 'Voided',
+  [ReportStatus.DRAFT]: 'Draft',
+  [ReportStatus.AUTO_DRAFTED]: 'Auto-Drafted',
+  [ReportStatus.IN_REVIEW]: 'In Review',
+  [ReportStatus.SIGNED]: 'Signed',
+  [ReportStatus.AMENDED]: 'Amended',
+  [ReportStatus.VOIDED]: 'Voided',
 };
 
 // ============================================================================
@@ -376,20 +368,20 @@ export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
 
 /**
  * Capsule scan method indicates how the capsule was identified.
- * Defined in ZCW-BRD-0239 and ZCW-BRD-0240.
  */
-export type CapsuleScanMethod =
-  | 'barcode'     // Barcode scan
-  | 'qr_code'     // QR code scan
-  | 'manual';     // Manual entry (fallback)
+export enum CapsuleScanMethod {
+    BARCODE = 'barcode',
+    QR_CODE = 'qr_code',
+    MANUAL = 'manual',
+}
 
 /**
  * Display labels for capsule scan methods.
  */
 export const CAPSULE_SCAN_METHOD_LABELS: Record<CapsuleScanMethod, string> = {
-  barcode: 'Barcode Scan',
-  qr_code: 'QR Code Scan',
-  manual: 'Manual Entry',
+    [CapsuleScanMethod.BARCODE]: 'Barcode Scan',
+    [CapsuleScanMethod.QR_CODE]: 'QR Code Scan',
+    [CapsuleScanMethod.MANUAL]: 'Manual Entry',
 };
 
 // ============================================================================
@@ -398,20 +390,20 @@ export const CAPSULE_SCAN_METHOD_LABELS: Record<CapsuleScanMethod, string> = {
 
 /**
  * Status of ICD-10 / CPT code suggestions from Copilot.
- * Defined in ZCW-BRD-0299.
  */
-export type CodeSuggestionStatus =
-  | 'suggested'   // Code suggested by Copilot
-  | 'confirmed'   // Clinician confirmed the code
-  | 'rejected';   // Clinician rejected the code
+export enum CodeSuggestionStatus {
+    SUGGESTED = 'suggested',
+    CONFIRMED = 'confirmed',
+    REJECTED = 'rejected',
+}
 
 /**
  * Display labels for code suggestion status.
  */
 export const CODE_SUGGESTION_STATUS_LABELS: Record<CodeSuggestionStatus, string> = {
-  suggested: 'Suggested',
-  confirmed: 'Confirmed',
-  rejected: 'Rejected',
+    [CodeSuggestionStatus.SUGGESTED]: 'Suggested',
+    [CodeSuggestionStatus.CONFIRMED]: 'Confirmed',
+    [CodeSuggestionStatus.REJECTED]: 'Rejected',
 };
 
 // ============================================================================
@@ -420,20 +412,20 @@ export const CODE_SUGGESTION_STATUS_LABELS: Record<CodeSuggestionStatus, string>
 
 /**
  * Status of individual sections in auto-drafted reports.
- * Used in Copilot Auto-Draft workflow (ZCW-BRD-0297).
  */
-export type DraftSectionStatus =
-  | 'pending'     // Awaiting clinician review
-  | 'accepted'    // Clinician accepted the section
-  | 'edited'      // Clinician edited the section
-  | 'rejected';   // Clinician rejected and rewrote
+export enum DraftSectionStatus {
+    PENDING = 'pending',
+    ACCEPTED = 'accepted',
+    EDITED = 'edited',
+    REJECTED = 'rejected',
+}
 
 /**
  * Display labels for draft section status.
  */
 export const DRAFT_SECTION_STATUS_LABELS: Record<DraftSectionStatus, string> = {
-  pending: 'Pending Review',
-  accepted: 'Accepted',
-  edited: 'Edited',
-  rejected: 'Rejected',
+    [DraftSectionStatus.PENDING]: 'Pending Review',
+    [DraftSectionStatus.ACCEPTED]: 'Accepted',
+    [DraftSectionStatus.EDITED]: 'Edited',
+    [DraftSectionStatus.REJECTED]: 'Rejected',
 };

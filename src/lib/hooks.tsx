@@ -10,6 +10,8 @@ import {
   updateDoc,
   deleteDoc,
   serverTimestamp,
+  writeBatch,
+  getDocs
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { auth, db } from './firebase';
@@ -21,6 +23,7 @@ import { Finding } from '../types/finding';
 import { Report } from '../types/report';
 import { Clinic, PracticeSettings } from '../types/practice';
 import { COLLECTIONS } from '../types/firestore-paths';
+import { AppNotification } from '../types/notification';
 
 const functions = getFunctions();
 
@@ -197,9 +200,50 @@ export function usePracticeSettings(): PracticeSettings | null {
 }
 
 export function useNotifications() {
-  const { state } = useStore();
-  return state.notifications;
+    const { user } = useAuth();
+    const [notifications, setNotifications] = useState<AppNotification[]>([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+  
+    useEffect(() => {
+      if (!user) return;
+  
+      const q = query(
+        collection(db, `users/${user.uid}/notifications`)
+      );
+  
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const notifs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AppNotification));
+        setNotifications(notifs);
+        const unread = notifs.filter(n => !n.isRead).length;
+        setUnreadCount(unread)
+      });
+  
+      return () => unsubscribe();
+    }, [user]);
+  
+    return { notifications, unreadCount };
 }
+
+export const markNotificationRead = async (userId: string, notificationId: string) => {
+    const notifRef = doc(db, `users/${userId}/notifications`, notificationId);
+    await updateDoc(notifRef, { isRead: true, readAt: serverTimestamp() });
+};
+  
+export const markAllNotificationsRead = async (userId: string) => {
+    const notificationsRef = collection(db, `users/${userId}/notifications`);
+    const q = query(notificationsRef, where("isRead", "==", false));
+    const snapshot = await getDocs(q);
+    const batch = writeBatch(db);
+    snapshot.docs.forEach(document => {
+        batch.update(document.ref, { isRead: true, readAt: serverTimestamp() });
+    });
+    await batch.commit();
+};
+  
+export const deleteNotification = async (userId: string, notificationId: string) => {
+    const notifRef = doc(db, `users/${userId}/notifications`, notificationId);
+    await deleteDoc(notifRef);
+};
 
 export function useFindings(procedureId: string | undefined) {
   const [findings, setFindings] = useState<Finding[]>([]);

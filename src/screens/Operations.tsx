@@ -1,41 +1,36 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth, useProcedures } from '../lib/hooks';
-import { Sidebar } from '../components/Sidebar';
-import { Header } from '../components/Header';
-import { WorkflowStepper } from '../components/WorkflowStepper';
 
-// SCR-29: Operations — extracted from Demo v3.1.0
-// This is a stub component. The actual rendering logic needs to be extracted
-// from the minified demo code and reconstructed.
-
-export const Operations: React.FC = () => {
-  const navigate = useNavigate();
-  const currentUser = useAuth();
-  const procedures = useProcedures();
-
-  // FIREBASE: Connect to Firestore for real data
-  // const { data: screenData } = useScreenData('SCR-29');
-
+const Operations: React.FC = () => {
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Header />
-        <main className="flex-1 overflow-auto">
-          <div className="container mx-auto py-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-6">
-              Operations
-            </h1>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-              <p className="text-yellow-800">
-                ⚠️ Component extraction in progress.
-                Placeholder content shown while component logic is being reconstructed.
-              </p>
-            </div>
-            {/* Component content will be filled in after AST extraction */}
-          </div>
-        </main>
+    <div className="container mx-auto py-8">
+      <h1 className="text-3xl font-bold text-gray-900 mb-6">Operations Dashboard</h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Placeholder for real-time metrics */}
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-lg font-semibold text-gray-700">Procedures Completed Today</h2>
+          <p className="text-3xl font-bold text-gray-900">0</p>
+        </div>
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-lg font-semibold text-gray-700">In Progress Reviews</h2>
+          <p className="text-3xl font-bold text-gray-900">0</p>
+        </div>
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-lg font-semibold text-gray-700">Awaiting Review</h2>
+          <p className="text-3xl font-bold text-gray-900">0</p>
+        </div>
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-lg font-semibold text-gray-700">Signed This Week</h2>
+          <p className="text-3xl font-bold text-gray-900">0</p>
+        </div>
+      </div>
+      {/* Placeholder for workflow funnel chart */}
+      <div className="mt-8 bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-xl font-semibold text-gray-700 mb-4">Procedure Funnel</h2>
+        {/* Funnel chart will be implemented here */}
+      </div>
+       {/* Placeholder for lag metrics */}
+      <div className="mt-8 bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold text-gray-700 mb-4">Lag Metrics & Alerts</h2>
       </div>
     </div>
   );
