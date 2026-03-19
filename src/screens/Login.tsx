@@ -48,14 +48,12 @@ export default function LoginScreen() {
     });
   }, [navigate]);
 
-  if(loading) {
-    return <div>Loading...</div>
-  }
-
-  if(user) {
-    navigate('/dashboard');
-    return null;
-  }
+  // If already logged in, redirect to dashboard
+  useEffect(() => {
+    if (!loading && user) {
+      navigate('/dashboard');
+    }
+  }, [loading, user, navigate]);
 
   return (
     <div className="flex items-center justify-center h-screen bg-gray-100">
