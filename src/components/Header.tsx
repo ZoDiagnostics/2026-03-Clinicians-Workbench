@@ -1,5 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { signOut } from 'firebase/auth';
+import { auth } from '../lib/firebase';
 import { useAuth, useNotifications, markNotificationRead, markAllNotificationsRead } from '../lib/hooks';
 import { Menu, Bell, LogOut, Settings } from 'lucide-react';
 import { NotificationDrawer } from './NotificationDrawer';
@@ -43,6 +45,12 @@ export const Header: React.FC = () => {
             />
           <button className="px-3 py-1 bg-gray-100 rounded text-sm text-gray-700">
             {role || 'User'}
+          </button>
+          <button
+            onClick={() => signOut(auth).then(() => navigate('/login'))}
+            className="px-3 py-1 bg-red-50 text-red-600 rounded text-sm hover:bg-red-100 flex items-center gap-1"
+          >
+            <LogOut className="h-4 w-4" /> Sign out
           </button>
         </div>
       </div>
