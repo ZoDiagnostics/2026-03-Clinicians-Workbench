@@ -183,7 +183,7 @@ export const router = createBrowserRouter([
     ),
   },
   {
-    path: '/checkin',
+    path: '/checkin/:procedureId',
     element: (
       <ProtectedRoute>
         <CheckIn />
@@ -191,7 +191,7 @@ export const router = createBrowserRouter([
     ),
   },
   {
-    path: '/capsule-upload',
+    path: '/capsule-upload/:procedureId',
     element: (
       <ProtectedRoute>
         <CapsuleUpload />

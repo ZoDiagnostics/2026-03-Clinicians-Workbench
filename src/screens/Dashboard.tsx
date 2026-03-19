@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth, useProcedures } from '../lib/hooks';
+import { useMemo } from 'react';
+import { useAuth, useProcedures, usePatients } from '../lib/hooks';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
 import { Procedure } from '../types/procedure';
@@ -40,6 +41,12 @@ export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user, role } = useAuth();
   const allProcedures = useProcedures();
+  const allPatients = usePatients();
+
+  const patientMap = useMemo(() =>
+    new Map(allPatients.map(p => [p.id, `${p.firstName} ${p.lastName}`])),
+    [allPatients]
+  );
 
   const isClinicianAdmin = role === UserRole.CLINICIAN_ADMIN || role === UserRole.ADMIN;
 
@@ -128,7 +135,7 @@ export const Dashboard: React.FC = () => {
                       <div className="px-4 py-4 sm:px-6">
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-medium text-indigo-600 truncate">
-                            Patient ID: {proc.patientId}
+                            {patientMap.get(proc.patientId) || 'Unknown Patient'}
                           </p>
                           <div className="ml-2 flex-shrink-0 flex">
                             <StatusBadge status={proc.status} />

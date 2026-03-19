@@ -19,6 +19,7 @@ import { useStore } from './store';
 import { UserRole } from '../types/enums';
 import { User } from '../types/user';
 import { Procedure } from '../types/procedure';
+import { Patient } from '../types/patient';
 import { Finding } from '../types/finding';
 import { Report } from '../types/report';
 import { Clinic, Practice, PracticeSettings } from '../types/practice';
@@ -80,6 +81,26 @@ export function useAuth(): AuthState {
   return { user, role, practiceId, loading, error };
 }
 
+export function usePatients(): Patient[] {
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const { practiceId } = useAuth();
+
+  useEffect(() => {
+    if (!practiceId) return;
+
+    const patientsRef = collection(db, 'patients');
+    const q = query(patientsRef, where('practiceId', '==', practiceId));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const patientsData = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Patient));
+      setPatients(patientsData);
+    });
+
+    return () => unsubscribe();
+  }, [practiceId]);
+
+  return patients;
+}
 
 export function useProcedures() {
   const [procedures, setProcedures] = useState<Procedure[]>([]);

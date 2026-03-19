@@ -63,6 +63,7 @@ async function seed() {
       sex: faker.helpers.arrayElement(['male', 'female']),
       email: faker.internet.email(),
       phone: faker.phone.number(),
+      preferredLanguage: 'en',
       isArchived: false,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
@@ -71,23 +72,7 @@ async function seed() {
   }
   console.log('3 Patient documents prepared for batch.');
 
-  // 3. Create Procedures
-  for (let i = 0; i < 5; i++) {
-    const procedureId = faker.string.uuid();
-    const procedureRef = db.collection(COLLECTIONS_ADMIN.PROCEDURES).doc(procedureId);
-    batch.set(procedureRef, {
-      id: procedureId,
-      patientId: faker.helpers.arrayElement(patientIds),
-      practiceId: PRACTICE_ID,
-      status: 'ready_for_review',
-      studyType: 'sb_diagnostic',
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-    });
-  }
-  console.log('5 Procedure documents prepared for batch.');
-
-  // 4. Create Clinician User with Custom Claims
+  // 3. Create Clinician User with Custom Claims (before procedures so we can assign them)
   let uid: string;
   try {
     const userRecord = await auth.createUser({
@@ -114,6 +99,44 @@ async function seed() {
       return;
     }
   }
+
+  // 4. Create Procedures (now uid is available for assignedClinicianId)
+  const statuses = ['capsule_return_pending', 'capsule_received', 'ready_for_review', 'draft', 'completed'];
+  for (let i = 0; i < 5; i++) {
+    const procedureId = faker.string.uuid();
+    const procedureRef = db.collection(COLLECTIONS_ADMIN.PROCEDURES).doc(procedureId);
+    batch.set(procedureRef, {
+      id: procedureId,
+      patientId: faker.helpers.arrayElement(patientIds),
+      practiceId: PRACTICE_ID,
+      clinicId: 'clinic_default',
+      assignedClinicianId: uid,
+      status: statuses[i],
+      studyType: faker.helpers.arrayElement(['sb_diagnostic', 'upper_gi', 'crohns_monitor', 'colon_eval']),
+      urgency: faker.helpers.arrayElement(['routine', 'urgent']),
+      indications: [faker.lorem.sentence()],
+      contraindications: {
+        hasPacemaker: false,
+        hasSwallowingDisorder: false,
+        hasBowelObstruction: false,
+        hasKnownAllergy: false,
+        reviewedAt: Timestamp.now(),
+        reviewedBy: uid,
+      },
+      preProcedureChecks: [],
+      preReviewConfig: {
+        studyType: 'sb_diagnostic',
+        crohnsMode: false,
+        sensitivityThreshold: 50,
+        configuredAt: Timestamp.now(),
+        configuredBy: uid,
+      },
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      createdBy: uid,
+    });
+  }
+  console.log('5 Procedure documents prepared for batch.');
 
   // Commit the batch
   await batch.commit();

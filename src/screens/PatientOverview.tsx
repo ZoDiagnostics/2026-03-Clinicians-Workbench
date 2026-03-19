@@ -5,6 +5,8 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../lib/hooks';
 import { Patient } from '../types/patient';
 import { COLLECTIONS } from '../types/firestore-paths';
+import { Sidebar } from '../components/Sidebar';
+import { Header } from '../components/Header';
 
 export function PatientOverview() {
   const { id } = useParams<{ id: string }>();
@@ -51,7 +53,11 @@ export function PatientOverview() {
   }
 
   return (
-    <div className="p-6">
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar />
+      <div className="flex-1 flex flex-col">
+        <Header />
+        <main className="flex-1 overflow-y-auto p-6">
       <h1 className="text-2xl font-bold mb-4">Patient Overview</h1>
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
         <div className="px-4 py-5 sm:px-6">
@@ -82,6 +88,8 @@ export function PatientOverview() {
             </div>
           </dl>
         </div>
+      </div>
+        </main>
       </div>
     </div>
   );
