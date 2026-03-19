@@ -1,32 +1,95 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useProcedures, usePatients } from '../lib/hooks';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
 
+const BarChart: React.FC<{ title: string; data: Record<string, number>; color: string }> = ({ title, data, color }) => {
+  const max = Math.max(...Object.values(data), 1);
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-md">
+      <h3 className="text-lg font-semibold text-gray-700 mb-4">{title}</h3>
+      <div className="space-y-3">
+        {Object.entries(data).map(([label, count]) => (
+          <div key={label} className="flex items-center gap-3">
+            <div className="w-36 text-sm text-gray-600 text-right truncate" title={label}>{label}</div>
+            <div className="flex-1 bg-gray-100 rounded-full h-6 relative">
+              <div
+                className={`${color} h-6 rounded-full flex items-center justify-end pr-2`}
+                style={{ width: `${Math.max((count / max) * 100, 12)}%` }}
+              >
+                <span className="text-white text-xs font-semibold">{count}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 export const Analytics: React.FC = () => {
+  const procedures = useProcedures();
+  const patients = usePatients();
+
+  const stats = useMemo(() => {
+    const studyTypes: Record<string, number> = {};
+    const statuses: Record<string, number> = {};
+    const urgencies: Record<string, number> = {};
+
+    procedures.forEach(p => {
+      const type = p.studyType?.replace(/_/g, ' ') || 'Unknown';
+      studyTypes[type] = (studyTypes[type] || 0) + 1;
+      const status = p.status?.replace(/_/g, ' ') || 'Unknown';
+      statuses[status] = (statuses[status] || 0) + 1;
+      const urgency = p.urgency || 'unknown';
+      urgencies[urgency] = (urgencies[urgency] || 0) + 1;
+    });
+
+    const sexDistribution: Record<string, number> = {};
+    patients.forEach(p => {
+      const sex = p.sex || 'unknown';
+      sexDistribution[sex] = (sexDistribution[sex] || 0) + 1;
+    });
+
+    return { studyTypes, statuses, urgencies, sexDistribution };
+  }, [procedures, patients]);
+
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <Header />
         <main className="flex-1 overflow-y-auto">
-          <div className="container mx-auto py-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-6">Analytics Workbench</h1>
-            {/* Placeholder for cohort filter bar */}
-            <div className="bg-white p-4 rounded-lg shadow-md mb-6">
-              <h2 className="text-lg font-semibold text-gray-700">Filters</h2>
-              {/* Filter controls will be implemented here */}
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Analytics Workbench</h1>
+            <p className="text-sm text-gray-500 mb-6">Procedure and patient analytics for your practice.</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+              <div className="bg-white p-6 rounded-lg shadow-md text-center">
+                <p className="text-3xl font-bold text-indigo-600">{procedures.length}</p>
+                <p className="text-sm text-gray-500">Total Procedures</p>
+              </div>
+              <div className="bg-white p-6 rounded-lg shadow-md text-center">
+                <p className="text-3xl font-bold text-green-600">{patients.length}</p>
+                <p className="text-sm text-gray-500">Total Patients</p>
+              </div>
+              <div className="bg-white p-6 rounded-lg shadow-md text-center">
+                <p className="text-3xl font-bold text-blue-600">
+                  {procedures.length > 0 ? (procedures.length / Math.max(patients.length, 1)).toFixed(1) : '0'}
+                </p>
+                <p className="text-sm text-gray-500">Procedures / Patient</p>
+              </div>
+              <div className="bg-white p-6 rounded-lg shadow-md text-center">
+                <p className="text-3xl font-bold text-yellow-600">{stats.urgencies['urgent'] || 0}</p>
+                <p className="text-sm text-gray-500">Urgent Cases</p>
+              </div>
             </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Placeholder for finding prevalence chart */}
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <h2 className="text-lg font-semibold text-gray-700">Finding Prevalence</h2>
-                {/* Chart will be implemented here */}
-              </div>
-              {/* Placeholder for patient demographics chart */}
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <h2 className="text-lg font-semibold text-gray-700">Patient Demographics</h2>
-                {/* Chart will be implemented here */}
-              </div>
+              <BarChart title="Procedures by Study Type" data={stats.studyTypes} color="bg-indigo-500" />
+              <BarChart title="Procedures by Status" data={stats.statuses} color="bg-green-500" />
+              <BarChart title="Urgency Distribution" data={stats.urgencies} color="bg-yellow-500" />
+              <BarChart title="Patient Demographics (Sex)" data={stats.sexDistribution} color="bg-blue-500" />
             </div>
           </div>
         </main>
