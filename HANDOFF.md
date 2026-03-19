@@ -41,12 +41,13 @@
 
 ### Priority 1: Ready Now
 - [ ] **Deploy to Firebase Hosting** — Gives real URL (cw-e7c19.web.app), fixes Google sign-in. Requires Firebase CLI setup in Firebase Studio.
-- [ ] **Build drill-down demo data** — Current seed provides list-level data. Need richer data for detail screens (findings with images, reports with full sections, audit log entries visible in ActivityLog).
+- [ ] **Fix Viewer screen** — Pre-Review checklist is non-functional, video/image player doesn't work. Need to implement functional checklist with checkboxes that update Firestore, and a basic image frame viewer.
+- [ ] **Image pipeline integration** — Separate GCP project `podium-capsule-ingest` on us-west2. Storage bucket: `podium-capsule-raw-images-test`. Firestore collection: `capsule_images` (frame metadata + signed URLs). Cloud Run function `log-capsule-image` auto-indexes uploads. ~50K frames per test. Architecture doc: `docs/Firebase_Image_Pipeline_Architecture.docx`. Frames are individual JPG/PNG files.
 
-### Priority 2: Feature Refinement
-- [ ] **Wire Operations dashboard to real data** — Currently shows static 0s. Connect to useProcedures hook for real-time counts.
-- [ ] **Wire Analytics screen to real data** — Add chart library (recharts) and display procedure/finding statistics.
-- [ ] **Wire ActivityLog to Firestore audit log** — Fetch from practices/{practiceId}/auditLog collection.
+### Priority 2: Feature Refinement (recently completed items marked)
+- [x] **Wire Operations dashboard to real data** — ✅ Done Mar 19. Connected to useProcedures, shows funnel chart and status breakdown.
+- [x] **Wire Analytics screen to real data** — ✅ Done Mar 19. KPI cards and bar charts from procedure/patient data.
+- [x] **Wire ActivityLog to Firestore audit log** — ✅ Done Mar 19. Live listener on practices/{practiceId}/auditLog.
 - [ ] **Implement Sidebar collapse toggle** — Allow users to collapse sidebar for more screen space.
 - [ ] **Google sign-in** — Works after Firebase Hosting deploy. Currently blocked by unauthorized-domain in dev environment.
 
