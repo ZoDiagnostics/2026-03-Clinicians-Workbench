@@ -22,8 +22,8 @@ In the prior build attempt, ~80 turns (8+ hours) were wasted because:
 ### Step 1: Access Firebase Console
 - [ ] Open https://console.firebase.google.com in a regular browser tab (NOT inside Firebase Studio)
 - [ ] Sign in with your Google account (cameron.plummer@gmail.com)
-- [ ] You should see your existing project `clinicians-workbench` — click on it
-- [ ] If no project exists, create one: "Add project" → name it `clinicians-workbench` → disable Google Analytics for now → Create
+- [ ] You should see your existing project `cw-e7c19` — click on it
+- [ ] If no project exists, create one: "Add project" → name it `cw-e7c19` → disable Google Analytics for now → Create
 
 ### Step 2: Register Web App
 - [ ] In the Firebase Console, click the gear icon (⚙️) → **Project Settings**
@@ -33,9 +33,9 @@ In the prior build attempt, ~80 turns (8+ hours) were wasted because:
 ```javascript
 const firebaseConfig = {
   apiKey: "AIzaSy...",          // ← REAL key, starts with AIzaSy
-  authDomain: "clinicians-workbench.firebaseapp.com",
-  projectId: "clinicians-workbench",
-  storageBucket: "clinicians-workbench.firebasestorage.app",
+  authDomain: "cw-e7c19.firebaseapp.com",
+  projectId: "cw-e7c19",
+  storageBucket: "cw-e7c19.firebasestorage.app",
   messagingSenderId: "1017397048798",
   appId: "1:1017397048798:web:..."
 };
@@ -66,9 +66,9 @@ const firebaseConfig = {
 - [ ] Paste the following, replacing each value with the REAL values from Step 2:
 ```
 VITE_FIREBASE_API_KEY=AIzaSy_YOUR_REAL_KEY_HERE
-VITE_FIREBASE_AUTH_DOMAIN=clinicians-workbench.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=clinicians-workbench
-VITE_FIREBASE_STORAGE_BUCKET=clinicians-workbench.firebasestorage.app
+VITE_FIREBASE_AUTH_DOMAIN=cw-e7c19.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=cw-e7c19
+VITE_FIREBASE_STORAGE_BUCKET=cw-e7c19.firebasestorage.app
 VITE_FIREBASE_MESSAGING_SENDER_ID=YOUR_REAL_SENDER_ID
 VITE_FIREBASE_APP_ID=YOUR_REAL_APP_ID
 VITE_ENVIRONMENT=development
@@ -81,10 +81,10 @@ VITE_APP_VERSION=3.1.0
 
 ### Step 6: Verify Firebase CLI Project Alignment
 - [ ] In terminal, run: `firebase projects:list`
-- [ ] Confirm `clinicians-workbench` appears in the list
-- [ ] Run: `firebase use clinicians-workbench`
-- [ ] Run: `cat .firebaserc` — should show `"default": "clinicians-workbench"`
-- [ ] **Critical check:** Run `gcloud config get-value project` — if this shows a DIFFERENT project ID (like `clinicians-workbench-73608547`), run `gcloud config set project clinicians-workbench`
+- [ ] Confirm `cw-e7c19` appears in the list
+- [ ] Run: `firebase use cw-e7c19`
+- [ ] Run: `cat .firebaserc` — should show `"default": "cw-e7c19"`
+- [ ] **Critical check:** Run `gcloud config get-value project` — if this shows a DIFFERENT project ID (like `cw-e7c19-73608547`), run `gcloud config set project cw-e7c19`
 
 ---
 
@@ -142,9 +142,9 @@ Before proceeding to Phase 1 AI-assisted build, ALL of these must be true:
 | Check | Command / Location | Expected |
 |-------|-------------------|----------|
 | Real API key in .env | `cat .env \| grep API_KEY` | Starts with `AIzaSy` |
-| Firebase project aligned | `firebase use` | `clinicians-workbench` |
-| gcloud project aligned | `gcloud config get-value project` | `clinicians-workbench` |
-| .firebaserc correct | `cat .firebaserc` | `"default": "clinicians-workbench"` |
+| Firebase project aligned | `firebase use` | `cw-e7c19` |
+| gcloud project aligned | `gcloud config get-value project` | `cw-e7c19` |
+| .firebaserc correct | `cat .firebaserc` | `"default": "cw-e7c19"` |
 | Vite boots | `npm run dev` | Shows localhost URL |
 | No console errors | Browser DevTools | No `auth/` errors |
 | Auth user exists | Firebase Console → Auth | cameron.plummer@gmail.com listed |
