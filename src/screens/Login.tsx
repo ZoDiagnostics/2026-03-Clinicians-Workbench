@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { useAuth } from '../lib/hooks';
 
@@ -27,13 +27,26 @@ export default function LoginScreen() {
     setError(null);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      navigate('/dashboard');
+      await signInWithRedirect(auth, provider);
     } catch (error) {
       setError("Failed to sign in with Google");
       console.error(error);
     }
   };
+
+  // Handle redirect result when the page returns from Google sign-in
+  useEffect(() => {
+    getRedirectResult(auth).then((result) => {
+      if (result) {
+        navigate('/dashboard');
+      }
+    }).catch((error) => {
+      if (error.code !== 'auth/redirect-cancelled-by-user') {
+        setError("Failed to sign in with Google");
+        console.error(error);
+      }
+    });
+  }, [navigate]);
 
   if(loading) {
     return <div>Loading...</div>
