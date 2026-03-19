@@ -1,6 +1,8 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { StoreProvider } from './lib/store';
+import { I18nProvider } from './lib/i18n';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Router } from './lib/router';
 import './index.css';
 
@@ -10,7 +12,11 @@ if (!rootEl) throw new Error('Root element not found — check index.html has <d
 createRoot(rootEl).render(
   <React.StrictMode>
     <StoreProvider>
-      <Router />
+      <I18nProvider>
+        <ErrorBoundary context="App Root">
+          <Router />
+        </ErrorBoundary>
+      </I18nProvider>
     </StoreProvider>
   </React.StrictMode>
 );

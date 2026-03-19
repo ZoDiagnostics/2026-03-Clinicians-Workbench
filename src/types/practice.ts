@@ -200,6 +200,15 @@ export interface Practice {
 }
 
 /**
+ * Report Branding
+ * Settings for customizing the appearance of generated reports.
+ */
+export interface ReportBranding {
+  logoUrl?: string;
+  footerText?: string;
+}
+
+/**
  * Practice Settings
  * System configuration and operational settings for a practice.
  * Stored in practices/{practiceId}/settings/{doc}
@@ -214,6 +223,17 @@ export interface PracticeSettings {
 
   /** Practice ID - settings belong to this practice */
   practiceId: string;
+  
+  // ========== WORKFLOW =========
+  /** Whether to allow unscheduled procedures to be started */
+  allowUnscheduledProcedures: boolean;
+
+  // ========== COMMUNICATION ==========
+  /** Default "From" address for emails sent to patients and providers */
+  defaultFromEmail: string;
+
+  /** Report branding settings */
+  reportBranding: ReportBranding;
 
   // ========== DELIVERY CONFIGURATION ==========
 

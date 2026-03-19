@@ -27,10 +27,11 @@ export const CapsuleUpload: React.FC = () => {
 
   // This simulates a file being dropped or selected.
   useEffect(() => {
-    if (!fileReady) {
-      const timer = setTimeout(() => setFileReady(true), 2000); // Simulate processing
-      return () => clearTimeout(timer);
+    if (fileReady) {
+      return;
     }
+    const timer = setTimeout(() => setFileReady(true), 2000); // Simulate processing
+    return () => clearTimeout(timer);
   }, [fileReady]);
 
   const handleSubmit = async () => {

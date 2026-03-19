@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { usePracticeSettings } from '../../lib/hooks';
+import { usePractice, usePracticeSettings } from '../../lib/hooks';
 import { Sidebar } from '../../components/Sidebar';
 import { Header } from '../../components/Header';
-import { PracticeSettings } from '../../types/practice';
+import { Practice, PracticeSettings } from '../../types/practice';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { COLLECTIONS } from '../../types/firestore-paths';
@@ -10,8 +10,17 @@ import { useAuth } from '../../lib/hooks';
 
 const ManagePractice: React.FC = () => {
   const { practiceId } = useAuth();
+  const practice = usePractice();
   const practiceSettings = usePracticeSettings();
-  const [settings, setSettings] = useState<PracticeSettings | null>(null);
+
+  const [name, setName] = useState('');
+  const [settings, setSettings] = useState<Partial<PracticeSettings>>({});
+
+  useEffect(() => {
+    if (practice) {
+      setName(practice.name);
+    }
+  }, [practice]);
 
   useEffect(() => {
     if (practiceSettings) {
@@ -20,25 +29,31 @@ const ManagePractice: React.FC = () => {
   }, [practiceSettings]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    if (!settings) return;
     const { name, value } = e.target;
-    setSettings({ ...settings, [name]: value });
+    if (name === 'name') {
+      setName(value);
+    } else {
+      setSettings({ ...settings, [name]: value });
+    }
   };
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!settings) return;
     const { name, checked } = e.target;
     setSettings({ ...settings, [name]: checked });
   };
 
   const handleSave = async () => {
-    if (settings && practiceId) {
+    if (practiceId) {
+      if (practice && practice.name !== name) {
+        const practiceRef = doc(db, COLLECTIONS.PRACTICES, practiceId);
+        await updateDoc(practiceRef, { name });
+      }
       const settingsRef = doc(db, COLLECTIONS.PRACTICE_SETTINGS(practiceId), 'default');
-      await updateDoc(settingsRef, { ...settings });
+      await updateDoc(settingsRef, settings);
     }
   };
 
-  if (!settings) {
+  if (!practice || !practiceSettings) {
     return <div>Loading...</div>;
   }
 
@@ -55,19 +70,19 @@ const ManagePractice: React.FC = () => {
                 <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                   <div className="sm:col-span-6">
                     <label htmlFor="name" className="block text-sm font-medium text-gray-700">Practice Name</label>
-                    <input type="text" name="name" id="name" value={settings.name} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                    <input type="text" name="name" id="name" value={name} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
                   </div>
                   <div className="sm:col-span-6">
                     <label htmlFor="defaultFromEmail" className="block text-sm font-medium text-gray-700">Default "From" Email</label>
-                    <input type="email" name="defaultFromEmail" id="defaultFromEmail" value={settings.defaultFromEmail} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                    <input type="email" name="defaultFromEmail" id="defaultFromEmail" value={settings.defaultFromEmail || ''} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
                   </div>
                   <div className="sm:col-span-6">
                     <label htmlFor="reportBranding.logoUrl" className="block text-sm font-medium text-gray-700">Logo URL</label>
-                    <input type="text" name="reportBranding.logoUrl" id="reportBranding.logoUrl" value={settings.reportBranding.logoUrl} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                    <input type="text" name="reportBranding.logoUrl" id="reportBranding.logoUrl" value={settings.reportBranding?.logoUrl || ''} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
                   </div>
                   <div className="sm:col-span-6">
                     <div className="flex items-center">
-                      <input id="allowUnscheduledProcedures" name="allowUnscheduledProcedures" type="checkbox" checked={settings.allowUnscheduledProcedures} onChange={handleCheckboxChange} className="h-4 w-4 text-indigo-600 border-gray-300 rounded" />
+                      <input id="allowUnscheduledProcedures" name="allowUnscheduledProcedures" type="checkbox" checked={settings.allowUnscheduledProcedures || false} onChange={handleCheckboxChange} className="h-4 w-4 text-indigo-600 border-gray-300 rounded" />
                       <label htmlFor="allowUnscheduledProcedures" className="ml-3 block text-sm font-medium text-gray-700">Allow Unscheduled Procedures</label>
                     </div>
                   </div>

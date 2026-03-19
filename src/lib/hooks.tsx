@@ -21,7 +21,7 @@ import { User } from '../types/user';
 import { Procedure } from '../types/procedure';
 import { Finding } from '../types/finding';
 import { Report } from '../types/report';
-import { Clinic, PracticeSettings } from '../types/practice';
+import { Clinic, Practice, PracticeSettings } from '../types/practice';
 import { COLLECTIONS } from '../types/firestore-paths';
 import { AppNotification } from '../types/notification';
 
@@ -174,6 +174,29 @@ export function useClinics(): Clinic[] {
   }, [practiceId]);
 
   return clinics;
+}
+
+export function usePractice(): Practice | null {
+  const [practice, setPractice] = useState<Practice | null>(null);
+  const { practiceId } = useAuth();
+
+  useEffect(() => {
+    if (!practiceId) return;
+
+    const practiceRef = doc(db, COLLECTIONS.PRACTICES, practiceId);
+
+    const unsubscribe = onSnapshot(practiceRef, (doc) => {
+      if (doc.exists()) {
+        setPractice({ id: doc.id, ...doc.data() } as Practice);
+      } else {
+        setPractice(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [practiceId]);
+
+  return practice;
 }
 
 export function usePracticeSettings(): PracticeSettings | null {

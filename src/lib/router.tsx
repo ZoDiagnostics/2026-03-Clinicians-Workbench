@@ -30,7 +30,7 @@ import { PatientOverview } from '../screens/PatientOverview';
 import LoginScreen from '../screens/Login';
 import { useAuth } from './hooks';
 
-const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
 
   if (loading) {

@@ -1,8 +1,5 @@
 {
   "compilerOptions": {
-    /**
-     * Module and Target Configuration
-     */
     "target": "ES2022",
     "useDefineForClassFields": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
@@ -10,10 +7,6 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-
-    /**
-     * Strict Type Checking - All enabled for maximum safety
-     */
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -26,18 +19,10 @@
     "noUnusedParameters": false,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-
-    /**
-     * Module Resolution
-     */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": false,
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
-
-    /**
-     * Output Configuration
-     */
     "declaration": false,
     "declarationMap": false,
     "noEmit": true,
@@ -47,12 +32,9 @@
     "paths": {
       "@/*": ["src/*"]
     },
-
-    /**
-     * JSX Configuration for React
-     */
     "jsx": "react-jsx",
-    "jsxImportSource": "react"
+    "jsxImportSource": "react",
+    "types": ["vite/client"]
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]

@@ -65,7 +65,7 @@ service firebase.storage {
      * - Clinical staff and clinician roles in the same practice can upload
      * - Maximum file size: 50GB
      * - Allowed content types: video/* and application/octet-stream (for raw capsule data)
-     * - All authenticated users in practice can read for review
+     * - Clinical roles in practice can read for review
      */
     match /capsule-studies/{practiceId}/{procedureId}/{filename} {
       // Upload: Clinical staff and clinicians in practice
@@ -75,8 +75,8 @@ service firebase.storage {
                      (request.resource.contentType.matches('video/.*') ||
                       request.resource.contentType == 'application/octet-stream');
 
-      // Read: All authenticated users in practice
-      allow read: if inPractice(practiceId) && isAuthenticated();
+      // Read: Clinical roles in practice
+      allow read: if inPractice(practiceId) && (isClinicalStaff() || isClinician());
 
       // Delete: Clinical staff and clinicians can delete own uploads
       allow delete: if inPractice(practiceId) && (isClinicalStaff() || isClinician());
@@ -90,12 +90,12 @@ service firebase.storage {
      * Report PDFs: report-pdfs/{practiceId}/{reportId}/{filename}
      *
      * - Cloud Functions can write (via admin SDK)
-     * - Authenticated users in the same practice can read
+     * - Clinical roles in the same practice can read
      */
     match /report-pdfs/{practiceId}/{reportId}/{filename} {
       // Cloud Functions writes via admin SDK; Firebase rules cannot block admin SDK
-      // This rule allows authenticated users to read
-      allow read: if inPractice(practiceId) && isAuthenticated();
+      // This rule allows clinical roles to read
+      allow read: if inPractice(practiceId) && (isClinicalStaff() || isClinician());
 
       // Deny direct user writes
       allow write: if false;
@@ -109,10 +109,10 @@ service firebase.storage {
      * Patient-facing Report PDFs: patient-report-pdfs/{practiceId}/{reportId}/{filename}
      *
      * - Cloud Functions can write (translated/de-identified versions)
-     * - Authenticated users in practice can read
+     * - Clinical roles in practice can read
      */
     match /patient-report-pdfs/{practiceId}/{reportId}/{filename} {
-      allow read: if inPractice(practiceId) && isAuthenticated();
+      allow read: if inPractice(practiceId) && (isClinicalStaff() || isClinician());
       allow write: if false;
     }
 

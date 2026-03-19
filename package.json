@@ -51,6 +51,7 @@
     "firebase-tools": "latest",
     "postcss": "latest",
     "tailwindcss": "^3.4.0",
+    "terser": "^5.46.1",
     "tsx": "^4.21.0",
     "typescript": "^5.4.0",
     "vite": "^5.4.0"

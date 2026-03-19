@@ -53,8 +53,7 @@ service cloud.firestore {
     function canSign() {
       return isAuthenticated() && request.auth.token.role in [
         'clinician_auth',
-        'clinician_admin',
-        'admin'
+        'clinician_admin'
       ];
     }
 
@@ -134,8 +133,7 @@ service cloud.firestore {
         'clinical_staff',
         'clinician_auth',
         'clinician_noauth',
-        'clinician_admin',
-        'admin'
+        'clinician_admin'
       ]);
       allow create: if isAuthenticated() && isClinicalStaff();
       allow update: if inPractice(resource.data.practiceId) && hasAnyRole([
@@ -162,15 +160,14 @@ service cloud.firestore {
         'clinical_staff',
         'clinician_auth',
         'clinician_noauth',
-        'clinician_admin',
-        'admin'
+        'clinician_admin'
       ]);
 
       allow create: if isClinicalStaff();
 
       allow update: if inPractice(procedureData.practiceId) && (
         isAssignedClinician(procedureData) ||
-        isAdminOrClinicianAdmin()
+        hasRole('clinician_admin')
       );
 
       /**
@@ -184,13 +181,12 @@ service cloud.firestore {
           'clinical_staff',
           'clinician_auth',
           'clinician_noauth',
-          'clinician_admin',
-          'admin'
+          'clinician_admin'
         ]);
 
         allow create, update, delete: if inPractice(procedureData.practiceId) && (
           isAssignedClinician(procedureData) ||
-          isAdminOrClinicianAdmin()
+          hasRole('clinician_admin')
         );
       }
     }
@@ -212,8 +208,7 @@ service cloud.firestore {
         'clinical_staff',
         'clinician_auth',
         'clinician_noauth',
-        'clinician_admin',
-        'admin'
+        'clinician_admin'
       ]) && reportData.status == 'signed';
 
       // Draft read: Clinician can read own drafts
@@ -226,15 +221,14 @@ service cloud.firestore {
       // Create: Authorized clinicians and admins
       allow create: if inReportPractice && hasAnyRole([
         'clinician_auth',
-        'clinician_admin',
-        'admin'
+        'clinician_admin'
       ]);
 
       // Update: Clinician can edit own reports until signed; admin/clinician_admin can amend
       allow update: if inReportPractice && (
         (request.auth.uid == reportData.clinicianId &&
          reportData.status in ['draft', 'auto_drafted', 'in_review']) ||
-        isAdminOrClinicianAdmin()
+        hasRole('clinician_admin')
       );
     }
 
