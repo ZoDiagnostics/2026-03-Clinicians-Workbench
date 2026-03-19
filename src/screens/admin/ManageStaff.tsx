@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth, useStaff, useClinics } from '../../lib/hooks';
 import { Sidebar } from '../../components/Sidebar';
 import { Header } from '../../components/Header';
@@ -9,6 +10,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 const functions = getFunctions();
 
 const ManageStaff: React.FC = () => {
+  const navigate = useNavigate();
   const { practiceId } = useAuth();
   const staff = useStaff();
   const clinics = useClinics();
@@ -36,6 +38,7 @@ const ManageStaff: React.FC = () => {
         <Header />
         <main className="flex-1 overflow-auto">
           <div className="container mx-auto py-8">
+            <button onClick={() => navigate('/admin')} className="text-sm text-indigo-600 hover:text-indigo-800 mb-4 flex items-center gap-1">&larr; Back to Admin</button>
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-3xl font-bold text-gray-900">Manage Staff</h1>
               <button

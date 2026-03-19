@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useClinics, useAuth } from '../../lib/hooks';
 import { Sidebar } from '../../components/Sidebar';
 import { Header } from '../../components/Header';
@@ -8,6 +9,7 @@ import { db } from '../../lib/firebase';
 import { COLLECTIONS } from '../../types/firestore-paths';
 
 const ManageClinics: React.FC = () => {
+  const navigate = useNavigate();
   const { practiceId } = useAuth();
   const clinics = useClinics();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -34,6 +36,7 @@ const ManageClinics: React.FC = () => {
         <Header />
         <main className="flex-1 overflow-auto">
           <div className="container mx-auto py-8">
+            <button onClick={() => navigate('/admin')} className="text-sm text-indigo-600 hover:text-indigo-800 mb-4 flex items-center gap-1">&larr; Back to Admin</button>
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-3xl font-bold text-gray-900">Manage Clinics</h1>
               <button
