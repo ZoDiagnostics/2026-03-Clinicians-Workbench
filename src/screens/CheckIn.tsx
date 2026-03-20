@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { useAuth, useActiveProcedure } from '../lib/hooks';
+import { useAuth, useActiveProcedure, usePatients } from '../lib/hooks';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
 import { ProcedureStatus } from '../types/enums';
@@ -13,6 +13,8 @@ export const CheckIn: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const procedure = useActiveProcedure(procedureId);
+  const allPatients = usePatients();
+  const patient = procedure ? allPatients.find(p => p.id === procedure.patientId) : null;
 
   const [consentGiven, setConsentGiven] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -93,7 +95,7 @@ export const CheckIn: React.FC = () => {
                 <h3 className="text-lg leading-6 font-medium text-gray-900">Patient Consent</h3>
                 <div className="mt-2 max-w-xl text-sm text-gray-500">
                     {/* TODO: Fetch patient name from usePatients hook */}
-                    <p className="mb-4">Patient ID: <span className="font-semibold">{procedure.patientId}</span></p>
+                    <p className="mb-4">Patient: <span className="font-semibold">{patient ? `${patient.firstName} ${patient.lastName} (MRN: ${patient.mrn})` : procedure.patientId}</span></p>
                     <p>
                         Please review the consent form with the patient. By checking the box below, you confirm that the patient has read, understood, and agreed to the terms of the procedure.
                     </p>

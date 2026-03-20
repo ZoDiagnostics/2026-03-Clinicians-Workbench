@@ -1,19 +1,30 @@
-import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { useAuth } from '../lib/hooks';
+import { useAuth, useProcedures } from '../lib/hooks';
 import { Patient } from '../types/patient';
 import { COLLECTIONS } from '../types/firestore-paths';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
+import { routeByStatus } from '../lib/routeByStatus';
 
+// BRD: ZCW-BRD-0014 — Patient overview with procedure history
 export function PatientOverview() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { practiceId, loading: authLoading } = useAuth();
   const [patient, setPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const allProcedures = useProcedures();
+
+  // Filter procedures for this patient
+  const patientProcedures = useMemo(() =>
+    allProcedures.filter(p => p.patientId === id)
+      .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)),
+    [allProcedures, id]
+  );
 
   useEffect(() => {
     if (!practiceId || !id) return;
@@ -41,15 +52,31 @@ export function PatientOverview() {
   }, [practiceId, id]);
 
   if (authLoading || loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar />
+        <div className="flex-1 flex flex-col">
+          <Header />
+          <main className="flex-1 flex items-center justify-center">
+            <p className="text-gray-500">Loading patient...</p>
+          </main>
+        </div>
+      </div>
+    );
   }
 
-  if (error) {
-    return <div className="text-red-500 p-6">{error}</div>;
-  }
-
-  if (!patient) {
-    return <div className="p-6">Patient not found.</div>;
+  if (error || !patient) {
+    return (
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar />
+        <div className="flex-1 flex flex-col">
+          <Header />
+          <main className="flex-1 flex items-center justify-center">
+            <p className="text-red-500">{error || 'Patient not found.'}</p>
+          </main>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -57,38 +84,105 @@ export function PatientOverview() {
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <Header />
-        <main className="flex-1 overflow-y-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">Patient Overview</h1>
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-        <div className="px-4 py-5 sm:px-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">
-            {patient.firstName} {patient.lastName}
-          </h3>
-          <p className="mt-1 max-w-2xl text-sm text-gray-500">
-            MRN: {patient.mrn}
-          </p>
-        </div>
-        <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
-          <dl className="sm:divide-y sm:divide-gray-200">
-            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Date of Birth</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{patient.dateOfBirth.toDate().toLocaleDateString()}</dd>
+        <main className="flex-1 overflow-y-auto">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <button onClick={() => navigate('/patients')} className="text-sm text-indigo-600 hover:text-indigo-800 mb-4 flex items-center gap-1">&larr; Back to Patients</button>
+
+            <h1 className="text-3xl font-bold text-gray-900 mb-6">Patient Overview</h1>
+
+            {/* Demographics Card — BRD ZCW-BRD-0011 */}
+            <div className="bg-white shadow sm:rounded-lg mb-6">
+              <div className="px-4 py-5 sm:px-6">
+                <h3 className="text-lg font-medium text-gray-900">{patient.firstName} {patient.lastName}</h3>
+                <p className="mt-1 text-sm text-gray-500">MRN: {patient.mrn}</p>
+              </div>
+              <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
+                <dl className="sm:divide-y sm:divide-gray-200">
+                  <div className="py-3 sm:py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt className="text-sm font-medium text-gray-500">Date of Birth</dt>
+                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{patient.dateOfBirth?.toDate?.() ? patient.dateOfBirth.toDate().toLocaleDateString() : '-'}</dd>
+                  </div>
+                  <div className="py-3 sm:py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt className="text-sm font-medium text-gray-500">Sex</dt>
+                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{patient.sex}</dd>
+                  </div>
+                  <div className="py-3 sm:py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt className="text-sm font-medium text-gray-500">Email</dt>
+                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{patient.email}</dd>
+                  </div>
+                  <div className="py-3 sm:py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt className="text-sm font-medium text-gray-500">Phone</dt>
+                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{patient.phone}</dd>
+                  </div>
+                  <div className="py-3 sm:py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt className="text-sm font-medium text-gray-500">Language</dt>
+                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{patient.preferredLanguage || 'en'}</dd>
+                  </div>
+                </dl>
+              </div>
             </div>
-            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Sex</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{patient.sex}</dd>
+
+            {/* Procedure History — BRD ZCW-BRD-0014, ZCW-BRD-0250 */}
+            <div className="bg-white shadow sm:rounded-lg">
+              <div className="px-4 py-5 sm:px-6 flex items-center justify-between">
+                <h3 className="text-lg font-medium text-gray-900">Procedure History ({patientProcedures.length})</h3>
+                <button
+                  onClick={() => navigate(`/procedures`)}
+                  className="text-sm bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700"
+                >
+                  + New Procedure
+                </button>
+              </div>
+              <div className="border-t border-gray-200">
+                {patientProcedures.length > 0 ? (
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Study Type</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Urgency</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {patientProcedures.map((proc) => (
+                        <tr key={proc.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 text-sm text-gray-900">{proc.studyType?.replace(/_/g, ' ') || '-'}</td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              proc.status === 'completed' || proc.status === 'completed_appended' ? 'bg-green-100 text-green-800' :
+                              proc.status === 'ready_for_review' ? 'bg-yellow-100 text-yellow-800' :
+                              proc.status === 'draft' ? 'bg-indigo-100 text-indigo-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {proc.status?.replace(/_/g, ' ')}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500">{proc.urgency || 'routine'}</td>
+                          <td className="px-6 py-4 text-sm text-gray-500">
+                            {proc.createdAt?.toDate?.() ? proc.createdAt.toDate().toLocaleDateString() : '-'}
+                          </td>
+                          <td className="px-6 py-4 text-sm">
+                            <button
+                              onClick={() => navigate(routeByStatus(proc.status, proc.id))}
+                              className="text-indigo-600 hover:text-indigo-900"
+                            >
+                              Open
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="px-6 py-8 text-center text-gray-500">
+                    No procedures found for this patient.
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Email address</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{patient.email}</dd>
-            </div>
-            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Phone</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{patient.phone}</dd>
-            </div>
-          </dl>
-        </div>
-      </div>
+          </div>
         </main>
       </div>
     </div>

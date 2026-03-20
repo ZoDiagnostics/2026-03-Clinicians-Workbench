@@ -286,14 +286,34 @@ async function seedDemo() {
       clinicianId: clinicianUid,
       status: 'signed',
       sections: {
-        findings: 'No significant pathology identified in the small bowel. Normal mucosal appearance throughout.',
-        impression: 'Normal capsule endoscopy. No evidence of Crohn\'s disease, bleeding, or neoplasia.',
-        recommendations: 'Routine follow-up in 12 months. Continue current medications.',
+        findings: faker.helpers.arrayElement([
+          '1. 3mm sessile polyp in proximal jejunum at frame 12,847 (AI-detected, confidence 92%). No bleeding noted.\n2. Small erosion in duodenal bulb at frame 4,231 (clinician-marked). Consistent with NSAID use.\n3. Normal cecal appearance. No masses or vascular malformations identified.',
+          '1. Moderate erythema and edema in terminal ileum consistent with active Crohn\'s disease. Lewis Score: 450 (moderate).\n2. Two aphthous ulcers in mid-ileum at frames 28,103 and 29,445.\n3. No strictures or obstruction identified. Transit time normal.',
+          'No significant pathology identified throughout the small bowel examination. Normal mucosal appearance with adequate visualization of all segments. Complete small bowel transit achieved in 4 hours 23 minutes.',
+          '1. 5mm pedunculated polyp in ascending colon at frame 38,921 (AI-detected, confidence 88%).\n2. Angiodysplasia in cecum at frame 41,203 (AI-detected, confidence 76%). No active bleeding.\n3. Normal terminal ileum. No Crohn\'s features.',
+        ]),
+        impression: faker.helpers.arrayElement([
+          'Capsule endoscopy demonstrates small sessile polyp in proximal jejunum and mild duodenal erosion. Overall findings are of low clinical significance. No evidence of active bleeding, Crohn\'s disease, or neoplasia.',
+          'Findings consistent with mild-to-moderate Crohn\'s disease activity in the terminal ileum. Lewis Score 450 indicates moderate disease. Recommend gastroenterology follow-up for treatment adjustment.',
+          'Normal capsule endoscopy. Complete small bowel examination with no pathology identified. Adequate bowel preparation and complete transit.',
+          'Two significant findings requiring follow-up: colonic polyp (recommend polypectomy referral) and cecal angiodysplasia (surveillance recommended). No evidence of active hemorrhage.',
+        ]),
+        recommendations: faker.helpers.arrayElement([
+          'Routine surveillance follow-up in 12 months. Continue current medications. No dietary restrictions. Patient may resume normal activities.',
+          'Recommend gastroenterology referral for treatment escalation. Consider biologic therapy initiation. Repeat capsule endoscopy in 6 months to monitor response. Continue iron supplementation.',
+          'No further imaging required at this time. Annual screening per guideline recommendations. Patient counseled on symptoms requiring urgent evaluation.',
+          'Urgent referral for colonoscopic polypectomy of ascending colon polyp. Surveillance capsule endoscopy for angiodysplasia in 6 months. Continue aspirin per cardiology recommendation.',
+        ]),
       },
-      icdCodes: [
-        { code: 'K92.1', description: 'Melena', status: 'confirmed' },
-        { code: 'K63.5', description: 'Polyp of colon', status: 'suggested' },
-      ],
+      signedAt: Timestamp.fromDate(new Date(Date.now() - Math.floor(Math.random() * 7) * 86400000)),
+      signedBy: clinicianUid,
+      signerName: 'Dr. Sarah Chen',
+      icdCodes: faker.helpers.arrayElement([
+        [{ code: 'K92.1', description: 'Melena', status: 'confirmed' }, { code: 'K63.5', description: 'Polyp of colon', status: 'suggested' }],
+        [{ code: 'K50.10', description: 'Crohn\'s disease of large intestine', status: 'confirmed' }, { code: 'K50.80', description: 'Crohn\'s disease, other', status: 'confirmed' }],
+        [{ code: 'Z12.11', description: 'Screening for malignant neoplasm of colon', status: 'confirmed' }],
+        [{ code: 'K55.20', description: 'Angiodysplasia of colon', status: 'confirmed' }, { code: 'K63.5', description: 'Polyp of colon', status: 'confirmed' }, { code: 'K92.1', description: 'Melena', status: 'suggested' }],
+      ]),
       cptCodes: [
         { code: '91110', description: 'GI tract imaging, capsule endoscopy', status: 'confirmed' },
       ],
@@ -307,25 +327,43 @@ async function seedDemo() {
 
   // 8. Findings (for ready_for_review and completed procedures)
   console.log('\n--- Seeding Findings ---');
-  const findingTypes = ['polyp', 'erosion', 'ulcer', 'angiodysplasia', 'stricture', 'mass'];
-  const regions = ['esophagus', 'stomach', 'duodenum', 'jejunum', 'ileum', 'cecum', 'colon'];
+  const detailedFindings = [
+    { type: 'polyp', classification: 'Sessile polyp', description: '3mm sessile polyp, smooth surface, no stalk visible. Paris classification 0-IIa.', region: 'jejunum', confidence: 92 },
+    { type: 'erosion', classification: 'Mucosal erosion', description: 'Superficial erosion with surrounding erythema. Consistent with NSAID-induced gastropathy.', region: 'duodenum', confidence: 87 },
+    { type: 'ulcer', classification: 'Aphthous ulcer', description: 'Small aphthous ulcer, 4mm diameter, with fibrinous base. Suggestive of early Crohn\'s disease.', region: 'ileum', confidence: 81 },
+    { type: 'angiodysplasia', classification: 'Vascular malformation', description: 'Small angiodysplasia, 2mm, cherry-red appearance. No active bleeding at time of observation.', region: 'cecum', confidence: 76 },
+    { type: 'polyp', classification: 'Pedunculated polyp', description: '5mm pedunculated polyp with visible stalk. Paris classification 0-Ip. Recommend polypectomy.', region: 'colon', confidence: 88 },
+    { type: 'mass', classification: 'Submucosal mass', description: 'Smooth submucosal bulge, 8mm, with intact overlying mucosa. May represent lipoma or GIST. Further evaluation recommended.', region: 'stomach', confidence: 71 },
+    { type: 'erosion', classification: 'Barrett\'s-like epithelium', description: 'Salmon-colored tongues of columnar epithelium extending 2cm above GEJ. Consistent with short-segment Barrett\'s.', region: 'esophagus', confidence: 84 },
+    { type: 'stricture', classification: 'Inflammatory stricture', description: 'Narrowing with edematous mucosa in mid-ileum. Capsule passage delayed 15 minutes. Consistent with Crohn\'s stricture.', region: 'ileum', confidence: 79 },
+  ];
 
-  for (let i = 0; i < Math.min(8, procedureIds.length); i++) {
+  for (let i = 0; i < Math.min(10, procedureIds.length); i++) {
     const procId = procedureIds[i];
-    const numFindings = Math.floor(Math.random() * 4) + 1;
+    const numFindings = Math.floor(Math.random() * 3) + 1;
 
     for (let j = 0; j < numFindings; j++) {
       const findingId = faker.string.uuid();
+      const template = faker.helpers.arrayElement(detailedFindings);
+      const frameNum = Math.floor(Math.random() * 50000);
       await db.collection('procedures').doc(procId).collection('findings').doc(findingId).set({
         id: findingId,
         procedureId: procId,
-        type: faker.helpers.arrayElement(findingTypes),
-        description: faker.lorem.sentence(),
-        region: faker.helpers.arrayElement(regions),
-        confidence: Math.floor(Math.random() * 40) + 60,
-        provenance: faker.helpers.arrayElement(['ai_detected', 'clinician_marked']),
-        reviewStatus: faker.helpers.arrayElement(['pending', 'confirmed', 'rejected']),
-        frameNumber: Math.floor(Math.random() * 50000),
+        type: template.type,
+        classification: template.classification,
+        description: template.description,
+        region: template.region,
+        anatomicalRegion: template.region,
+        confidence: template.confidence,
+        provenance: faker.helpers.arrayElement(['ai_detected', 'ai_detected', 'clinician_marked']), // 2:1 ratio AI to manual
+        reviewStatus: faker.helpers.arrayElement(['pending', 'confirmed', 'confirmed', 'rejected']),
+        isIncidental: Math.random() > 0.8,
+        frameNumber: frameNum,
+        primaryFrameNumber: frameNum,
+        primaryFrameTimestamp: frameNum * 250,
+        additionalFrames: [],
+        modificationHistory: [],
+        annotations: [],
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       });
@@ -372,24 +410,40 @@ async function seedDemo() {
   console.log('\n--- Seeding Activity Log ---');
   const auditBatch = db.batch();
   const auditEvents = [
-    { event: 'procedure.created', entity: 'procedure', details: 'New capsule endoscopy scheduled for Jennifer Martinez' },
-    { event: 'procedure.status_changed', entity: 'procedure', details: 'Status changed: capsule_return_pending → capsule_received' },
-    { event: 'user.login', entity: 'user', details: 'Dr. Sarah Chen logged in' },
-    { event: 'report.signed', entity: 'report', details: 'Report signed for patient Michael Thompson' },
-    { event: 'report.delivered', entity: 'report', details: 'Report delivered via email to Dr. Adams (referring)' },
-    { event: 'finding.created', entity: 'finding', details: 'AI detected polyp in jejunum (confidence: 87%)' },
-    { event: 'user.role_changed', entity: 'user', details: 'Maria Rodriguez role updated to clinical_staff' },
-    { event: 'procedure.checkin', entity: 'procedure', details: 'Patient David Wilson checked in for capsule procedure' },
+    { event: 'procedure.created', entity: 'procedure', details: 'New SB diagnostic capsule endoscopy scheduled for Jennifer Martinez', userName: 'Maria Rodriguez' },
+    { event: 'procedure.created', entity: 'procedure', details: 'New Crohn\'s monitoring procedure created for Robert Brown (urgent)', userName: 'Dr. Sarah Chen' },
+    { event: 'procedure.checkin', entity: 'procedure', details: 'Patient David Wilson checked in — consent captured, capsule SN-48291-A scanned', userName: 'James Wilson' },
+    { event: 'procedure.checkin', entity: 'procedure', details: 'Patient Emily Davis checked in — consent captured, capsule SN-48292-B scanned', userName: 'Maria Rodriguez' },
+    { event: 'procedure.status_changed', entity: 'procedure', details: 'Status: capsule_return_pending → capsule_received (Jennifer Martinez)', userName: 'James Wilson' },
+    { event: 'procedure.status_changed', entity: 'procedure', details: 'Status: capsule_received → ready_for_review (David Wilson, 47,832 frames indexed)', userName: 'System' },
+    { event: 'procedure.status_changed', entity: 'procedure', details: 'Status: ready_for_review → draft (Emily Davis, pre-review checklist completed)', userName: 'Dr. Sarah Chen' },
+    { event: 'finding.created', entity: 'finding', details: 'AI detected sessile polyp in jejunum (confidence: 92%, frame 12,847)', userName: 'AI Copilot' },
+    { event: 'finding.created', entity: 'finding', details: 'AI detected angiodysplasia in cecum (confidence: 76%, frame 41,203)', userName: 'AI Copilot' },
+    { event: 'finding.created', entity: 'finding', details: 'Clinician marked aphthous ulcer in ileum (frame 28,103)', userName: 'Dr. Sarah Chen' },
+    { event: 'report.signed', entity: 'report', details: 'Report signed for patient Michael Thompson — 2 findings confirmed, 1 rejected', userName: 'Dr. Sarah Chen' },
+    { event: 'report.signed', entity: 'report', details: 'Report signed for patient Lisa Anderson — normal capsule endoscopy', userName: 'Dr. Sarah Chen' },
+    { event: 'report.delivered', entity: 'report', details: 'Report for Michael Thompson delivered via email to Dr. Adams (referring physician)', userName: 'System' },
+    { event: 'report.delivered', entity: 'report', details: 'Report for Lisa Anderson delivered via PDF download and HL7/FHIR', userName: 'System' },
+    { event: 'user.login', entity: 'user', details: 'Dr. Sarah Chen logged in from 192.168.1.45', userName: 'Dr. Sarah Chen' },
+    { event: 'user.login', entity: 'user', details: 'Cameron Plummer logged in from 10.0.0.1', userName: 'Cameron Plummer' },
+    { event: 'user.login', entity: 'user', details: 'Maria Rodriguez logged in from 192.168.1.87', userName: 'Maria Rodriguez' },
+    { event: 'user.role_changed', entity: 'user', details: 'Maria Rodriguez role updated: clinical_staff (unchanged). Clinic assignment: Main + North County', userName: 'Dr. Robert Kim' },
+    { event: 'procedure.status_changed', entity: 'procedure', details: 'Status: completed → closed (Sarah Johnson, 90-day retention period expired)', userName: 'System' },
+    { event: 'finding.created', entity: 'finding', details: 'Clinician marked Barrett\'s-like epithelium in esophagus (frame 1,203)', userName: 'Dr. Sarah Chen' },
   ];
 
-  for (const audit of auditEvents) {
+  for (let i = 0; i < auditEvents.length; i++) {
+    const audit = auditEvents[i];
     const id = faker.string.uuid();
+    const hoursAgo = i * 4 + Math.floor(Math.random() * 3); // Spread across last ~3 days
     auditBatch.set(db.collection('practices').doc(PRACTICE_ID).collection('auditLog').doc(id), {
       id,
-      ...audit,
+      event: audit.event,
+      entity: audit.entity,
+      details: audit.details,
       userId: clinicianUid,
-      userName: 'Dr. Sarah Chen',
-      timestamp: Timestamp.fromDate(new Date(Date.now() - Math.floor(Math.random() * 14) * 86400000)),
+      userName: audit.userName,
+      timestamp: Timestamp.fromDate(new Date(Date.now() - hoursAgo * 3600000)),
     });
   }
 
