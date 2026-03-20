@@ -120,6 +120,21 @@ export interface Finding {
   /** AI confidence score for detection (0-1.0) */
   aiConfidence?: number;
 
+  /** Backward-compatible confidence field (alias for aiConfidence, used in seed data) */
+  confidence?: number;
+
+  /** Backward-compatible type field (alias for classification, used in seed data) */
+  type?: string;
+
+  /** Backward-compatible region field (alias for anatomicalRegion, used in seed data) */
+  region?: string;
+
+  /** Backward-compatible frameNumber field (alias for primaryFrameNumber, used in seed data) */
+  frameNumber?: number;
+
+  /** Human-readable description of the finding */
+  description?: string;
+
   // ========== CLINICIAN REVIEW ACTIONS ==========
 
   /** User ID of clinician who confirmed this finding */

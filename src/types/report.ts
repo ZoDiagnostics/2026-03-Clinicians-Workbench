@@ -191,6 +191,19 @@ export interface ReportSection {
 }
 
 /**
+ * Simple Report Sections
+ * Flat key-value format used for initial report drafts and seed data.
+ * This is the format actually stored in Firestore for most reports.
+ * The structured ReportSection[] format is used for finalized reports with ordering.
+ */
+export interface SimpleReportSections {
+  findings: string;
+  impression: string;
+  recommendations: string;
+  [key: string]: string; // Allow additional custom sections
+}
+
+/**
  * Report
  * Complete endoscopy report generated from a procedure.
  *
@@ -230,8 +243,10 @@ export interface Report {
 
   // ========== REPORT CONTENT ==========
 
-  /** Individual sections of the report body */
-  sections: ReportSection[];
+  /** Individual sections of the report body.
+   * Can be either structured ReportSection[] for finalized reports
+   * or SimpleReportSections for draft/seed data format. */
+  sections: ReportSection[] | SimpleReportSections;
 
   // ========== CODES ==========
 
@@ -307,4 +322,19 @@ export interface Report {
 
   /** Timestamp of last update to report */
   updatedAt: Timestamp;
+}
+
+/**
+ * Helper to extract section text from either format.
+ * Handles both SimpleReportSections and ReportSection[] formats.
+ */
+export function getReportSectionText(sections: ReportSection[] | SimpleReportSections | undefined, sectionName: string): string {
+  if (!sections) return '';
+  // Simple format: { findings: '...', impression: '...', recommendations: '...' }
+  if (!Array.isArray(sections)) {
+    return (sections as SimpleReportSections)[sectionName] || '';
+  }
+  // Structured format: ReportSection[]
+  const section = sections.find(s => s.id === sectionName || s.title?.toLowerCase() === sectionName.toLowerCase());
+  return section?.content || '';
 }

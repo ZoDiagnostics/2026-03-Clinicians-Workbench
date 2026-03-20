@@ -4,6 +4,7 @@ import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth, useReport, useFindings, useActiveProcedure, usePatients, updateReport } from '../lib/hooks';
 import { ReportStatus } from '../types/enums';
+import { getReportSectionText, SimpleReportSections } from '../types/report';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
 import CopilotAutoDraft from '../components/CopilotAutoDraft';
@@ -34,10 +35,9 @@ const Report: React.FC = () => {
   // Note: Firestore stores sections as {findings, impression, recommendations} object
   useEffect(() => {
     if (report) {
-      const sections = report.sections as any;
-      setFindingsText(sections?.findings || '');
-      setImpression(sections?.impression || '');
-      setRecommendations(sections?.recommendations || '');
+      setFindingsText(getReportSectionText(report.sections, 'findings'));
+      setImpression(getReportSectionText(report.sections, 'impression'));
+      setRecommendations(getReportSectionText(report.sections, 'recommendations'));
     }
   }, [report]);
 
@@ -47,7 +47,7 @@ const Report: React.FC = () => {
 
     // Build findings summary from actual findings
     const findingsSummary = findings.length > 0
-      ? findings.map((f: any, i: number) => `${i + 1}. ${f.classification || f.type || 'Finding'} — ${f.anatomicalRegion || f.region || 'unknown region'} (${f.provenance === 'ai_detected' ? 'AI-detected' : 'clinician-marked'}, confidence: ${f.aiConfidence || f.confidence || 'N/A'}%)`).join('\n')
+      ? findings.map((f, i) => `${i + 1}. ${f.classification || f.type || 'Finding'} — ${f.anatomicalRegion || f.region || 'unknown region'} (${f.provenance === 'ai_detected' ? 'AI-detected' : 'clinician-marked'}, confidence: ${f.aiConfidence || f.confidence || 'N/A'}%)`).join('\n')
       : 'No findings recorded.';
 
     await addDoc(collection(db, 'reports'), {
@@ -59,7 +59,7 @@ const Report: React.FC = () => {
         findings: findingsSummary,
         impression: '',
         recommendations: '',
-      } as any,
+      } satisfies SimpleReportSections,
       icdCodes: [],
       cptCodes: [{ code: '91110', description: 'GI tract imaging, capsule endoscopy', status: 'suggested' }],
       createdAt: Timestamp.now(),
@@ -72,8 +72,8 @@ const Report: React.FC = () => {
     setSaving(true);
     try {
       await updateReport(report.id, {
-        sections: { findings: findingsText, impression, recommendations } as any,
-        status: ReportStatus.IN_REVIEW as any,
+        sections: { findings: findingsText, impression, recommendations } as SimpleReportSections,
+        status: ReportStatus.IN_REVIEW,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);

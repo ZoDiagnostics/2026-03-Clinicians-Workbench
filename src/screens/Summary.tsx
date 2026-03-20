@@ -113,7 +113,7 @@ export const Summary: React.FC = () => {
                   <ul className="divide-y divide-gray-200">
                     {findings.map((finding) => (
                       <li key={finding.id} className="px-6 py-4">
-                        <p className="text-sm text-gray-900">{(finding as any).description || finding.classification || finding.id}</p>
+                        <p className="text-sm text-gray-900">{finding.description || finding.classification || finding.id}</p>
                       </li>
                     ))}
                   </ul>
