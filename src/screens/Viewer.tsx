@@ -9,6 +9,11 @@ import { AnatomicalRegion, FindingProvenance, FindingReviewStatus, ProcedureStat
 import { Finding } from '../types/finding';
 
 // SCR-10: Viewer — Capsule endoscopy review screen
+// UX Flow:
+// 1. If status=ready_for_review → show Pre-Review checklist first, everything else gated
+// 2. After checklist complete (status changes to draft) → unlock findings panel + navigation
+// 3. Frame viewer shows "No frames" state until image pipeline is connected
+
 export const Viewer: React.FC = () => {
   const { procedureId } = useParams<{ procedureId: string }>();
   const navigate = useNavigate();
@@ -21,16 +26,18 @@ export const Viewer: React.FC = () => {
   const [selectedRegion, setSelectedRegion] = useState<string>(AnatomicalRegion.COLON);
 
   const patient = procedure ? allPatients.find(p => p.id === procedure.patientId) : null;
-  const showPreReview = procedure?.status === ProcedureStatus.READY_FOR_REVIEW;
+  const isPreReview = procedure?.status === ProcedureStatus.READY_FOR_REVIEW;
+  const isReviewActive = procedure?.status === ProcedureStatus.DRAFT || procedure?.status === ProcedureStatus.APPENDED_DRAFT;
+  const isCompleted = procedure?.status === ProcedureStatus.COMPLETED || procedure?.status === ProcedureStatus.COMPLETED_APPENDED || procedure?.status === ProcedureStatus.CLOSED;
 
-  // TODO: Load actual frames from Firebase Storage
-  // For now, frames array is empty — FrameViewer shows "No Capsule Frames Loaded" state
-  // When frames are uploaded, populate this array with Storage URLs:
-  // const frames = procedure?.frameUrls || [];
+  // Review is unlocked once pre-review checklist is completed (status moves past ready_for_review)
+  const reviewUnlocked = !isPreReview;
+
+  // TODO: Load actual frames from Firebase Storage via useCapsuleFrames hook
   const frames: string[] = [];
 
   const handleAddFinding = async () => {
-    if (!procedureId || !newFindingClass) return;
+    if (!procedureId || !newFindingClass || !reviewUnlocked) return;
 
     const newFinding: Omit<Finding, 'id' | 'createdAt' | 'updatedAt'> = {
       procedureId,
@@ -40,7 +47,7 @@ export const Viewer: React.FC = () => {
       isIncidental: false,
       anatomicalRegion: selectedRegion as AnatomicalRegion,
       primaryFrameNumber: currentFrame,
-      primaryFrameTimestamp: currentFrame * 250, // ~4fps
+      primaryFrameTimestamp: currentFrame * 250,
       additionalFrames: [],
       modificationHistory: [],
       annotations: [],
@@ -51,13 +58,9 @@ export const Viewer: React.FC = () => {
   };
 
   const handleDeleteFinding = async (findingId: string) => {
-    if (procedureId) {
+    if (procedureId && reviewUnlocked) {
       await deleteFinding(procedureId, findingId);
     }
-  };
-
-  const handleReviewStarted = () => {
-    // Procedure status will update via real-time listener
   };
 
   if (!procedure) {
@@ -92,31 +95,42 @@ export const Viewer: React.FC = () => {
           </div>
           <div className="flex items-center gap-2">
             <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-              procedure.status === 'ready_for_review' ? 'bg-green-700 text-green-200' :
-              procedure.status === 'draft' ? 'bg-indigo-700 text-indigo-200' :
+              isPreReview ? 'bg-yellow-700 text-yellow-200' :
+              isReviewActive ? 'bg-indigo-700 text-indigo-200' :
+              isCompleted ? 'bg-green-700 text-green-200' :
               'bg-gray-700 text-gray-300'
             }`}>
-              {procedure.status.replace(/_/g, ' ')}
+              {isPreReview ? 'Pre-Review Required' : procedure.status.replace(/_/g, ' ')}
             </span>
-            <button
-              onClick={() => navigate(`/report/${procedureId}`)}
-              className="text-xs bg-indigo-600 hover:bg-indigo-700 px-3 py-1 rounded"
-            >
-              Go to Report →
-            </button>
+            {reviewUnlocked && (
+              <button
+                onClick={() => navigate(`/report/${procedureId}`)}
+                className="text-xs bg-indigo-600 hover:bg-indigo-700 px-3 py-1 rounded"
+              >
+                Go to Report →
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Pre-review banner (only for ready_for_review status) */}
-        {showPreReview && (
+        {/* Pre-review checklist (only for ready_for_review status) */}
+        {isPreReview && (
           <PreReviewBanner
             procedureId={procedure.id}
             studyType={procedure.studyType}
-            onReviewStarted={handleReviewStarted}
           />
         )}
 
-        <main className="flex-1 flex overflow-hidden">
+        {/* Workflow guidance banner */}
+        {isPreReview && (
+          <div className="bg-yellow-900/50 border-b border-yellow-700 px-4 py-3 text-center">
+            <p className="text-yellow-200 text-sm">
+              Complete the Pre-Review Checklist above to unlock the review tools and findings panel.
+            </p>
+          </div>
+        )}
+
+        <main className="flex-1 flex overflow-hidden relative">
           {/* Main Content: Frame Viewer */}
           <div className="flex-1 flex flex-col">
             <FrameViewer
@@ -128,9 +142,14 @@ export const Viewer: React.FC = () => {
           </div>
 
           {/* Right Sidebar: Findings Panel */}
-          <div className="w-96 bg-gray-900 border-l border-gray-700 flex flex-col">
+          <div className={`w-96 bg-gray-900 border-l border-gray-700 flex flex-col transition-opacity ${
+            reviewUnlocked ? 'opacity-100' : 'opacity-40 pointer-events-none'
+          }`}>
             <div className="p-4 border-b border-gray-700 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Findings ({findings.length})</h2>
+              {!reviewUnlocked && (
+                <span className="text-xs text-yellow-400 bg-yellow-900/50 px-2 py-0.5 rounded">Locked</span>
+              )}
             </div>
 
             {/* Findings list */}
@@ -161,53 +180,72 @@ export const Viewer: React.FC = () => {
                         )}
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleDeleteFinding(finding.id)}
-                      className="text-red-500 hover:text-red-400 text-xs"
-                    >
-                      ✕
-                    </button>
+                    {reviewUnlocked && !isCompleted && (
+                      <button
+                        onClick={() => handleDeleteFinding(finding.id)}
+                        className="text-red-500 hover:text-red-400 text-xs"
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
               {findings.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
                   <p>No findings yet</p>
-                  <p className="text-xs mt-1">Add findings manually or start AI detection</p>
+                  <p className="text-xs mt-1">
+                    {reviewUnlocked ? 'Add findings manually or start AI detection' : 'Complete the checklist to begin'}
+                  </p>
                 </div>
               )}
             </div>
 
-            {/* Add finding form */}
-            <div className="p-4 border-t border-gray-700 space-y-2">
-              <select
-                value={selectedRegion}
-                onChange={(e) => setSelectedRegion(e.target.value)}
-                className="w-full bg-gray-700 text-white rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                {Object.values(AnatomicalRegion).map(region => (
-                  <option key={region} value={region}>{region}</option>
-                ))}
-              </select>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newFindingClass}
-                  onChange={(e) => setNewFindingClass(e.target.value)}
-                  placeholder="Finding type (e.g., polyp, ulcer)"
-                  className="flex-grow bg-gray-700 text-white rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddFinding()}
-                />
-                <button
-                  onClick={handleAddFinding}
-                  disabled={!newFindingClass}
-                  className="bg-indigo-600 text-white py-1.5 px-4 rounded-md text-sm hover:bg-indigo-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
+            {/* Add finding form — only when review is active (not completed) */}
+            {reviewUnlocked && !isCompleted && (
+              <div className="p-4 border-t border-gray-700 space-y-2">
+                <select
+                  value={selectedRegion}
+                  onChange={(e) => setSelectedRegion(e.target.value)}
+                  className="w-full bg-gray-700 text-white rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  + Add
+                  {Object.values(AnatomicalRegion).map(region => (
+                    <option key={region} value={region}>{region}</option>
+                  ))}
+                </select>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newFindingClass}
+                    onChange={(e) => setNewFindingClass(e.target.value)}
+                    placeholder="Finding type (e.g., polyp, ulcer)"
+                    className="flex-grow bg-gray-700 text-white rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddFinding()}
+                  />
+                  <button
+                    onClick={handleAddFinding}
+                    disabled={!newFindingClass}
+                    className="bg-indigo-600 text-white py-1.5 px-4 rounded-md text-sm hover:bg-indigo-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
+                  >
+                    + Add
+                  </button>
+                </div>
+                <p className="text-xs text-gray-600">@ Frame {currentFrame}</p>
+              </div>
+            )}
+
+            {/* Completed state */}
+            {isCompleted && (
+              <div className="p-4 border-t border-gray-700 text-center">
+                <p className="text-xs text-gray-500">This procedure is completed. Findings are read-only.</p>
+                <button
+                  onClick={() => navigate(`/summary/${procedureId}`)}
+                  className="mt-2 text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded"
+                >
+                  View Summary
                 </button>
               </div>
-              <p className="text-xs text-gray-600">@ Frame {currentFrame}</p>
-            </div>
+            )}
           </div>
         </main>
       </div>

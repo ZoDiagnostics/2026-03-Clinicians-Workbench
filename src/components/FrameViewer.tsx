@@ -138,22 +138,23 @@ export const FrameViewer: React.FC<FrameViewerProps> = ({
         {/* Playback controls */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <button onClick={skipBackward} className="text-gray-400 hover:text-white px-2 py-1 text-sm" title="Skip back 10">
+            <button onClick={skipBackward} disabled={!hasFrames} className={`px-2 py-1 text-sm ${hasFrames ? 'text-gray-400 hover:text-white' : 'text-gray-700 cursor-not-allowed'}`} title="Skip back 10">
               ⏪
             </button>
-            <button onClick={stepBackward} className="text-gray-400 hover:text-white px-2 py-1 text-sm" title="Previous frame">
+            <button onClick={stepBackward} disabled={!hasFrames} className={`px-2 py-1 text-sm ${hasFrames ? 'text-gray-400 hover:text-white' : 'text-gray-700 cursor-not-allowed'}`} title="Previous frame">
               ◀
             </button>
             <button
               onClick={togglePlay}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1 rounded text-sm font-medium"
+              disabled={!hasFrames}
+              className={`px-4 py-1 rounded text-sm font-medium ${hasFrames ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'bg-gray-700 text-gray-500 cursor-not-allowed'}`}
             >
               {isPlaying ? '⏸ Pause' : '▶ Play'}
             </button>
-            <button onClick={stepForward} className="text-gray-400 hover:text-white px-2 py-1 text-sm" title="Next frame">
+            <button onClick={stepForward} disabled={!hasFrames} className={`px-2 py-1 text-sm ${hasFrames ? 'text-gray-400 hover:text-white' : 'text-gray-700 cursor-not-allowed'}`} title="Next frame">
               ▶
             </button>
-            <button onClick={skipForward} className="text-gray-400 hover:text-white px-2 py-1 text-sm" title="Skip forward 10">
+            <button onClick={skipForward} disabled={!hasFrames} className={`px-2 py-1 text-sm ${hasFrames ? 'text-gray-400 hover:text-white' : 'text-gray-700 cursor-not-allowed'}`} title="Skip forward 10">
               ⏩
             </button>
           </div>

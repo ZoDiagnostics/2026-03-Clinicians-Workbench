@@ -186,7 +186,13 @@ const Report: React.FC = () => {
 
                 {/* Sidebar: Copilot + ICD codes */}
                 <div className="w-80 space-y-4">
-                  <CopilotAutoDraft />
+                  <CopilotAutoDraft
+                    findings={findings}
+                    studyType={procedure?.studyType}
+                    patientContext={patient ? `${patient.firstName} ${patient.lastName}, ${patient.sex}, MRN: ${patient.mrn}` : undefined}
+                    onAcceptImpression={(text) => setImpression(text)}
+                    onAcceptRecommendations={(text) => setRecommendations(text)}
+                  />
                   <ICDCodeSuggestions />
                 </div>
               </div>

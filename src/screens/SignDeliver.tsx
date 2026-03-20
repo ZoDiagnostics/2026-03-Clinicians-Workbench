@@ -23,13 +23,14 @@ const SignDeliver: React.FC = () => {
   const patient = procedure ? allPatients.find(p => p.id === procedure.patientId) : null;
 
   const [signing, setSigning] = useState(false);
-  const [signed, setSigned] = useState(report?.status === 'signed');
+  const [justSigned, setJustSigned] = useState(false); // Only true when user signs in this session
   const [deliveryMethods, setDeliveryMethods] = useState<Set<string>>(new Set());
   const [delivering, setDelivering] = useState(false);
   const [delivered, setDelivered] = useState(false);
 
   const canSign = role === 'clinician_auth' || role === 'clinician_admin';
-  const isSigned = signed || report?.status === 'signed';
+  const wasAlreadySigned = report?.status === ReportStatus.SIGNED || report?.status === ReportStatus.AMENDED;
+  const isSigned = justSigned || wasAlreadySigned;
 
   const handleSign = async () => {
     if (!report || !user || !procedure || signing) return;
@@ -52,7 +53,7 @@ const SignDeliver: React.FC = () => {
         updatedBy: user.uid,
       });
 
-      setSigned(true);
+      setJustSigned(true);
     } catch (err) {
       console.error('Failed to sign report:', err);
     } finally {
@@ -175,8 +176,20 @@ const SignDeliver: React.FC = () => {
 
                   {isSigned ? (
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-                      <p className="text-green-800 font-medium">Report Signed</p>
-                      <p className="text-sm text-green-600 mt-1">Signed by {user?.displayName || user?.email}</p>
+                      <p className="text-green-800 font-medium">
+                        {justSigned ? '✓ Report Signed Successfully' : 'Report Previously Signed'}
+                      </p>
+                      <p className="text-sm text-green-600 mt-1">
+                        {justSigned
+                          ? `Signed by ${user?.displayName || user?.email} just now`
+                          : `Signed by ${report?.signedBy || 'authorized clinician'}`
+                        }
+                      </p>
+                      {wasAlreadySigned && !justSigned && (
+                        <p className="text-xs text-gray-500 mt-2">
+                          This report was signed in a previous session. To amend, create an addendum from the Report screen.
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <>
