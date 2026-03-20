@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth, useReport, useActiveProcedure, usePatients, updateReport } from '../lib/hooks';
+import { ReportStatus } from '../types/enums';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
 
@@ -36,10 +37,8 @@ const SignDeliver: React.FC = () => {
     try {
       // Update report status to signed
       await updateReport(report.id, {
-        status: 'signed',
-        signedAt: serverTimestamp(),
+        status: ReportStatus.SIGNED as any,
         signedBy: user.uid,
-        signerName: user.displayName || user.email || 'Unknown',
       });
 
       // Update procedure status to completed
@@ -75,9 +74,8 @@ const SignDeliver: React.FC = () => {
     setDelivering(true);
     try {
       await updateReport(report.id, {
-        deliveryMethods: Array.from(deliveryMethods),
-        deliveredAt: serverTimestamp(),
-      });
+        deliveryRecords: Array.from(deliveryMethods).map(m => ({ method: m, deliveredAt: new Date() })),
+      } as any);
       setDelivered(true);
     } catch (err) {
       console.error('Failed to record delivery:', err);
@@ -125,7 +123,7 @@ const SignDeliver: React.FC = () => {
                     <div>
                       <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">Findings</h3>
                       <div className="bg-gray-50 rounded p-4 text-sm whitespace-pre-wrap">
-                        {report.sections?.findings || 'No findings recorded.'}
+                        {(report.sections as any)?.findings || 'No findings recorded.'}
                       </div>
                     </div>
 
@@ -133,7 +131,7 @@ const SignDeliver: React.FC = () => {
                     <div>
                       <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">Clinical Impression</h3>
                       <div className="bg-gray-50 rounded p-4 text-sm whitespace-pre-wrap">
-                        {report.sections?.impression || 'No impression recorded.'}
+                        {(report.sections as any)?.impression || 'No impression recorded.'}
                       </div>
                     </div>
 
@@ -141,7 +139,7 @@ const SignDeliver: React.FC = () => {
                     <div>
                       <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">Recommendations</h3>
                       <div className="bg-gray-50 rounded p-4 text-sm whitespace-pre-wrap">
-                        {report.sections?.recommendations || 'No recommendations recorded.'}
+                        {(report.sections as any)?.recommendations || 'No recommendations recorded.'}
                       </div>
                     </div>
 

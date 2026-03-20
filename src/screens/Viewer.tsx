@@ -139,9 +139,9 @@ export const Viewer: React.FC = () => {
                 <div key={finding.id} className="bg-gray-800 p-3 rounded-lg">
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="font-medium text-sm">{finding.classification || finding.type || 'Unnamed finding'}</p>
+                      <p className="font-medium text-sm">{finding.classification || (finding as any).type || 'Unnamed finding'}</p>
                       <p className="text-xs text-gray-400 mt-1">
-                        {finding.anatomicalRegion || finding.region || '-'} • Frame {finding.primaryFrameNumber || finding.frameNumber || 0}
+                        {finding.anatomicalRegion || (finding as any).region || '-'} • Frame {finding.primaryFrameNumber || (finding as any).frameNumber || 0}
                       </p>
                       <div className="flex gap-2 mt-1">
                         <span className={`text-xs px-1.5 py-0.5 rounded ${
@@ -156,8 +156,8 @@ export const Viewer: React.FC = () => {
                         }`}>
                           {finding.reviewStatus || 'pending'}
                         </span>
-                        {finding.confidence && (
-                          <span className="text-xs text-gray-500">{finding.confidence}%</span>
+                        {(finding.aiConfidence || (finding as any).confidence) && (
+                          <span className="text-xs text-gray-500">{finding.aiConfidence || (finding as any).confidence}%</span>
                         )}
                       </div>
                     </div>
