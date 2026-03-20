@@ -135,6 +135,25 @@ export type { AuditAction, AuditEntry } from './audit';
 export type { AppNotification } from './notification';
 
 // ============================================================================
+// CAPSULE IMAGE PIPELINE TYPES
+// ============================================================================
+
+export type {
+  CestAnatomicalLocation,
+  CestFindingClassification,
+  AIAnalysisResult,
+  CapsuleImageDocument,
+  GetCapsuleFramesResponse,
+} from './capsule-image';
+
+export {
+  CEST_ANATOMICAL_LOCATIONS,
+  CEST_FINDING_CLASSIFICATIONS,
+  CEST_TO_ANATOMICAL_REGION,
+  cestToAnatomicalRegion,
+} from './capsule-image';
+
+// ============================================================================
 // FIRESTORE PATHS & HELPERS
 // ============================================================================
 
@@ -144,5 +163,5 @@ export { COLLECTIONS, STORAGE_PATHS, FirestorePath } from './firestore-paths';
 // VERSION INFO
 // ============================================================================
 
-export const DATA_MODEL_VERSION = '3.1.0';
-export const DATA_MODEL_LAST_UPDATED = '2026-03-13';
+export const DATA_MODEL_VERSION = '3.2.0';
+export const DATA_MODEL_LAST_UPDATED = '2026-03-19';

@@ -1,15 +1,15 @@
 # ZoCW Master Runbook — Step-by-Step Build Guide
 **For:** Cameron (non-developer, guided by Claude)
-**Last Updated:** March 17, 2026
+**Last Updated:** March 19, 2026
 **Rule:** Before every step, Claude re-reads this file to maintain context.
 
 ---
 
 ## WHERE WE ARE RIGHT NOW
 
-**Current Step:** BUILD COMPLETE — All 7 phases done ✅
-**Status:** Production build passes (`npm run build` succeeds). Post-build cleanup remaining.
-**Blockers:** None
+**Current Step:** Phases 1-8 COMPLETE ✅ — Phase 9 (Image Pipeline Integration) in planning
+**Status:** Production build passes (`npm run build` succeeds). Image pipeline architecture doc, types, and BUILD_09 packet created. Pipeline backend work queued for separate session.
+**Blockers:** Pipeline field rename (`procedure_id` → `capsule_serial`) and cross-project IAM setup must complete before BUILD_09 implementation. See HANDOFF.md Priority 1B.
 
 ### Key References
 - **GitHub Repo:** https://github.com/ZoDiagnostics/2026-03-Clinicians-Workbench
@@ -30,10 +30,11 @@
 | 4 | Firebase Console setup (project, auth, Firestore) | console.firebase.google.com | 15 min | ✅ DONE |
 | 5 | Create .env with real credentials | Firebase Studio terminal | 5 min | ✅ DONE |
 | 6 | Phase 0 — Verify app boots | Firebase Studio AI | 10 min | ✅ DONE |
-| 7 | Phase 1 — Auth & Patients | Firebase Studio AI | 30-60 min | IN PROGRESS |
-| 8 | Phase 2 — Clinical Workflow | Firebase Studio AI | 30-60 min | NOT STARTED |
-| 9 | Phase 3 — Viewer & Findings | Firebase Studio AI | 30-60 min | NOT STARTED |
-| 10 | Phases 4-7 — Remaining features | Firebase Studio AI | 2-4 hrs | NOT STARTED |
+| 7 | Phase 1 — Auth & Patients | Firebase Studio AI | 30-60 min | ✅ DONE |
+| 8 | Phase 2 — Clinical Workflow | Firebase Studio AI | 30-60 min | ✅ DONE |
+| 9 | Phase 3 — Viewer & Findings | Firebase Studio AI | 30-60 min | ✅ DONE |
+| 10 | Phases 4-8 — Remaining features | Firebase Studio AI | 2-4 hrs | ✅ DONE |
+| 11 | Phase 9 — Image Pipeline Integration | Claude Cowork | TBD | PLANNING ✅ / IMPLEMENTATION PENDING |
 
 ---
 
@@ -203,6 +204,12 @@ Re-open firebase.studio. Your workspace should persist. If not, re-import from G
 | Mar 17 | Firestore location: us-west2 | Match image pipeline location |
 | Mar 17 | Use tsx instead of ts-node for seed | ts-node has ESM/CommonJS conflicts with Vite config |
 | Mar 17 | User prefers Google sign-in | Add GoogleAuthProvider + signInWithPopup to Login |
+| Mar 19 | Folder naming = capsule serial number | Linkage key between physical capsule, pipeline, and patient record |
+| Mar 19 | Data access via proxy Cloud Function | `capsule_images` in separate project; `getCapsuleFrames` callable proxies reads |
+| Mar 19 | Rename `procedure_id` → `capsule_serial` | Field in pipeline Firestore actually stores capsule serial, not ZoCW procedure ID |
+| Mar 19 | Static data at Viewer load time | No real-time listeners for capsule frames; single bulk fetch on mount |
+| Mar 19 | CEST enums as string literals | AI output dictionary may expand; existing AnatomicalRegion enum stays for clinician UI |
+| Mar 19 | Data model version bumped to 3.2.0 | Added `capsule-image.ts` types, exported from `index.ts` |
 
 ---
 

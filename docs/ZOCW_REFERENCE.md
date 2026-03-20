@@ -1,6 +1,6 @@
 # Zo Clinicians Workbench (ZoCW) — Firebase Studio Reference
-**Version:** 3.1.0
-**Last Updated:** 2026-03-13
+**Version:** 3.2.0
+**Last Updated:** 2026-03-19
 **Purpose:** Quick reference for Firebase Studio sessions (keep this file open across all builds)
 
 ---
@@ -16,12 +16,12 @@
 | SCR-05 | Manage Education Library | `/education` | — | auth | 0257, 0290 |
 | SCR-06 | Manage Administration | `/admin` | — | admin,clinician_admin | 0005, 0088 |
 | SCR-07 | View System Activity Log | `/activity-log` | — | admin,clinician_admin | — |
-| SCR-08 | Check-In & Capsule Ingestion | `/workflow/checkin/{procId}?patientId=` | Workflow | auth | 0015–0020, 0250, 0276, 0278–0279, 0283, 0288 |
-| SCR-09 | Upload Capsule Study | `/workflow/upload/{procId}` | Workflow | clinical_staff,clinician* | — |
-| SCR-10 | View Procedure Study (Viewer) | `/workflow/viewer/{procId}` | Workflow | clinician*,clinical_staff | 0244–0246, 0254–0257, 0265–0270, 0282–0283, 0285, 0289–0291 |
-| SCR-11 | Review Procedure Summary | `/workflow/summary/{procId}` | Workflow | clinician*,clinical_staff | 0254, 0255, 0266–0273, 0282, 0285 |
-| SCR-12 | Generate Report | `/workflow/report/{procId}` | Workflow | clinician*,clinical_staff | 0262–0263, 0269, 0271–0273, 0282, 0297–0300 |
-| SCR-13 | Review, Sign & Deliver | `/workflow/sign/{procId}` | Workflow | clinician_auth,clinician_admin | 0290, 0298, 0300 |
+| SCR-08 | Check-In & Capsule Ingestion | `/checkin/:procedureId` | Workflow | auth | 0015–0020, 0250, 0276, 0278–0279, 0283, 0288 |
+| SCR-09 | Upload Capsule Study | `/capsule-upload/:procedureId` | Workflow | clinical_staff,clinician* | — |
+| SCR-10 | View Procedure Study (Viewer) | `/viewer/:procedureId` | Workflow | clinician*,clinical_staff | 0244–0246, 0254–0257, 0265–0270, 0282–0283, 0285, 0289–0291 |
+| SCR-11 | Review Procedure Summary | `/summary/:procedureId` | Workflow | clinician*,clinical_staff | 0254, 0255, 0266–0273, 0282, 0285 |
+| SCR-12 | Generate Report | `/report/:procedureId` | Workflow | clinician*,clinical_staff | 0262–0263, 0269, 0271–0273, 0282, 0297–0300 |
+| SCR-13 | Review, Sign & Deliver | `/sign-deliver/:procedureId` | Workflow | clinician_auth,clinician_admin | 0290, 0298, 0300 |
 | SCR-14 | View Patient Overview | `/patient/{patientId}` | Patient | auth | 0278–0281 |
 | SCR-15 | Manage Medical History | `/patient/{patientId}#medical-history` | SCR-14 Tab | auth | — |
 | SCR-16 | Manage Medications | `/patient/{patientId}#medications` | SCR-14 Tab | auth | — |
@@ -122,17 +122,19 @@
 
 ## 3. Status-Based Routing Table
 
+**Updated Mar 19:** Routes use flat paths (not `/workflow/` prefix) per `routeByStatus.ts` and `router.tsx`.
+
 | Procedure Status | Destination Screen | Route | Workflow Step |
 |---|---|---|---|
-| `capsule_return_pending` | SCR-08 Check-In | `/workflow/checkin/{procId}` | Awaiting capsule return from patient |
-| `capsule_received` | SCR-09 Capsule Upload | `/workflow/upload/{procId}` | Data upload + validation |
-| `ready_for_review` | SCR-10 Viewer | `/workflow/viewer/{procId}` | Diagnostic review (primary AOI) |
-| `draft` | SCR-10 Viewer | `/workflow/viewer/{procId}` | Ongoing review, findings being marked |
-| `appended_draft` | SCR-10 Viewer | `/workflow/viewer/{procId}` | Appended findings after initial review |
-| `completed` | SCR-12 Report (read-only) | `/workflow/report/{procId}` | Report signed, view only |
-| `completed_appended` | SCR-12 Report (read-only) | `/workflow/report/{procId}` | Report signed with appended findings |
-| `closed` | SCR-11 Summary (read-only) | `/workflow/summary/{procId}` | Archived, view only |
-| `void` | SCR-11 Summary (read-only) | `/workflow/summary/{procId}` | Voided/cancelled, view only |
+| `capsule_return_pending` | SCR-08 Check-In | `/checkin/:procedureId` | Awaiting capsule return from patient |
+| `capsule_received` | SCR-09 Capsule Upload | `/capsule-upload/:procedureId` | Data upload + validation |
+| `ready_for_review` | SCR-10 Viewer | `/viewer/:procedureId` | Diagnostic review (primary AOI) |
+| `draft` | SCR-10 Viewer | `/viewer/:procedureId` | Ongoing review, findings being marked |
+| `appended_draft` | SCR-10 Viewer | `/viewer/:procedureId` | Appended findings after initial review |
+| `completed` | SCR-12 Report (read-only) | `/report/:procedureId` | Report signed, view only |
+| `completed_appended` | SCR-12 Report (read-only) | `/report/:procedureId` | Report signed with appended findings |
+| `closed` | SCR-11 Summary (read-only) | `/summary/:procedureId` | Archived, view only |
+| `void` | SCR-11 Summary (read-only) | `/summary/:procedureId` | Voided/cancelled, view only |
 
 ---
 
@@ -271,6 +273,7 @@ The ZoCW system uses two complementary data patterns for multi-tenancy:
 - **Procedure Subcollections** (`procedures/{procId}/findings`, `procedures/{procId}/annotations`): Study-specific data with no explicit practiceId field; access controlled by parent procedure document permissions.
 - **User Subcollections** (`users/{uid}/notifications`, `users/{uid}/preferences`): User-owned preferences and real-time notifications, scoped by UID.
 - **Future Collections** (not yet implemented): `patients/{patientId}/educationAssignments`, `practices/{practiceId}/icdFavorites`, `practices/{practiceId}/subscription` — planned for future phases.
+- **External Collection (Pipeline Project):** `capsule_images` lives in `podium-capsule-ingest` Firestore (NOT in cw-e7c19). Contains frame metadata + AI analysis results. Accessed via `getCapsuleFrames` proxy Cloud Function. Linked to ZoCW procedures via `capsule_serial` field = `procedure.capsuleSerialNumber`. See `docs/IMAGE_PIPELINE_INTEGRATION.md` for full architecture.
 
 ---
 
@@ -307,6 +310,7 @@ The ZoCW system uses two complementary data patterns for multi-tenancy:
 | `initiateCapsuleRecall` | Recall initiation | Recall document created, affected procedures marked, staff notified |
 | `suggestEducationMaterials` | Check-in / post-sign trigger | Query education library, rank by relevance, return top N suggestions |
 | `uploadCapsuleStudy` | Capsule upload completion | File validation, quality score calculation, status transition triggered |
+| `getCapsuleFrames` | Viewer screen mount (BUILD_09) | Reads from pipeline project Firestore, returns frame URLs + AI analysis. Not yet implemented. |
 
 ---
 

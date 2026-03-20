@@ -283,7 +283,7 @@ export enum AnatomicalRegion {
     DUODENUM = 'duodenum',
     JEJUNUM = 'jejunum',
     ILEUM = 'ileum',
-    CECUCM = 'cecum',
+    CECUM = 'cecum',
     COLON = 'colon',
     RECTUM = 'rectum',
 }
@@ -297,7 +297,7 @@ export const ANATOMICAL_REGION_LABELS: Record<AnatomicalRegion, string> = {
     [AnatomicalRegion.DUODENUM]: 'Duodenum',
     [AnatomicalRegion.JEJUNUM]: 'Jejunum',
     [AnatomicalRegion.ILEUM]: 'Ileum',
-    [AnatomicalRegion.CECUCM]: 'Cecum',
+    [AnatomicalRegion.CECUM]: 'Cecum',
     [AnatomicalRegion.COLON]: 'Colon',
     [AnatomicalRegion.RECTUM]: 'Rectum',
 };

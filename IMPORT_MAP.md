@@ -1,6 +1,6 @@
 # ZoCW Import Map v1.0
 **Purpose:** Complete dependency map for every project file. When renaming anything, consult this map to find ALL files that need updating.
-**Last Updated:** March 16, 2026
+**Last Updated:** March 19, 2026
 
 ---
 
@@ -17,17 +17,36 @@ When you need to rename a hook, component, or export:
 
 ## lib/hooks.tsx (CENTRAL HUB — most imported file)
 
-| Export | Type | Imported By (28 files) |
-|--------|------|----------------------|
-| `useAuth` | function | ALL 23 screens, Header, Sidebar, WorkflowStepper, NotificationDrawer, PreReviewBanner |
-| `useProcedures` | function | ALL 23 screens |
-| `useUsers` | function | (not yet imported — will be used in Phase 1+) |
-| `useNotifications` | function | (not yet imported — will be used in Phase 6) |
-| `useActiveProcedure` | function | (not yet imported — will be used in Phase 2+) |
+| Export | Type | Imported By |
+|--------|------|-------------|
+| `useAuth` | function | ALL screens, Header, Sidebar, WorkflowStepper, NotificationDrawer, PreReviewBanner |
+| `usePatients` | function | Dashboard, Worklist, Viewer, PatientOverview, Patients |
+| `useProcedures` | function | Dashboard, Worklist, Procedures, Operations, Analytics |
+| `useActiveProcedure` | function | CheckIn, CapsuleUpload, Viewer, Summary, Report, SignDeliver |
+| `useStaff` | function | ManageStaff, Admin |
+| `useClinics` | function | ManageClinics, Admin |
+| `usePractice` | function | ManagePractice, Admin |
+| `usePracticeSettings` | function | Admin, ManagePractice |
+| `useNotifications` | function | Header (NotificationDrawer) |
+| `useFindings` | function | Viewer |
+| `useReport` | function | Report, SignDeliver |
+| `useCapsuleFrames` | function | Viewer (BUILD_09 — not yet implemented) |
+| `createFinding` | function | Viewer |
+| `updateFinding` | function | Viewer |
+| `deleteFinding` | function | Viewer |
+| `updateProcedure` | function | CheckIn, CapsuleUpload |
+| `markNotificationRead` | function | NotificationDrawer |
+| `markAllNotificationsRead` | function | NotificationDrawer |
+| `generateReport` | function | Report |
+| `updateReport` | function | Report |
+| `signReport` | function | SignDeliver |
+| `deliverReport` | function | SignDeliver |
 
 **hooks.tsx imports from:**
-- `useStore`, `User`, `Procedure` from `./store`
-- `USERS`, `PATIENTS`, `PROCEDURES` from `./mockData`
+- `auth`, `db` from `./firebase`
+- `useStore` from `./store`
+- Types from `../types/enums`, `../types/user`, `../types/procedure`, `../types/patient`, `../types/finding`, `../types/report`, `../types/practice`, `../types/notification`, `../types/firestore-paths`
+- Firebase SDK: `firebase/auth`, `firebase/firestore`, `firebase/functions`
 
 ---
 
@@ -68,7 +87,7 @@ When you need to rename a hook, component, or export:
 **router.tsx imports from (18 screens):**
 Dashboard, Worklist, Patients, Procedures, ReportsHub, Education, Admin, ActivityLog, AIQA, Operations, Analytics, CheckIn, CapsuleUpload, Viewer, Summary, Report, SignDeliver, PatientOverview
 
-**Missing from router (5 screens):** ManageClinics, ManageICDCodes, ManagePractice, ManageStaff, ManageSubscription — these are sub-routes of Admin, to be wired in Phase 5.
+**Admin sub-screens:** ManageClinics, ManageICDCodes, ManagePractice, ManageStaff, ManageSubscription — imported by router from `screens/admin/` (NOT the 44-line stubs at `screens/` root level). Root stubs are candidates for deletion.
 
 ---
 
@@ -86,16 +105,16 @@ Dashboard, Worklist, Patients, Procedures, ReportsHub, Education, Admin, Activit
 
 ---
 
-## lib/mockData.ts
+## lib/mockData.ts (DEPRECATED — replaced by Firestore in Phase 1)
 
 | Export | Type | Imported By |
 |--------|------|-------------|
-| `USERS` | array | lib/hooks.tsx |
-| `PATIENTS` | array | lib/hooks.tsx |
-| `PROCEDURES` | array | lib/hooks.tsx |
-| `NOTIFICATIONS` | array | (not yet imported) |
+| `USERS` | array | (no longer imported — hooks.tsx uses Firestore) |
+| `PATIENTS` | array | (no longer imported — hooks.tsx uses Firestore) |
+| `PROCEDURES` | array | (no longer imported — hooks.tsx uses Firestore) |
+| `NOTIFICATIONS` | array | (no longer imported) |
 
-**mockData.ts imports from:** nothing (leaf dependency)
+**Note:** This file is retained for offline testing only. All hooks now query Firestore directly.
 
 ---
 
@@ -113,18 +132,20 @@ Dashboard, Worklist, Patients, Procedures, ReportsHub, Education, Admin, Activit
 
 ---
 
-## components/ (6 files)
+## components/ (7 files)
 
 | Component | Exports | Imports From Project |
 |-----------|---------|---------------------|
-| Header.tsx | `Header` | `useAuth` from ../lib/hooks |
+| Header.tsx | `Header` | `useAuth`, `useNotifications`, `markNotificationRead`, `markAllNotificationsRead` from ../lib/hooks |
 | Sidebar.tsx | `Sidebar` | `useAuth` from ../lib/hooks |
 | WorkflowStepper.tsx | `WorkflowStepper` | `useAuth` from ../lib/hooks |
 | NotificationDrawer.tsx | `NotificationDrawer` | `useAuth` from ../lib/hooks |
-| PreReviewBanner.tsx | `PreReviewBanner` | `useAuth` from ../lib/hooks |
+| PreReviewBanner.tsx | `PreReviewBanner` | `useAuth`, `updateProcedure` from ../lib/hooks |
+| FrameViewer.tsx | `FrameViewer` | (none — receives frames as props) |
 | ErrorBoundary.tsx | `ErrorBoundary`, `withErrorBoundary` | (none) |
 
-**All components are imported by:** 23 screen files (Sidebar, Header, WorkflowStepper)
+**Sidebar + Header imported by:** All screen files
+**FrameViewer imported by:** Viewer (SCR-10)
 
 ---
 
@@ -141,6 +162,25 @@ import { WorkflowStepper } from '../components/WorkflowStepper';
 ```
 
 **Screen list:** AIQA, ActivityLog, Admin, Analytics, CapsuleUpload, CheckIn, Dashboard, Education, ManageClinics, ManageICDCodes, ManagePractice, ManageStaff, ManageSubscription, Operations, PatientOverview, Patients, Procedures, Report, ReportsHub, SignDeliver, Summary, Viewer, Worklist
+
+---
+
+## types/capsule-image.ts (NEW — Image Pipeline Types)
+
+| Export | Type | Imported By |
+|--------|------|-------------|
+| `CapsuleImageDocument` | interface | Viewer (BUILD_09), getCapsuleFrames callable |
+| `AIAnalysisResult` | interface | Viewer (BUILD_09) |
+| `GetCapsuleFramesResponse` | interface | hooks.tsx (useCapsuleFrames), getCapsuleFrames callable |
+| `CestAnatomicalLocation` | type | Viewer (BUILD_09) |
+| `CestFindingClassification` | type | Viewer (BUILD_09) |
+| `CEST_ANATOMICAL_LOCATIONS` | const array | (reference) |
+| `CEST_FINDING_CLASSIFICATIONS` | const array | (reference) |
+| `CEST_TO_ANATOMICAL_REGION` | const map | Viewer (BUILD_09) |
+| `cestToAnatomicalRegion` | function | Viewer (BUILD_09) |
+
+**capsule-image.ts imports from:** `../types/enums` (AnatomicalRegion)
+**Barrel exported from:** `types/index.ts`
 
 ---
 
