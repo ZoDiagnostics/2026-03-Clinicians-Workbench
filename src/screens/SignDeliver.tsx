@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -7,6 +7,7 @@ import { ReportStatus, DeliveryMethod } from '../types/enums';
 import { getReportSectionText } from '../types/report';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
+import { WorkflowStepper } from '../components/WorkflowStepper';
 
 // BRD ZCW-BRD-0076 — Digital Signature
 // BRD ZCW-BRD-0077 — Delivery Methods
@@ -27,10 +28,21 @@ const SignDeliver: React.FC = () => {
   const [deliveryMethods, setDeliveryMethods] = useState<Set<string>>(new Set());
   const [delivering, setDelivering] = useState(false);
   const [delivered, setDelivered] = useState(false);
+  // BUG-42: Track per-method delivery status for individual toasts
+  const [deliveryStatus, setDeliveryStatus] = useState<Record<string, 'pending' | 'success' | 'error'>>({});
 
   const canSign = role === 'clinician_auth' || role === 'clinician_admin';
   const wasAlreadySigned = report?.status === ReportStatus.SIGNED || report?.status === ReportStatus.AMENDED;
   const isSigned = justSigned || wasAlreadySigned;
+
+  // BUG-43: After signing, "Back to Report" should navigate to read-only view, not edit mode.
+  // The edit locking is enforced by Report.tsx (checking procedure status = completed).
+  // Default PDF Download delivery selected per ZCW-BRD-0298
+  useEffect(() => {
+    if (isSigned && deliveryMethods.size === 0) {
+      setDeliveryMethods(new Set(['pdf_download']));
+    }
+  }, [isSigned]);
 
   const handleSign = async () => {
     if (!report || !user || !procedure || signing) return;
@@ -74,6 +86,11 @@ const SignDeliver: React.FC = () => {
     if (!report || deliveryMethods.size === 0 || delivering) return;
 
     setDelivering(true);
+    // BUG-42: Show per-method pending status immediately
+    const initialStatus: Record<string, 'pending' | 'success' | 'error'> = {};
+    Array.from(deliveryMethods).forEach(m => { initialStatus[m] = 'pending'; });
+    setDeliveryStatus(initialStatus);
+
     try {
       await updateReport(report.id, {
         deliveryRecords: Array.from(deliveryMethods).map(m => ({
@@ -84,9 +101,17 @@ const SignDeliver: React.FC = () => {
           status: 'queued' as const,
         })),
       });
+      // BUG-42: Mark each method as success
+      const successStatus: Record<string, 'pending' | 'success' | 'error'> = {};
+      Array.from(deliveryMethods).forEach(m => { successStatus[m] = 'success'; });
+      setDeliveryStatus(successStatus);
       setDelivered(true);
     } catch (err) {
       console.error('Failed to record delivery:', err);
+      // BUG-42: Mark all as error on failure
+      const errorStatus: Record<string, 'pending' | 'success' | 'error'> = {};
+      Array.from(deliveryMethods).forEach(m => { errorStatus[m] = 'error'; });
+      setDeliveryStatus(errorStatus);
     } finally {
       setDelivering(false);
     }
@@ -97,6 +122,9 @@ const SignDeliver: React.FC = () => {
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <Header />
+
+        {/* BUG-31: Workflow stepper — Sign & Deliver is step 6 */}
+        <WorkflowStepper currentStep={6} />
 
         {/* Navigation bar */}
         <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
@@ -217,12 +245,41 @@ const SignDeliver: React.FC = () => {
                   <h2 className="text-lg font-bold mb-4">Delivery Options</h2>
 
                   {delivered ? (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-                      <p className="text-green-800 font-medium">Delivery Recorded</p>
-                      <p className="text-sm text-green-600 mt-1">{Array.from(deliveryMethods).join(', ')}</p>
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold text-green-800 mb-3">Delivery Complete</p>
+                      {/* BUG-42: Individual delivery status per method */}
+                      {Array.from(deliveryMethods).map(method => {
+                        const status = deliveryStatus[method] || 'success';
+                        const methodLabel = {
+                          pdf_download: 'PDF Download',
+                          email_referring: 'Email to Referring Physician',
+                          email_patient: 'Email to Patient',
+                          hl7_fhir: 'HL7/FHIR Integration',
+                          print: 'Print',
+                        }[method] || method;
+                        return (
+                          <div key={method} className={`flex items-center gap-2 p-2 rounded text-sm ${
+                            status === 'success' ? 'bg-green-50 text-green-800' :
+                            status === 'error' ? 'bg-red-50 text-red-800' :
+                            'bg-gray-50 text-gray-600'
+                          }`}>
+                            <span>{status === 'success' ? '✓' : status === 'error' ? '✗' : '⏳'}</span>
+                            <span>{methodLabel}</span>
+                            <span className="text-xs ml-auto opacity-70">
+                              {status === 'success' ? 'Queued' : status === 'error' ? 'Failed' : 'Processing...'}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <>
+                      {/* BUG-43: Show delivery defaults note when signed */}
+                      {isSigned && (
+                        <p className="text-xs text-gray-500 mb-3 bg-gray-50 border border-gray-200 rounded p-2">
+                          PDF Download pre-selected as default (per practice settings). Add or remove delivery methods as needed.
+                        </p>
+                      )}
                       <div className="space-y-3 mb-4">
                         {[
                           { id: 'pdf_download', label: 'PDF Download' },

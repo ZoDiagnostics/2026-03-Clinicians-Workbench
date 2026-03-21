@@ -128,11 +128,11 @@
 |---|---|---|---|
 | `capsule_return_pending` | SCR-08 Check-In | `/checkin/:procedureId` | Awaiting capsule return from patient |
 | `capsule_received` | SCR-09 Capsule Upload | `/capsule-upload/:procedureId` | Data upload + validation |
-| `ready_for_review` | SCR-10 Viewer | `/viewer/:procedureId` | Diagnostic review (primary AOI) |
-| `draft` | SCR-10 Viewer | `/viewer/:procedureId` | Ongoing review, findings being marked |
-| `appended_draft` | SCR-10 Viewer | `/viewer/:procedureId` | Appended findings after initial review |
-| `completed` | SCR-12 Report (read-only) | `/report/:procedureId` | Report signed, view only |
-| `completed_appended` | SCR-12 Report (read-only) | `/report/:procedureId` | Report signed with appended findings |
+| `ready_for_review` | SCR-10 Viewer | `/viewer/:procedureId` | Diagnostic review (pre-review checklist first) |
+| `draft` | SCR-12 Report | `/report/:procedureId` | Findings confirmed, report editing |
+| `appended_draft` | SCR-12 Report | `/report/:procedureId` | Appended findings, report editing |
+| `completed` | SCR-11 Summary (read-only) | `/summary/:procedureId` | Report signed, view summary |
+| `completed_appended` | SCR-11 Summary (read-only) | `/summary/:procedureId` | Report signed with amendments, view summary |
 | `closed` | SCR-11 Summary (read-only) | `/summary/:procedureId` | Archived, view only |
 | `void` | SCR-11 Summary (read-only) | `/summary/:procedureId` | Voided/cancelled, view only |
 

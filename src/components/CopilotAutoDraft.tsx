@@ -40,6 +40,21 @@ const CopilotAutoDraft: React.FC<CopilotAutoDraftProps> = ({
       ).join('\n')
     : 'No significant findings recorded.';
 
+  // BUG-14: Convert raw API errors to user-friendly messages
+  const getFriendlyError = (err: any): string => {
+    const msg = err?.message || String(err) || '';
+    if (msg.includes('RESOURCE_EXHAUSTED') || msg.includes('429') || msg.includes('quota')) {
+      return 'AI generation temporarily unavailable — quota exceeded. Please try again later.';
+    }
+    if (msg.includes('PERMISSION_DENIED') || msg.includes('403') || msg.includes('API_KEY')) {
+      return 'AI generation unavailable — API key not configured or invalid.';
+    }
+    if (msg.includes('UNAVAILABLE') || msg.includes('503') || msg.includes('network')) {
+      return 'AI service is temporarily unavailable. Please try again in a few minutes.';
+    }
+    return 'Unable to generate — please try again.';
+  };
+
   const handleGenerateImpression = async () => {
     setGeneratingImpression(true);
     setError(null);
@@ -48,7 +63,7 @@ const CopilotAutoDraft: React.FC<CopilotAutoDraftProps> = ({
       const result = await generateClinicalImpression(findingsSummary, studyType, patientContext);
       setImpressionText(result);
     } catch (err: any) {
-      setError(err.message || 'Failed to generate impression');
+      setError(getFriendlyError(err));
     } finally {
       setGeneratingImpression(false);
     }
@@ -62,7 +77,7 @@ const CopilotAutoDraft: React.FC<CopilotAutoDraftProps> = ({
       const result = await generateRecommendations(findingsSummary, impressionText, studyType);
       setRecommendationsText(result);
     } catch (err: any) {
-      setError(err.message || 'Failed to generate recommendations');
+      setError(getFriendlyError(err));
     } finally {
       setGeneratingRecommendations(false);
     }
@@ -104,8 +119,15 @@ const CopilotAutoDraft: React.FC<CopilotAutoDraftProps> = ({
       </p>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded p-2 mb-3">
+        <div className="bg-red-50 border border-red-200 rounded p-3 mb-3 flex items-start justify-between gap-2">
           <p className="text-xs text-red-600">{error}</p>
+          <button
+            onClick={() => setError(null)}
+            className="text-xs text-red-400 hover:text-red-600 flex-shrink-0"
+            title="Dismiss"
+          >
+            ✕
+          </button>
         </div>
       )}
 

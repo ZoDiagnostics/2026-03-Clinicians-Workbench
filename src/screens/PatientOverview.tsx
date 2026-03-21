@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import { useAuth, useProcedures } from '../lib/hooks';
 import { Patient } from '../types/patient';
 import { COLLECTIONS } from '../types/firestore-paths';
+import { ProcedureStatus } from '../types/enums';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
 import { routeByStatus } from '../lib/routeByStatus';
@@ -19,12 +20,21 @@ export function PatientOverview() {
   const [error, setError] = useState<string | null>(null);
   const allProcedures = useProcedures();
 
-  // Filter procedures for this patient
-  const patientProcedures = useMemo(() =>
-    allProcedures.filter(p => p.patientId === id)
-      .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)),
-    [allProcedures, id]
-  );
+  // BUG-46: Status filter and date sort for procedure history
+  const [procStatusFilter, setProcStatusFilter] = useState<ProcedureStatus | 'all'>('all');
+  const [procDateSort, setProcDateSort] = useState<'desc' | 'asc'>('desc');
+
+  // Filter and sort procedures for this patient
+  const patientProcedures = useMemo(() => {
+    let procs = allProcedures.filter(p => p.patientId === id);
+    if (procStatusFilter !== 'all') {
+      procs = procs.filter(p => p.status === procStatusFilter);
+    }
+    return procs.sort((a, b) => {
+      const diff = (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0);
+      return procDateSort === 'desc' ? -diff : diff;
+    });
+  }, [allProcedures, id, procStatusFilter, procDateSort]);
 
   useEffect(() => {
     if (!practiceId || !id) return;
@@ -124,14 +134,35 @@ export function PatientOverview() {
 
             {/* Procedure History — BRD ZCW-BRD-0014, ZCW-BRD-0250 */}
             <div className="bg-white shadow sm:rounded-lg">
-              <div className="px-4 py-5 sm:px-6 flex items-center justify-between">
+              <div className="px-4 py-5 sm:px-6 flex items-center justify-between flex-wrap gap-3">
                 <h3 className="text-lg font-medium text-gray-900">Procedure History ({patientProcedures.length})</h3>
-                <button
-                  onClick={() => navigate(`/procedures`)}
-                  className="text-sm bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700"
-                >
-                  + New Procedure
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* BUG-46: Status filter */}
+                  <select
+                    value={procStatusFilter}
+                    onChange={e => setProcStatusFilter(e.target.value as ProcedureStatus | 'all')}
+                    className="text-xs border border-gray-300 rounded-md pl-2 pr-6 py-1.5 focus:outline-none focus:ring-indigo-500"
+                  >
+                    <option value="all">All Statuses</option>
+                    {Object.values(ProcedureStatus).map(s => (
+                      <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
+                    ))}
+                  </select>
+                  {/* BUG-46: Date sort toggle */}
+                  <button
+                    onClick={() => setProcDateSort(d => d === 'desc' ? 'asc' : 'desc')}
+                    className="text-xs border border-gray-300 rounded-md px-2 py-1.5 hover:bg-gray-50"
+                    title="Toggle date sort"
+                  >
+                    Date {procDateSort === 'desc' ? '↓ Newest' : '↑ Oldest'}
+                  </button>
+                  <button
+                    onClick={() => navigate(`/procedures`)}
+                    className="text-sm bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700"
+                  >
+                    + New Procedure
+                  </button>
+                </div>
               </div>
               <div className="border-t border-gray-200">
                 {patientProcedures.length > 0 ? (

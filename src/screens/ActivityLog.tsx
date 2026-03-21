@@ -27,9 +27,12 @@ const eventColors: Record<string, string> = {
 };
 
 export const ActivityLog: React.FC = () => {
-  const { practiceId } = useAuth();
+  const { practiceId, role } = useAuth();
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // BUG-09/49: Role gate — only admin and clinician_admin may view the activity log
+  const hasAccess = role === 'admin' || role === 'clinician_admin';
 
   useEffect(() => {
     if (!practiceId) return;
@@ -45,6 +48,25 @@ export const ActivityLog: React.FC = () => {
 
     return () => unsubscribe();
   }, [practiceId]);
+
+  if (!hasAccess) {
+    return (
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar />
+        <div className="flex-1 flex flex-col">
+          <Header />
+          <main className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="text-5xl mb-4">🔒</div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+              <p className="text-gray-600">The Activity Log is restricted to administrators and clinician administrators.</p>
+              <p className="text-sm text-gray-500 mt-1">Your current role: <span className="font-medium">{role || 'unknown'}</span></p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-gray-50">

@@ -11,9 +11,28 @@ import { useAuth } from '../../lib/hooks';
 
 const ManagePractice: React.FC = () => {
   const navigate = useNavigate();
-  const { practiceId } = useAuth();
+  const { practiceId, role } = useAuth();
   const practice = usePractice();
   const practiceSettings = usePracticeSettings();
+
+  // BUG-10: Role gate — only admin and clinician_admin may access admin sub-routes
+  if (role !== 'admin' && role !== 'clinician_admin') {
+    return (
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar />
+        <div className="flex-1 flex flex-col">
+          <Header />
+          <main className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="text-5xl mb-4">🔒</div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+              <p className="text-gray-600">This page is restricted to administrators only.</p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   const [name, setName] = useState('');
   const [settings, setSettings] = useState<Partial<PracticeSettings>>({});

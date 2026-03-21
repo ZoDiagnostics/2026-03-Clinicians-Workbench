@@ -31,8 +31,29 @@ interface PreReviewBannerProps {
 export const PreReviewBanner: React.FC<PreReviewBannerProps> = ({ procedureId, studyType, onReviewStarted }) => {
   const { user } = useAuth();
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
-  const [expanded, setExpanded] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  // BUG-32: Persist collapse state in sessionStorage so it survives re-renders within the session
+  const collapseKey = `prereview-collapsed-${procedureId}`;
+  const [expanded, setExpanded] = useState<boolean>(() => {
+    try {
+      const stored = sessionStorage.getItem(collapseKey);
+      return stored === null ? true : stored !== 'true'; // default expanded; 'true' = collapsed
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleExpanded = () => {
+    setExpanded(prev => {
+      const next = !prev;
+      try {
+        // Store collapsed state: 'true' = collapsed (i.e., !expanded)
+        sessionStorage.setItem(collapseKey, (!next).toString());
+      } catch { /* ignore storage errors */ }
+      return next;
+    });
+  };
 
   const allChecked = checkedItems.size === CHECKLIST_ITEMS.length;
 
@@ -76,7 +97,7 @@ export const PreReviewBanner: React.FC<PreReviewBannerProps> = ({ procedureId, s
 
   return (
     <div className="bg-blue-900 text-white">
-      <div className="p-4 flex justify-between items-center cursor-pointer" onClick={() => setExpanded(!expanded)}>
+      <div className="p-4 flex justify-between items-center cursor-pointer" onClick={toggleExpanded}>
         <div className="flex items-center gap-3">
           <div className="flex-shrink-0">
             <div className="w-10 h-10 rounded-full bg-blue-800 flex items-center justify-center text-sm font-bold">

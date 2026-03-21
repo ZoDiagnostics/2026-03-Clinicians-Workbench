@@ -3,10 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth, useReport, useFindings, useActiveProcedure, usePatients, updateReport } from '../lib/hooks';
-import { ReportStatus } from '../types/enums';
+import { ReportStatus, ProcedureStatus } from '../types/enums';
 import { getReportSectionText, SimpleReportSections } from '../types/report';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
+import { WorkflowStepper } from '../components/WorkflowStepper';
 import CopilotAutoDraft from '../components/CopilotAutoDraft';
 import ICDCodeSuggestions from '../components/ICDCodeSuggestions';
 
@@ -23,6 +24,15 @@ const Report: React.FC = () => {
   const allPatients = usePatients();
 
   const patient = procedure ? allPatients.find(p => p.id === procedure.patientId) : null;
+
+  // BUG-13: Report is read-only when procedure is in a terminal state
+  const LOCKED_STATUSES: string[] = [
+    ProcedureStatus.COMPLETED,
+    ProcedureStatus.COMPLETED_APPENDED,
+    ProcedureStatus.CLOSED,
+    ProcedureStatus.VOID,
+  ];
+  const isLocked = procedure ? LOCKED_STATUSES.includes(procedure.status) : false;
 
   // Editable sections
   const [findingsText, setFindingsText] = useState('');
@@ -90,6 +100,9 @@ const Report: React.FC = () => {
       <div className="flex-1 flex flex-col">
         <Header />
 
+        {/* BUG-31: Workflow stepper — Report is step 5 */}
+        <WorkflowStepper currentStep={5} />
+
         {/* Patient/Procedure info bar */}
         {procedure && (
           <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
@@ -113,6 +126,17 @@ const Report: React.FC = () => {
 
         <main className="flex-1 overflow-y-auto">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            {/* BUG-13: Read-only banner for locked procedures */}
+            {isLocked && (
+              <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 mb-4 flex items-center gap-3">
+                <span className="text-amber-600 text-xl">🔒</span>
+                <div>
+                  <p className="text-amber-800 font-semibold text-sm">Read-Only — Procedure {procedure?.status?.replace(/_/g, ' ')}</p>
+                  <p className="text-amber-700 text-xs mt-0.5">This report cannot be edited because the procedure has been {procedure?.status?.replace(/_/g, ' ')}. To make changes, create an addendum.</p>
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-between items-center mb-4">
               <h1 className="text-2xl font-bold text-gray-900">Clinical Report</h1>
               {report && (
@@ -124,10 +148,12 @@ const Report: React.FC = () => {
                   }`}>
                     {report.status?.replace(/_/g, ' ')}
                   </span>
-                  <button onClick={handleSave} disabled={saving}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700 disabled:bg-gray-400">
-                    {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save Draft'}
-                  </button>
+                  {!isLocked && (
+                    <button onClick={handleSave} disabled={saving}
+                      className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700 disabled:bg-gray-400">
+                      {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save Draft'}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -152,9 +178,10 @@ const Report: React.FC = () => {
                     <h2 className="text-lg font-bold mb-2 text-gray-900">Findings ({findings.length})</h2>
                     <textarea
                       value={findingsText}
-                      onChange={e => setFindingsText(e.target.value)}
+                      onChange={e => !isLocked && setFindingsText(e.target.value)}
+                      readOnly={isLocked}
                       rows={6}
-                      className="w-full border border-gray-300 rounded-md p-3 text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                      className={`w-full border border-gray-300 rounded-md p-3 text-sm focus:ring-indigo-500 focus:border-indigo-500 ${isLocked ? 'bg-gray-50 text-gray-700 cursor-not-allowed' : ''}`}
                       placeholder="Enter findings summary..."
                     />
                   </div>
@@ -164,9 +191,10 @@ const Report: React.FC = () => {
                     <h2 className="text-lg font-bold mb-2 text-gray-900">Clinical Impression</h2>
                     <textarea
                       value={impression}
-                      onChange={e => setImpression(e.target.value)}
+                      onChange={e => !isLocked && setImpression(e.target.value)}
+                      readOnly={isLocked}
                       rows={4}
-                      className="w-full border border-gray-300 rounded-md p-3 text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                      className={`w-full border border-gray-300 rounded-md p-3 text-sm focus:ring-indigo-500 focus:border-indigo-500 ${isLocked ? 'bg-gray-50 text-gray-700 cursor-not-allowed' : ''}`}
                       placeholder="Enter clinical impression..."
                     />
                   </div>
@@ -176,9 +204,10 @@ const Report: React.FC = () => {
                     <h2 className="text-lg font-bold mb-2 text-gray-900">Recommendations</h2>
                     <textarea
                       value={recommendations}
-                      onChange={e => setRecommendations(e.target.value)}
+                      onChange={e => !isLocked && setRecommendations(e.target.value)}
+                      readOnly={isLocked}
                       rows={4}
-                      className="w-full border border-gray-300 rounded-md p-3 text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                      className={`w-full border border-gray-300 rounded-md p-3 text-sm focus:ring-indigo-500 focus:border-indigo-500 ${isLocked ? 'bg-gray-50 text-gray-700 cursor-not-allowed' : ''}`}
                       placeholder="Enter recommendations..."
                     />
                   </div>

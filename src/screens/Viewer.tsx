@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useActiveProcedure, useFindings, usePatients, createFinding, deleteFinding } from '../lib/hooks';
+import { useActiveProcedure, useFindings, usePatients, createFinding, deleteFinding, updateFinding } from '../lib/hooks';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
 import { PreReviewBanner } from '../components/PreReviewBanner';
 import { FrameViewer } from '../components/FrameViewer';
+import { WorkflowStepper } from '../components/WorkflowStepper';
 import { AnatomicalRegion, FindingProvenance, FindingReviewStatus, ProcedureStatus } from '../types/enums';
 import { Finding } from '../types/finding';
 
@@ -24,6 +25,9 @@ export const Viewer: React.FC = () => {
   const [currentFrame, setCurrentFrame] = useState(0);
   const [newFindingClass, setNewFindingClass] = useState('');
   const [selectedRegion, setSelectedRegion] = useState<string>(AnatomicalRegion.COLON);
+  // BUG-11: Confirmation dialog state for finding deletion
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const pendingDeleteFinding = pendingDeleteId ? findings.find(f => f.id === pendingDeleteId) : null;
 
   const patient = procedure ? allPatients.find(p => p.id === procedure.patientId) : null;
   const isPreReview = procedure?.status === ProcedureStatus.READY_FOR_REVIEW;
@@ -57,10 +61,31 @@ export const Viewer: React.FC = () => {
     setNewFindingClass('');
   };
 
-  const handleDeleteFinding = async (findingId: string) => {
+  // BUG-11: Two-step delete — show confirmation dialog first
+  const handleRequestDelete = (findingId: string) => {
+    setPendingDeleteId(findingId);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (procedureId && pendingDeleteId && reviewUnlocked) {
+      await deleteFinding(procedureId, pendingDeleteId);
+    }
+    setPendingDeleteId(null);
+  };
+
+  const handleDismissFinding = async (findingId: string) => {
     if (procedureId && reviewUnlocked) {
       await deleteFinding(procedureId, findingId);
     }
+  };
+
+  // BUG-33: Toggle dismissed status on finding badge click
+  const handleToggleDismiss = async (finding: Finding) => {
+    if (!procedureId || !reviewUnlocked) return;
+    const isDismissed = finding.reviewStatus === FindingReviewStatus.REJECTED;
+    await updateFinding(procedureId, finding.id, {
+      reviewStatus: isDismissed ? FindingReviewStatus.PENDING : FindingReviewStatus.REJECTED,
+    });
   };
 
   if (!procedure) {
@@ -82,6 +107,9 @@ export const Viewer: React.FC = () => {
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <Header />
+
+        {/* BUG-31: Workflow stepper — Viewer is step 3 */}
+        <WorkflowStepper currentStep={3} />
 
         {/* Patient info bar */}
         <div className="bg-gray-900 border-b border-gray-700 px-4 py-2 flex items-center justify-between">
@@ -154,43 +182,54 @@ export const Viewer: React.FC = () => {
 
             {/* Findings list */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {findings.map((finding) => (
-                <div key={finding.id} className="bg-gray-800 p-3 rounded-lg">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-medium text-sm">{finding.classification || finding.type || 'Unnamed finding'}</p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {finding.anatomicalRegion || finding.region || '-'} • Frame {finding.primaryFrameNumber || finding.frameNumber || 0}
-                      </p>
-                      <div className="flex gap-2 mt-1">
-                        <span className={`text-xs px-1.5 py-0.5 rounded ${
-                          finding.provenance === 'ai_detected' ? 'bg-blue-900 text-blue-300' : 'bg-green-900 text-green-300'
-                        }`}>
-                          {finding.provenance === 'ai_detected' ? 'AI' : 'Manual'}
-                        </span>
-                        <span className={`text-xs px-1.5 py-0.5 rounded ${
-                          finding.reviewStatus === 'confirmed' ? 'bg-green-900 text-green-300' :
-                          finding.reviewStatus === 'rejected' ? 'bg-red-900 text-red-300' :
-                          'bg-yellow-900 text-yellow-300'
-                        }`}>
-                          {finding.reviewStatus || 'pending'}
-                        </span>
-                        {(finding.aiConfidence || finding.confidence) && (
-                          <span className="text-xs text-gray-500">{finding.aiConfidence || finding.confidence}%</span>
-                        )}
+              {findings.map((finding) => {
+                const isDismissed = finding.reviewStatus === FindingReviewStatus.REJECTED;
+                return (
+                  <div key={finding.id} className={`bg-gray-800 p-3 rounded-lg ${isDismissed ? 'opacity-50' : ''}`}>
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">{finding.classification || finding.type || 'Unnamed finding'}</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {finding.anatomicalRegion || finding.region || '-'} • Frame {finding.primaryFrameNumber || finding.frameNumber || 0}
+                        </p>
+                        <div className="flex gap-2 mt-1 flex-wrap">
+                          <span className={`text-xs px-1.5 py-0.5 rounded ${
+                            finding.provenance === 'ai_detected' ? 'bg-blue-900 text-blue-300' : 'bg-green-900 text-green-300'
+                          }`}>
+                            {finding.provenance === 'ai_detected' ? 'AI' : 'Manual'}
+                          </span>
+                          {/* BUG-33: Clickable review status badge toggles dismissed state */}
+                          <button
+                            onClick={() => reviewUnlocked && !isCompleted && handleToggleDismiss(finding)}
+                            className={`text-xs px-1.5 py-0.5 rounded cursor-pointer transition-opacity ${
+                              finding.reviewStatus === 'confirmed' ? 'bg-green-900 text-green-300' :
+                              finding.reviewStatus === 'rejected' ? 'bg-red-900 text-red-300 line-through' :
+                              'bg-yellow-900 text-yellow-300'
+                            } ${reviewUnlocked && !isCompleted ? 'hover:opacity-80' : ''}`}
+                            title={reviewUnlocked && !isCompleted ? (isDismissed ? 'Click to un-dismiss' : 'Click to dismiss finding') : undefined}
+                            disabled={!reviewUnlocked || isCompleted}
+                          >
+                            {finding.reviewStatus || 'pending'}
+                          </button>
+                          {(finding.aiConfidence || finding.confidence) && (
+                            <span className="text-xs text-gray-500">{finding.aiConfidence || finding.confidence}%</span>
+                          )}
+                        </div>
                       </div>
+                      {/* BUG-11: Delete triggers confirmation dialog */}
+                      {reviewUnlocked && !isCompleted && (
+                        <button
+                          onClick={() => handleRequestDelete(finding.id)}
+                          className="text-red-500 hover:text-red-400 text-xs ml-2 flex-shrink-0"
+                          title="Delete finding"
+                        >
+                          ✕
+                        </button>
+                      )}
                     </div>
-                    {reviewUnlocked && !isCompleted && (
-                      <button
-                        onClick={() => handleDeleteFinding(finding.id)}
-                        className="text-red-500 hover:text-red-400 text-xs"
-                      >
-                        ✕
-                      </button>
-                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {findings.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
                   <p>No findings yet</p>
@@ -249,6 +288,41 @@ export const Viewer: React.FC = () => {
           </div>
         </main>
       </div>
+      {/* BUG-11: Finding delete confirmation dialog */}
+      {pendingDeleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setPendingDeleteId(null)} />
+          <div className="relative bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Finding</h3>
+            <p className="text-sm text-gray-600 mb-1">
+              Are you sure you want to permanently delete this finding?
+            </p>
+            {pendingDeleteFinding && (
+              <p className="text-sm font-medium text-gray-800 bg-gray-100 rounded p-2 mb-4">
+                {pendingDeleteFinding.classification || pendingDeleteFinding.type || 'Unnamed finding'}
+                {' — '}{pendingDeleteFinding.anatomicalRegion || 'unknown region'}
+              </p>
+            )}
+            <p className="text-xs text-gray-500 mb-4">
+              To keep the finding in audit history but hide it from the report, use the status badge to dismiss it instead.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setPendingDeleteId(null)}
+                className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 text-sm text-white bg-red-600 rounded-md hover:bg-red-700"
+              >
+                Delete permanently
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

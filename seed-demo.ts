@@ -222,6 +222,8 @@ async function seedDemo() {
     { status: 'completed', studyType: 'colon_eval', urgency: 'routine' },
     { status: 'completed_appended', studyType: 'sb_diagnostic', urgency: 'routine' },
     { status: 'closed', studyType: 'sb_diagnostic', urgency: 'routine' },
+    // BUG-SEED-4: void-status procedure (previously missing from seed)
+    { status: 'void', studyType: 'crohns_monitor', urgency: 'routine' },
   ];
 
   const procedureIds: string[] = [];
@@ -268,23 +270,34 @@ async function seedDemo() {
   }
 
   await batch3.commit();
-  console.log(`15 procedures created across all statuses.`);
+  console.log(`16 procedures created across all statuses (including void).`);
 
-  // 7. Reports (for completed procedures)
+  // 7. Reports (for completed + draft/appended_draft procedures)
+  // BUG-SEED-5: Fix William Taylor sb_diagnostic mismatch — draft procedures must get
+  // report status='draft', not 'signed'. Only completed/completed_appended/closed get signed reports.
   console.log('\n--- Seeding Reports ---');
   const batch4 = db.batch();
+  // Build a map from procedureId → config index so we can look up status when creating reports
+  const procIdToConfigIndex = new Map<string, number>(
+    procedureIds.map((id, i) => [id, i])
+  );
   const completedProcIds = procedureIds.filter((_, i) =>
     ['completed', 'completed_appended', 'closed', 'draft', 'appended_draft'].includes(procedureConfigs[i].status)
   );
 
   for (const procId of completedProcIds) {
+    const configIdx = procIdToConfigIndex.get(procId)!;
+    const procConfig = procedureConfigs[configIdx];
+    const isSignedStatus = ['completed', 'completed_appended', 'closed'].includes(procConfig.status);
+    const reportStatus = isSignedStatus ? 'signed' : 'draft';
+
     const reportId = faker.string.uuid();
     batch4.set(db.collection('reports').doc(reportId), {
       id: reportId,
       procedureId: procId,
       practiceId: PRACTICE_ID,
       clinicianId: clinicianUid,
-      status: 'signed',
+      status: reportStatus,
       sections: {
         findings: faker.helpers.arrayElement([
           '1. 3mm sessile polyp in proximal jejunum at frame 12,847 (AI-detected, confidence 92%). No bleeding noted.\n2. Small erosion in duodenal bulb at frame 4,231 (clinician-marked). Consistent with NSAID use.\n3. Normal cecal appearance. No masses or vascular malformations identified.',
@@ -305,9 +318,12 @@ async function seedDemo() {
           'Urgent referral for colonoscopic polypectomy of ascending colon polyp. Surveillance capsule endoscopy for angiodysplasia in 6 months. Continue aspirin per cardiology recommendation.',
         ]),
       },
-      signedAt: Timestamp.fromDate(new Date(Date.now() - Math.floor(Math.random() * 7) * 86400000)),
-      signedBy: clinicianUid,
-      signerName: 'Dr. Sarah Chen',
+      // Only populate signature fields for truly signed reports (BUG-SEED-5)
+      ...(isSignedStatus ? {
+        signedAt: Timestamp.fromDate(new Date(Date.now() - Math.floor(Math.random() * 7) * 86400000)),
+        signedBy: clinicianUid,
+        signerName: 'Dr. Sarah Chen',
+      } : {}),
       icdCodes: faker.helpers.arrayElement([
         [{ code: 'K92.1', description: 'Melena', status: 'confirmed' }, { code: 'K63.5', description: 'Polyp of colon', status: 'suggested' }],
         [{ code: 'K50.10', description: 'Crohn\'s disease of large intestine', status: 'confirmed' }, { code: 'K50.80', description: 'Crohn\'s disease, other', status: 'confirmed' }],
