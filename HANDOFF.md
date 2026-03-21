@@ -1,6 +1,6 @@
 # ZoCW Session Handoff & Work Queue
 **Purpose:** Initialization context for a new Claude Cowork session + prioritized work queue.
-**Last Updated:** March 19, 2026 (session wrap-up — image pipeline planning + doc audit + cleanup)
+**Last Updated:** March 20, 2026 (session wrap-up — UX fixes, Copilot AI integration, Firebase Hosting deploy)
 
 ## MANDATORY SESSION RULES
 1. **At session start:** Read this file to understand current state and work queue.
@@ -9,9 +9,23 @@
 
 ---
 
-## SESSION LOG (March 19, 2026)
+## SESSION LOG
 
-### Morning Session
+### March 20, 2026 — Office Session
+- **Firebase Hosting deployed** — app live at https://cw-e7c19.web.app
+- **Tech debt cleanup** — eliminated all 14 `as any` casts. Added `SimpleReportSections` type, `getReportSectionText()` helper, backward-compatible Finding fields (`confidence`, `type`, `region`, `frameNumber`, `description`)
+- **LESSONS_LEARNED.md** — 7 documented lessons from the build
+- **Code review & drill-down data** — fixed 6 screens (CheckIn patient name, PatientOverview procedure history, Patients registration modal, Procedures creation modal, Report editing with save, SignDeliver functional signing + delivery)
+- **Enriched seed-demo.ts** — 4 varied report templates, 8 detailed finding templates, 20 audit log entries
+- **All screens consistent** — Sidebar/Header on every screen, admin back buttons, no more stub screens
+- **#A Viewer UX fixed** — findings panel gated behind pre-review checklist, frame controls disabled when no frames, guidance banner
+- **#B SignDeliver fixed** — distinguishes "just signed" vs "previously signed", clear messaging
+- **#C CopilotAutoDraft wired to Gemini API** — `src/lib/gemini.ts` created, generates clinical impressions and recommendations from findings. Accept button pushes AI text into Report fields.
+- **Gemini API BLOCKER** — Free tier shows `limit: 0` for all models on `cw-e7c19` project. Needs billing account linked to enable free tier quotas. Cameron chose Option B (link billing) over Option A (use Podium key).
+- **Antigravity evaluation** — reviewed ChatGPT/Gemini assessment. Decision: wait for now, Antigravity not consistently reliable yet.
+- **Google sign-in works** on `cw-e7c19.web.app` (the deployed domain)
+
+### March 19, 2026 — Morning Session
 - Completed Phases 0-5 (Auth, Clinical Workflow, Viewer, Report, Admin)
 - Set up GitHub repo, Firebase Studio workspace, Firebase Console project
 
@@ -134,8 +148,12 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 - [ ] **Wire Viewer.tsx to real frames** — Replace `const frames: string[] = []` with data from `useCapsuleFrames`. Show AI analysis results in findings panel with provenance badge `AI_DETECTED`.
 - [ ] **Wire CapsuleUpload.tsx to real upload** — Replace simulated upload with actual upload to `podium-capsule-raw-images-test` bucket using capsule serial number as folder name.
 
-#### ⚠️ PRE-REQUISITE: Push to GitHub
-- [ ] **Git push pending** — All changes from the Mar 19 late evening session (types, architecture doc, BUILD_09, doc audit, CECUM fix, router fix, archiving) are on OneDrive but have NOT been pushed to GitHub yet. Run from Mac Terminal:
+#### ⚠️ IMMEDIATE NEXT STEP: Enable Gemini API billing
+- [ ] **Link billing account to cw-e7c19** — Go to https://console.cloud.google.com/billing?project=cw-e7c19 → Link a billing account. The free tier won't charge you but needs an active billing account to enable quotas. After linking, wait 2-3 minutes, then test Copilot Auto-Draft in the app at https://cw-e7c19.web.app (navigate to a Report screen → click "Generate Clinical Impression").
+- [ ] **Set budget alert** — After linking billing, go to Billing → Budgets & Alerts → Create Budget → $10/month on cw-e7c19.
+
+#### ⚠️ PRE-REQUISITE: Push latest changes to GitHub
+- [ ] **Git push pending** — All changes from the Mar 20 office session (UX fixes, Copilot, tech debt, lessons learned) need to be pushed. Run from Mac Terminal:
   ```
   cd /Users/cameronplummer/Library/CloudStorage/OneDrive-SharedLibraries-ZoDiagnostics/SW\ -\ Software\ Dev\ and\ AI-ML\ -\ General/40-Clinician-Workbench/10-Human-Read-Review/90-Demos-Pitches/Claude\ Demo/zocw-firebase-repo
   git add -A && git commit -m "Phase 9 planning: image pipeline integration architecture, types, BUILD_09, doc audit, cleanup" && git push origin main
