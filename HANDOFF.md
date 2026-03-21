@@ -6,6 +6,7 @@
 1. **At session start:** Read this file to understand current state and work queue.
 2. **At session end:** When user says "wrap up" or indicates they're done, UPDATE this file with: what was accomplished, any new queue items, and update the "Last Updated" date. Then commit and push to GitHub.
 3. **After every major milestone:** Update the WORK QUEUE section to reflect completed items.
+4. **Model selection guidance:** Cameron needs to conserve weekly and session limits. For each task, recommend whether **Sonnet 4.6** (faster, cheaper, good for straightforward code/edits) or **Opus 4.6** (deeper reasoning, better for architecture/debugging/complex multi-file changes) is needed. Use Sonnet for: file edits, simple bug fixes, seed data changes, git operations, documentation updates. Use Opus for: architectural decisions, complex multi-file refactors, debugging tricky issues, code reviews, new feature design.
 
 ---
 
