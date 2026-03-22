@@ -1,6 +1,6 @@
 # ZoCW Session Handoff & Work Queue
 **Purpose:** Initialization context for a new Claude Cowork session + prioritized work queue.
-**Last Updated:** March 21, 2026 (Bug Fix Session — 27 bugs fixed across 9 batches, ~20 files)
+**Last Updated:** March 21, 2026 — FINAL HOME OFFICE WRAP-UP (Opus 4.6). Two uncommitted change sets pending push: (1) Bug fixes — 27 bugs, commit `6cb7f6b`; (2) UX fixes — 6 refinements, NOT YET COMMITTED. Both must be pushed from office on 2026-03-22.
 
 ## MANDATORY SESSION RULES
 1. **At session start:** Read this file to understand current state and work queue.
@@ -12,6 +12,103 @@
 ---
 
 ## SESSION LOG
+
+### March 21, 2026 — HOME OFFICE SESSION SUMMARY (for next office session)
+
+**This entry summarizes ALL work done from Cameron's home office on March 21, 2026 across multiple Cowork sessions (Opus + Sonnet). The next session at the office should read this first.**
+
+#### What happened (chronological):
+1. **Opus reviewed Sonnet Session 4 testing** — found count mismatches, role mixing, and skipped screens. Session 4 results are directionally useful but not authoritative.
+2. **Opus built test guardrails** — created pre-filtered "Sonnet Session 5" sheet (393 exact scenarios for Authorized Clinician), checkpoint protocol, and reusable test prompt template (`SONNET_SESSION_5_PROMPT.md`).
+3. **Sonnet ran Session 5 testing** — 51 PASS, 266 FAIL, 22 BLOCKED, 54 pre-blocked. 100% count accuracy. 38 new bugs (BUG-15 through BUG-52). Total bugs now: 52.
+4. **Opus added wrap-up/handoff protocol** to PROJECT_INSTRUCTIONS.md and prompt templates so future sessions always complete handoff.
+5. **Opus classified all 52 bugs** — created BUG_FIX_PLAN.md (22 CODE-FIX, 21 FEATURE-BUILD, 4 BLOCKED, 1 DUPLICATE, 9 prioritized batches).
+6. **Sonnet ran autonomous bug-fix session** — fixed 27 bugs across 9 batches. 128 files changed. Committed as `6cb7f6b`.
+7. **Git push attempted** — HTTPS authentication not configured. Push blocked at credential prompt.
+8. **Opus built UX evaluation framework** — read CDP's UX documents (personas, UX system, unified intelligence layer), created:
+   - `ZOCW_PERSONA_ROLE_MAPPING.md` — 5 personas → 5 system roles
+   - `ZOCW_UX_GAP_ANALYSIS.md` — 6 critical flows audited, 14 Cat 2 items, 8 Cat 3 backlog items
+   - `ZOCW_HEURISTIC_SCORES_BASELINE.md` — baseline heuristic scores (1/4 in-scope flows pass)
+   - `ZOCW_UX_REMEDIATION_PLAN.md` — 6 approved fixes + full backlog
+   - Added "UX Flow" column to test scenarios spreadsheet (825 rows mapped)
+   - Updated PROJECT_INSTRUCTIONS.md artifact registry with all UX documents
+9. **Sonnet ran UX remediation session** — implemented 6 approved fixes across 3 files (Viewer.tsx, SignDeliver.tsx, ActivityLog.tsx). All fixes landed per spec, no deviations.
+
+#### What's uncommitted (TWO change sets):
+- **Change set 1 (committed, not pushed):** Bug fixes — commit `6cb7f6b`, 128 files, +2975/-866
+- **Change set 2 (not yet committed):** UX fixes — 3 files changed (Viewer.tsx, SignDeliver.tsx, ActivityLog.tsx) + UX_FIX_SESSION_REPORT.md
+
+#### What to do at office (in order):
+1. **Set up Git auth:** `brew install gh && gh auth login` (or use Personal Access Token)
+2. **Commit UX changes:** `cd` to repo, `git add -A && git commit -m "UX remediation: 6 refinements (confidence tooltip, no-anomalies copy, sign scroll gate, sign modal, Activity Log filters)"`
+3. **Push both commits:** `git push origin main`
+4. **Pull in Firebase Studio** and run `npm run build` — verify no TypeScript errors
+5. **Smoke-test at https://cw-e7c19.web.app:**
+   - Viewer: hover over AI confidence % → tooltip appears
+   - Viewer: empty findings → blue "no anomalies" message (not gray "no findings yet")
+   - SignDeliver: Sign button disabled until report preview scrolled to bottom
+   - SignDeliver: Sign button opens confirmation modal
+   - ActivityLog: user dropdown + date range filters work
+6. **Regression retest** — re-run failed scenarios to measure improvement from bug fixes
+7. **Resume image pipeline** (BUILD_09) or expand test coverage to untested roles
+
+#### Consolidated test statistics (825 total scenarios):
+| Category | Count | % |
+|----------|-------|---|
+| Tested (Session 5, clinician_auth) | 339 | 41% |
+| Pre-blocked | 54 | 7% |
+| Untested roles (admin, noauth, clinician_admin, user) | 432 | 52% |
+| PASS | 51 | 6.2% |
+| FAIL | 266 | 32.2% |
+| BLOCKED (runtime) | 22 | 2.7% |
+| Total bugs found | 52 | — |
+| Bugs fixed | 27 | — |
+| UX refinements applied | 6 | — |
+
+#### Key UX artifacts (in `UX Test inputs/` folder):
+- `zocw_personas_v1.md` — 5 clinical personas (CDP authored with ChatGPT/Claude Chat)
+- `zocw_ux_system_v2.md` — UX evaluation framework (CDP authored)
+- `unified_ux_intelligence_layer_v2.md` — cross-product UX layer (CDP authored)
+- `ZOCW_PERSONA_ROLE_MAPPING.md` — persona → system role bridge (Opus)
+- `ZOCW_UX_GAP_ANALYSIS.md` — 6 critical flows vs build state (Opus)
+- `ZOCW_HEURISTIC_SCORES_BASELINE.md` — baseline scores, 1/4 pass pre-fix (Opus)
+- `ZOCW_UX_REMEDIATION_PLAN.md` — 6 approved + 16 backlog items (Opus + CDP)
+
+---
+
+### March 21, 2026 — UX Remediation Session (Sonnet 4.6, Cowork)
+- **Scope:** 6 approved UX refinements from ZOCW_UX_REMEDIATION_PLAN.md
+- **Files changed:** `src/screens/Viewer.tsx`, `src/screens/SignDeliver.tsx`, `src/screens/ActivityLog.tsx`
+- **Fixes:**
+  - UX-03 (confidence tooltip): `Info` icon + native `title` tooltip on AI confidence % in Viewer findings panel
+  - UX-04 (no-anomalies copy): Empty findings state is now context-aware — blue icon + "AI analysis complete — no anomalies detected. Independent clinician review is still required." when review is unlocked; original gray text when locked
+  - UX-06 (scroll gate): Report preview in SignDeliver is now a scrollable container (`max-h-96 overflow-y-auto`); Sign button disabled until scrolled to bottom (20px threshold); auto-clears when content fits without scrolling
+  - UX-07 (sign modal): Sign button now opens a `"Confirm Report Signing"` modal with legal-binding warning before calling `handleSign()`; dark themed (bg-gray-900/border-gray-700); modal confirm button also checks scroll gate
+  - UX-09 (user filter): ActivityLog now has a user dropdown extracting unique `userName` values from fetched entries; client-side filter
+  - UX-10 (date filter): ActivityLog has From/To date inputs; combined filter with user filter; "Clear Filters" button; "Showing X of Y entries" count
+- **Session docs:** `UX_FIX_SESSION_REPORT.md` created in repo root with per-fix disposition, deviations, and follow-up notes
+- **Next step:** Cameron pushes to GitHub from office, runs `npm run build`, smoke-tests fixed features at https://cw-e7c19.web.app
+
+### March 21, 2026 — Opus Oversight Session (Opus 4.6, Cowork) — INTERMEDIATE WRAP-UP
+- **Scope:** Full session managing Sonnet testing and bug-fix workflow. Reviewed Session 4 errors, built guardrails for Session 5, verified Session 5 results, classified all 52 bugs, created autonomous bug-fix plan, assisted with Git setup.
+- **Deliverables created:**
+  - `Zo_Workbench_Functional_Test_Scenarios_v2_4.xlsx` — Pre-filtered "Sonnet Session 5" sheet (393 scenarios, 339 testable, 54 pre-blocked) with S5 Control Sheet
+  - `SONNET_SESSION_5_PROMPT.md` — Reusable autonomous test session prompt with checkpoint protocol and mandatory wrap-up
+  - `BUG_FIX_PLAN.md` — Full triage of 52 bugs: 22 CODE-FIX, 21 FEATURE-BUILD, 4 BLOCKED, 1 DUPLICATE, organized into 9 prioritized batches
+  - `SONNET_BUG_FIX_PROMPT.md` — Autonomous Sonnet prompt for bug-fix execution
+- **Artifacts updated:**
+  - `PROJECT_INSTRUCTIONS.md` — Added Session Wrap-Up & Handoff Protocol, Test History entries for Sessions 4/5 and Bug Fix Session, updated artifact table
+  - `HANDOFF.md` — Updated work queue with push instructions, added session log
+- **Session 5 results verified:** 51 PASS, 266 FAIL, 22 BLOCKED, 54 pre-blocked. All 23 screen counts matched exactly. Zero role leakage. 38 new bugs (BUG-15 through BUG-52).
+- **Bug fix session completed by Sonnet:** 27 bugs fixed across 9 batches. Commit `6cb7f6b` (128 files, +2975/-866).
+- **Consolidated test stats (825 total):** 339 tested (41%), 51 PASS (6.2%), 266 FAIL (32.2%), 22 BLOCKED (2.7%), 54 pre-blocked, 432 untested (other roles). 52 bugs total, 27 fixed, 25 remaining.
+- **BLOCKED:** Git push to GitHub — HTTPS authentication not configured. Cameron will push from office on 2026-03-22.
+- **Next steps (in order):**
+  1. Push commit `6cb7f6b` to GitHub (requires PAT or `gh auth login`)
+  2. Pull in Firebase Studio → `npm run build` → smoke-test fixes at https://cw-e7c19.web.app
+  3. **Regression retest** — Re-run the 266 FAIL + 22 BLOCKED scenarios to measure improvement from the 27 bug fixes. Use pre-filtered Sonnet Session 5 sheet and `SONNET_SESSION_5_PROMPT.md` template pattern, targeting only previously-failed scenario IDs. Expected big gains in: Worklist, Notifications, Viewer, Report, Sign & Deliver, Security.
+  4. Expand test coverage to untested roles (432 scenarios: admin 166, noauth 135, clinician_admin 74, user 56)
+  5. Resume image pipeline integration (BUILD_09)
 
 ### March 21, 2026 — Bug Fix Session (Sonnet 4.6, Cowork) — AUTONOMOUS RUN
 - **Scope:** Full execution of ZoCW Bug Fix Plan — All 52 Bugs. Fixed all 27 CODE-FIX and FEATURE-BUILD items across 9 batches. Skipped 25 BLOCKED/DUPLICATE bugs per plan classification.
@@ -230,12 +327,20 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 - [ ] **Link billing account to cw-e7c19** — Go to https://console.cloud.google.com/billing?project=cw-e7c19 → Link a billing account. The free tier won't charge you but needs an active billing account to enable quotas. After linking, wait 2-3 minutes, then test Copilot Auto-Draft in the app at https://cw-e7c19.web.app (navigate to a Report screen → click "Generate Clinical Impression").
 - [ ] **Set budget alert** — After linking billing, go to Billing → Budgets & Alerts → Create Budget → $10/month on cw-e7c19.
 
-#### ⚠️ PRE-REQUISITE: Push latest changes to GitHub
-- [ ] **Git push pending** — All changes from the Mar 20 office session (UX fixes, Copilot, tech debt, lessons learned) AND Mar 20 evening session (Model Selection Guide v1.2 added to docs/) need to be pushed. Run from Mac Terminal:
+#### ⚠️ PRE-REQUISITE: Push bug fix commit to GitHub
+- [ ] **Git push pending (commit `6cb7f6b`)** — Bug fix session changes (27 bugs fixed, 128 files changed) are committed locally but NOT pushed to GitHub. HTTPS auth needs to be set up first (Personal Access Token or `gh auth login`). Run from Mac Terminal at office:
   ```
   cd /Users/cameronplummer/Library/CloudStorage/OneDrive-SharedLibraries-ZoDiagnostics/SW\ -\ Software\ Dev\ and\ AI-ML\ -\ General/40-Clinician-Workbench/10-Human-Read-Review/90-Demos-Pitches/Claude\ Demo/zocw-firebase-repo
-  git add -A && git commit -m "Phase 9 planning: image pipeline integration architecture, types, BUILD_09, doc audit, cleanup" && git push origin main
+  # Option A: GitHub CLI (recommended — persistent auth)
+  brew install gh && gh auth login
+  git push origin main
+  # Option B: Personal Access Token (one-time)
+  # Go to github.com → Settings → Developer settings → Personal access tokens → Tokens (classic)
+  # Generate with "repo" scope, then:
+  git push origin main
+  # Enter GitHub username, paste token as password
   ```
+- [ ] **After push:** Pull in Firebase Studio → `npm run build` to verify no TypeScript errors → smoke-test at https://cw-e7c19.web.app
 
 #### 1B: Image Pipeline — Backend (separate Cowork session / pipeline project)
 ⚠️ **This work is in the pipeline GCP project (`podium-capsule-ingest`), NOT in the ZoCW repo.**

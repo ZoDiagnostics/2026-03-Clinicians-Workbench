@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Info } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useActiveProcedure, useFindings, usePatients, createFinding, deleteFinding, updateFinding } from '../lib/hooks';
 import { Sidebar } from '../components/Sidebar';
@@ -211,8 +212,19 @@ export const Viewer: React.FC = () => {
                           >
                             {finding.reviewStatus || 'pending'}
                           </button>
+                          {/* UX-03: AI confidence tooltip with Info icon */}
                           {(finding.aiConfidence || finding.confidence) && (
-                            <span className="text-xs text-gray-500">{finding.aiConfidence || finding.confidence}%</span>
+                            <span
+                              className="flex items-center gap-0.5 text-xs text-gray-500 cursor-help"
+                              title="AI Confidence reflects model certainty from image analysis. High (≥85%): strong pattern match. Medium (50-84%): review recommended. Low (<50%): uncertain — manual review essential."
+                            >
+                              {finding.aiConfidence || finding.confidence}%
+                              <Info
+                                size={14}
+                                className="text-gray-400 hover:text-gray-300"
+                                aria-hidden="true"
+                              />
+                            </span>
                           )}
                         </div>
                       </div>
@@ -230,13 +242,20 @@ export const Viewer: React.FC = () => {
                   </div>
                 );
               })}
+              {/* UX-04: Context-aware empty state — distinguish "AI found nothing" from "hasn't started" */}
               {findings.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <p>No findings yet</p>
-                  <p className="text-xs mt-1">
-                    {reviewUnlocked ? 'Add findings manually or start AI detection' : 'Complete the checklist to begin'}
-                  </p>
-                </div>
+                reviewUnlocked ? (
+                  <div className="text-center py-8">
+                    <Info size={20} className="text-blue-400 mx-auto mb-2" aria-hidden="true" />
+                    <p className="text-blue-400 text-sm font-medium">AI analysis complete — no anomalies detected.</p>
+                    <p className="text-xs text-blue-300/70 mt-1">Independent clinician review is still required.</p>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>No findings yet</p>
+                    <p className="text-xs mt-1">Complete the checklist to begin</p>
+                  </div>
+                )
               )}
             </div>
 

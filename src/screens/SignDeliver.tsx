@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -31,6 +31,13 @@ const SignDeliver: React.FC = () => {
   // BUG-42: Track per-method delivery status for individual toasts
   const [deliveryStatus, setDeliveryStatus] = useState<Record<string, 'pending' | 'success' | 'error'>>({});
 
+  // UX-06: Scroll gate — Sign button disabled until clinician scrolls to bottom of preview
+  const previewRef = useRef<HTMLDivElement>(null);
+  const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
+
+  // UX-07: Confirmation modal state
+  const [showSignConfirm, setShowSignConfirm] = useState(false);
+
   const canSign = role === 'clinician_auth' || role === 'clinician_admin';
   const wasAlreadySigned = report?.status === ReportStatus.SIGNED || report?.status === ReportStatus.AMENDED;
   const isSigned = justSigned || wasAlreadySigned;
@@ -43,6 +50,24 @@ const SignDeliver: React.FC = () => {
       setDeliveryMethods(new Set(['pdf_download']));
     }
   }, [isSigned]);
+
+  // UX-06: Auto-clear scroll gate when preview is short enough that no scrolling is needed
+  useEffect(() => {
+    const el = previewRef.current;
+    if (!el) return;
+    if (el.scrollHeight <= el.clientHeight) {
+      setHasScrolledToBottom(true);
+    }
+  }, [report]);
+
+  // UX-06: Scroll handler — checks proximity to bottom (20px threshold)
+  const handlePreviewScroll = () => {
+    const el = previewRef.current;
+    if (!el) return;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 20) {
+      setHasScrolledToBottom(true);
+    }
+  };
 
   const handleSign = async () => {
     if (!report || !user || !procedure || signing) return;
@@ -147,7 +172,12 @@ const SignDeliver: React.FC = () => {
                 {!report ? (
                   <p className="text-gray-500">No report found for this procedure. Go back and generate a report first.</p>
                 ) : (
-                  <div className="space-y-6">
+                  /* UX-06: Scrollable preview container — scroll gate reads this ref */
+                  <div
+                    ref={previewRef}
+                    onScroll={handlePreviewScroll}
+                    className="space-y-6 overflow-y-auto max-h-96 pr-1"
+                  >
                     {/* Patient info */}
                     <div className="border-b border-gray-200 pb-4">
                       <h3 className="text-sm font-semibold text-gray-500 uppercase">Patient</h3>
@@ -229,13 +259,19 @@ const SignDeliver: React.FC = () => {
                           Your role ({role}) does not have signing authority. Only authorized clinicians can sign.
                         </p>
                       )}
+                      {/* UX-06 + UX-07: Scroll gate + confirmation modal */}
                       <button
-                        onClick={handleSign}
-                        disabled={signing || !canSign || !report}
-                        className="w-full px-4 py-3 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        onClick={() => setShowSignConfirm(true)}
+                        disabled={signing || !canSign || !report || !hasScrolledToBottom}
+                        className="w-full px-4 py-3 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {signing ? 'Signing...' : 'Sign Report'}
+                        Sign Report
                       </button>
+                      {!hasScrolledToBottom && (
+                        <p className="text-xs text-gray-400 text-center mt-1">
+                          Scroll through the full report summary to enable signing
+                        </p>
+                      )}
                     </>
                   )}
                 </div>
@@ -325,6 +361,37 @@ const SignDeliver: React.FC = () => {
           </div>
         </main>
       </div>
+
+      {/* UX-07: Sign confirmation modal */}
+      {showSignConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setShowSignConfirm(false)}
+          />
+          <div className="relative bg-gray-900 border border-gray-700 rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-bold text-white mb-3">Confirm Report Signing</h3>
+            <p className="text-sm text-gray-300 mb-6">
+              You are about to sign this report as a final clinical record. This action is legally binding and will lock the report from further editing.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowSignConfirm(false)}
+                className="px-4 py-2 text-sm text-gray-300 bg-gray-700 border border-gray-600 rounded-md hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { setShowSignConfirm(false); handleSign(); }}
+                disabled={!hasScrolledToBottom || signing}
+                className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {signing ? 'Signing...' : 'Sign Report'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

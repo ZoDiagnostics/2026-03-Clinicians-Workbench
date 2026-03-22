@@ -31,6 +31,12 @@ export const ActivityLog: React.FC = () => {
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // UX-09: User filter
+  const [selectedUser, setSelectedUser] = useState('');
+  // UX-10: Date range filters
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
   // BUG-09/49: Role gate — only admin and clinician_admin may view the activity log
   const hasAccess = role === 'admin' || role === 'clinician_admin';
 
@@ -68,6 +74,26 @@ export const ActivityLog: React.FC = () => {
     );
   }
 
+  // UX-09 + UX-10: Derive unique user list and apply combined filters (client-side on fetched 50)
+  const uniqueUsers = [...new Set(entries.map(l => l.userName).filter(Boolean))];
+
+  let filteredLogs = entries;
+  if (selectedUser) filteredLogs = filteredLogs.filter(l => l.userName === selectedUser);
+  if (dateFrom) filteredLogs = filteredLogs.filter(l =>
+    new Date(l.timestamp?.toDate?.() || l.timestamp) >= new Date(dateFrom)
+  );
+  if (dateTo) filteredLogs = filteredLogs.filter(l =>
+    new Date(l.timestamp?.toDate?.() || l.timestamp) <= new Date(dateTo + 'T23:59:59')
+  );
+
+  const hasActiveFilters = selectedUser !== '' || dateFrom !== '' || dateTo !== '';
+
+  const clearFilters = () => {
+    setSelectedUser('');
+    setDateFrom('');
+    setDateTo('');
+  };
+
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
@@ -76,6 +102,57 @@ export const ActivityLog: React.FC = () => {
         <main className="flex-1 overflow-y-auto">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-6">Activity Log</h1>
+
+            {/* UX-09 + UX-10: Filter row */}
+            <div className="flex items-center gap-3 mb-4 flex-wrap">
+              {/* UX-09: User filter dropdown */}
+              <select
+                value={selectedUser}
+                onChange={(e) => setSelectedUser(e.target.value)}
+                className="bg-gray-800 border border-gray-700 text-white rounded px-3 py-1.5 text-sm"
+                aria-label="Filter by user"
+              >
+                <option value="">All Users</option>
+                {uniqueUsers.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+
+              {/* UX-10: Date range inputs */}
+              <label className="flex items-center gap-1.5 text-sm text-gray-600">
+                From
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="bg-gray-800 border border-gray-700 text-white rounded px-3 py-1.5 text-sm"
+                />
+              </label>
+              <label className="flex items-center gap-1.5 text-sm text-gray-600">
+                To
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="bg-gray-800 border border-gray-700 text-white rounded px-3 py-1.5 text-sm"
+                />
+              </label>
+
+              {/* Clear filters button */}
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="px-3 py-1.5 text-xs text-gray-600 border border-gray-300 rounded hover:bg-gray-100"
+                >
+                  Clear Filters
+                </button>
+              )}
+
+              {/* Entry count */}
+              <span className="text-xs text-gray-400 ml-auto">
+                Showing {filteredLogs.length} of {entries.length} entries
+              </span>
+            </div>
 
             <div className="bg-white shadow overflow-hidden sm:rounded-lg">
               <table className="min-w-full divide-y divide-gray-200">
@@ -92,12 +169,14 @@ export const ActivityLog: React.FC = () => {
                     <tr>
                       <td colSpan={4} className="px-6 py-12 text-center text-gray-500">Loading activity log...</td>
                     </tr>
-                  ) : entries.length === 0 ? (
+                  ) : filteredLogs.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-6 py-12 text-center text-gray-500">No activity recorded yet.</td>
+                      <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
+                        {entries.length === 0 ? 'No activity recorded yet.' : 'No entries match the current filters.'}
+                      </td>
                     </tr>
                   ) : (
-                    entries.map((entry) => (
+                    filteredLogs.map((entry) => (
                       <tr key={entry.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {entry.timestamp?.toDate?.() ? entry.timestamp.toDate().toLocaleString() : '-'}
