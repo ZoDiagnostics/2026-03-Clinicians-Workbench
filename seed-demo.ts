@@ -159,6 +159,47 @@ async function seedDemo() {
     });
   }
 
+  // Additional test users created via Firebase Console (March 22, 2026)
+  // These UIDs are stable and must be preserved on re-seed.
+  batch1.set(db.collection('users').doc('cf9f1YBWFhNAB9KLbk1qVdoE1tE2'), {
+    uid: 'cf9f1YBWFhNAB9KLbk1qVdoE1tE2',
+    email: 'staff@zocw.com',
+    firstName: 'Sandra',
+    lastName: 'Martinez',
+    role: 'clinical_staff',
+    practiceId: PRACTICE_ID,
+    clinicIds: [CLINIC_ID],
+    isActive: true,
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  });
+
+  batch1.set(db.collection('users').doc('0ZhIsvTsClV37xic0KQDYSMeEM33'), {
+    uid: '0ZhIsvTsClV37xic0KQDYSMeEM33',
+    email: 'noauth@zocw.com',
+    firstName: 'Priya',
+    lastName: 'Nair',
+    role: 'clinician_noauth',
+    practiceId: PRACTICE_ID,
+    clinicIds: [CLINIC_ID],
+    isActive: true,
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  });
+
+  batch1.set(db.collection('users').doc('VtPqYvrpwCZhTFqCpzkP7FR3aZt2'), {
+    uid: 'VtPqYvrpwCZhTFqCpzkP7FR3aZt2',
+    email: 'admin@zocw.com',
+    firstName: 'Marcus',
+    lastName: 'Thompson',
+    role: 'admin',
+    practiceId: PRACTICE_ID,
+    clinicIds: [CLINIC_ID],
+    isActive: true,
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  });
+
   await batch1.commit();
   console.log('Batch 1 committed (practice, clinics, settings, staff).');
 

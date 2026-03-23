@@ -1,15 +1,24 @@
 # ZoCW Master Runbook — Step-by-Step Build Guide
 **For:** Cameron (non-developer, guided by Claude)
-**Last Updated:** March 19, 2026
+**Last Updated:** March 23, 2026
 **Rule:** Before every step, Claude re-reads this file to maintain context.
 
 ---
 
 ## WHERE WE ARE RIGHT NOW
 
-**Current Step:** Phases 1-8 COMPLETE ✅ — Phase 9 (Image Pipeline Integration) in planning
-**Status:** Production build passes (`npm run build` succeeds). Image pipeline architecture doc, types, and BUILD_09 packet created. Pipeline backend work queued for separate session.
-**Blockers:** Pipeline field rename (`procedure_id` → `capsule_serial`) and cross-project IAM setup must complete before BUILD_09 implementation. See HANDOFF.md Priority 1B.
+**Current Step:** Phases 1-8 COMPLETE ✅ — Phase 9 (Image Pipeline Integration) planned, implementation pending
+**Status:** 5 functional testing sessions complete. 52 bugs found, 27 fixed, 6 UX refinements applied. 3 Auth users created (staff@, noauth@, admin@). Billing upgraded to Blaze plan. Gemini model updated to `gemini-2.0-flash`. Stale docs updated. Git push to GitHub pending.
+**Blockers:** Pipeline field rename (`procedure_id` → `capsule_serial`) and cross-project IAM setup must complete before BUILD_09 implementation. Git push still requires `gh auth login` or PAT setup.
+
+### March 20–22, 2026 Session Summary
+- **Testing Sessions 1–5 completed:** 825 scenarios defined. 339 tested (clinician_auth), 51 PASS, 266 FAIL, 22 BLOCKED, 54 pre-blocked. 432 untested (other roles).
+- **52 bugs found** (BUG-01 through BUG-52) across security, data integrity, AI errors, notifications, stepper, Worklist, Viewer, Sign/Deliver, and seed data.
+- **27 bugs fixed** — committed as `6cb7f6b` (128 files, +2975/-866). Key fixes: role gates on admin screens and ActivityLog, WorkflowStepper added to 4 workflow screens (Viewer/Summary/Report/SignDeliver), Worklist rewritten as table layout with sort/filter/persistence, notification routing, two-step finding delete, copilot error handling, bowel prep quality score.
+- **6 UX refinements applied** — confidence tooltip, no-anomalies copy, scroll gate on Sign, sign confirmation modal, user + date filters on ActivityLog.
+- **3 Auth users created** via Firebase Console: staff@zocw.com (Sandra Martinez, clinical_staff), noauth@zocw.com (Priya Nair, clinician_noauth), admin@zocw.com (Marcus Thompson, admin). All 3 Firestore user docs created.
+- **Billing upgraded to Blaze** — Cameron linked payment info. $20/month budget set on cw-e7c19.
+- **Gemini model fix** — `gemini-2.0-flash-lite` deprecated by Google (404 error). Updated to `gemini-2.0-flash` in `src/lib/gemini.ts`.
 
 ### Key References
 - **GitHub Repo:** https://github.com/ZoDiagnostics/2026-03-Clinicians-Workbench

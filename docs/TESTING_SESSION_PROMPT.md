@@ -1,6 +1,7 @@
 # ZoCW Functional Testing Session Prompt
 **Purpose:** Self-contained prompt to paste into a fresh Cowork (Sonnet) session for comprehensive functional testing.
 **Created:** March 20, 2026
+**Last Updated:** March 23, 2026
 **Use once, then archive.**
 
 ---
@@ -94,7 +95,7 @@ Add a session log entry for this testing session under the March 20 section. Inc
 - What still needs testing (if anything)
 
 ### Known Issues (don't report these as new bugs)
-- Gemini API returns 429 RESOURCE_EXHAUSTED — billing not linked. Copilot auto-draft won't work.
+- Gemini API billing linked (Blaze plan). Model updated to `gemini-2.0-flash`. Copilot auto-draft should now be functional. If 404 errors occur, check model availability.
 - Sign out may require two clicks (possible timing issue)
 - Image pipeline frames not connected yet (FrameViewer shows "No Capsule Frames Loaded" — this is expected)
 
@@ -113,4 +114,9 @@ void → /summary/:id
 
 ### Credentials
 - clinician_auth: clinician@zocw.com / password
+- clinician_noauth: noauth@zocw.com / password
+- clinical_staff: staff@zocw.com / password
+- admin: admin@zocw.com / password
 - clinician_admin: cameron.plummer@gmail.com / [Google sign-in on deployed domain]
+
+**All 5 test users now exist in Firebase Auth + Firestore (created March 22, 2026).**

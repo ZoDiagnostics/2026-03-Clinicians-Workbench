@@ -1,6 +1,6 @@
 # Zo Clinicians Workbench (ZoCW) — Firebase Studio Reference
-**Version:** 3.2.0
-**Last Updated:** 2026-03-19
+**Version:** 3.2.1
+**Last Updated:** 2026-03-23
 **Purpose:** Quick reference for Firebase Studio sessions (keep this file open across all builds)
 
 ---
@@ -365,5 +365,41 @@ The ZoCW system uses two complementary data patterns for multi-tenancy:
 
 **Problem:** PDF export blank
 **Solution:** Verify Cloud Function can read report document. Check Cloud Storage bucket permissions.
+
+---
+
+## 11. Component Registry
+
+All reusable components in `src/components/`. 11 components as of March 23, 2026.
+
+| Component | File | Used By | Notes |
+|-----------|------|---------|-------|
+| `Header` | components/Header.tsx | All screens | Top nav bar, notification bell, user avatar dropdown |
+| `Sidebar` | components/Sidebar.tsx | All screens | Role-based navigation links with active state |
+| `WorkflowStepper` | components/WorkflowStepper.tsx | Viewer, Summary, Report, SignDeliver | 6-step workflow progress indicator. Added to SCR-10/11/12/13 in bug fix session (March 21). |
+| `NotificationDrawer` | components/NotificationDrawer.tsx | Header | Slide-out notification panel with mark-read actions |
+| `PreReviewBanner` | components/PreReviewBanner.tsx | Viewer (SCR-10) | 8-item pre-review checklist; gates findings panel |
+| `ErrorBoundary` | components/ErrorBoundary.tsx | main.tsx | React error boundary with `withErrorBoundary` HOC |
+| `FrameViewer` | components/FrameViewer.tsx | Viewer (SCR-10) | Capsule frame playback — play/pause, step, speed, scrubber. Shows "No Capsule Frames Loaded" until BUILD_09 complete. |
+| `CopilotAutoDraft` | components/CopilotAutoDraft.tsx | Report (SCR-12) | Gemini-powered clinical impression + recommendations generator. Depends on `lib/gemini.ts`. |
+| `ErrorState` | components/ErrorState.tsx | Various screens | Standalone error display utility component |
+| `ICDCodeSuggestions` | components/ICDCodeSuggestions.tsx | Report (SCR-12) | ICD-10 code suggestion panel; receives suggestions as props |
+| `LoadingSkeleton` | components/LoadingSkeleton.tsx | Various screens | Standalone loading placeholder utility component |
+
+---
+
+## 12. Build State Change Log (Post-Phase 8)
+
+### March 20–22, 2026 — Bug Fix Session + UX Remediation
+- **WorkflowStepper** added to 4 workflow screens: Viewer (SCR-10), Summary (SCR-11), Report (SCR-12), SignDeliver (SCR-13)
+- **Worklist (SCR-35)** rewritten as table layout with column sort, urgency filter, filter badges, URL param persistence
+- **Notification routing** added — notification clicks now navigate to relevant procedure screen
+- **Role gates** applied to admin screens (SCR-06/22/24/25/27) and ActivityLog (SCR-07) — unauthorized access shows "Access Denied"
+- **ActivityLog** now has user dropdown + date range filters (UX-09/10)
+- **SignDeliver** has scroll gate (UX-06) + confirmation modal (UX-07) before signing
+- **Viewer** has confidence tooltip (UX-03) + context-aware empty findings state (UX-04)
+- **CopilotAutoDraft** error messages improved — friendly display instead of raw JSON (BUG-14)
+- **Finding delete** is two-step with confirmation modal (BUG-11)
+- **Gemini model** updated to `gemini-2.0-flash` (prior model `gemini-2.0-flash-lite` deprecated by Google)
 
 ---

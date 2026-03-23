@@ -1,6 +1,6 @@
 # ZoCW Session Handoff & Work Queue
 **Purpose:** Initialization context for a new Claude Cowork session + prioritized work queue.
-**Last Updated:** March 21, 2026 — FINAL HOME OFFICE WRAP-UP (Opus 4.6). Two uncommitted change sets pending push: (1) Bug fixes — 27 bugs, commit `6cb7f6b`; (2) UX fixes — 6 refinements, NOT YET COMMITTED. Both must be pushed from office on 2026-03-22.
+**Last Updated:** March 23, 2026 — Sonnet work session (Sonnet 4.6, Cowork). Gemini model fix, seed-demo.ts users, 6 stale doc updates (NAMING_CONTRACT, IMPORT_MAP, TEST_VALIDATION, TESTING_SESSION_PROMPT, MASTER_RUNBOOK, ZOCW_REFERENCE).
 
 ## MANDATORY SESSION RULES
 1. **At session start:** Read this file to understand current state and work queue.
@@ -12,6 +12,97 @@
 ---
 
 ## SESSION LOG
+
+### March 23, 2026 — Sonnet Work Session (Sonnet 4.6, Cowork)
+- **Scope:** Bounded autonomous work session — 8 pre-approved tasks (1 code fix, 1 seed update, 6 doc updates)
+- **Completed:**
+  1. **Gemini model fix** — `src/lib/gemini.ts` line 12: `gemini-2.0-flash-lite` → `gemini-2.0-flash`. GEMINI_ENDPOINT template string resolves correctly. Verified with grep.
+  2. **seed-demo.ts users** — Added 3 test users to the `users` collection seeding section (staff@, noauth@, admin@) with stable UIDs matching Firebase Auth. Document structure matches existing pattern (email, firstName, lastName, role, uid, isActive, practiceId, clinicIds, createdAt, updatedAt).
+  3. **NAMING_CONTRACT.md** — Added 5 missing components: `CopilotAutoDraft`, `ErrorState`, `FrameViewer`, `ICDCodeSuggestions`, `LoadingSkeleton`. Updated Last Updated to March 23, 2026.
+  4. **IMPORT_MAP.md** — Added 5 missing components with import paths, dependencies, and "Imported By" notes. CopilotAutoDraft dependency on `lib/gemini.ts` documented. Updated Last Updated to March 23, 2026.
+  5. **TEST_VALIDATION.md** — Section 1 credentials table expanded to all 5 test users with UIDs. Removed stale "Additional test users require Firebase Console" note. Added Gemini API billing status and model update note.
+  6. **TESTING_SESSION_PROMPT.md** — Updated Known Issues: "Gemini API billing linked (Blaze plan). Model updated to `gemini-2.0-flash`." Added all 5 credentials to Credentials section.
+  7. **MASTER_RUNBOOK.md** — Updated "WHERE WE ARE" section to reflect sessions 1–5 complete, 52 bugs found, 27 fixed, 6 UX refinements, 3 Auth users created, billing upgraded, Gemini model updated. Added March 20–22 session summary.
+  8. **ZOCW_REFERENCE.md** — Updated to v3.2.1. Added Section 11 (Component Registry, 11 components). Added Section 12 (Build State Change Log) covering March 20–22 changes: WorkflowStepper on 4 screens, Worklist rewritten, notification routing, role gates, UX fixes.
+- **Verification:** All 8 checks passed (gemini-2.0-flash-lite grep returns 0, gemini-2.0-flash present in gemini.ts, all 8 docs have March 23 dates, all 3 new UIDs in seed-demo.ts, git diff only shows expected files).
+- **Issues/items for Opus review:** None — all tasks were bounded execution with clear specs. No architectural decisions required.
+- **Next steps (in order):**
+  1. **Git push** — `gh auth login` then `git push origin main` (both the pre-existing uncommitted changes and this session's changes)
+  2. **Build verify** — `npm run build` in Firebase Studio — should still pass (only gemini.ts changed in src/)
+  3. **Test new credentials** — Log in as staff@, noauth@, admin@ to verify role assignment and screen access
+  4. **Copilot test** — With billing linked and model updated, test Copilot Auto-Draft in Report screen
+  5. **Continue** — See WORK QUEUE Priority 1A for remaining BUILD_09 implementation items
+
+### March 22, 2026 — Home Office Session (Opus 4.6, Cowork)
+- **Scope:** Resolve Firebase Console blockers that don't require Git
+- **Completed:**
+  - Created 3 missing Firebase Auth test users:
+    - `staff@zocw.com` / `password` — for `clinical_staff` role (Sandra persona, Throughput Operator)
+    - `noauth@zocw.com` / `password` — for `clinician_noauth` role (Dr. Nair persona)
+    - `admin@zocw.com` / `password` — for `admin` role (Marcus persona, Practice Administrator)
+  - All 3 created via Firebase Console → Authentication → Add user
+  - **Billing upgraded to Blaze (pay-as-you-go)** — Cameron entered payment info. CW Budget set at $20/month. Currently at $3.15 spend.
+  - **Created 3 Firestore `users` collection documents** via Firestore REST API:
+    - `cf9f1YBWFhNAB9KLbk1qVdoE1tE2` — staff@zocw.com, Sandra Martinez, role: clinical_staff
+    - `0ZhIsvTsClV37xic0KQDYSMeEM33` — noauth@zocw.com, Priya Nair, role: clinician_noauth
+    - `VtPqYvrpwCZhTFqCpzkP7FR3aZt2` — admin@zocw.com, Marcus Thompson, role: admin
+    - All docs include: email, firstName, lastName, role, uid, isActive (true), practiceId (practice_abc123), clinicIds (["clinic_main"]), createdAt, updatedAt
+  - **Tested Gemini API** — Billing works (no more quota error), but got **404: model `models/gemini-2.0-flash-lite` is no longer available**. The model has been deprecated by Google. **Code fix needed:** update the model name in `src/lib/gemini.ts` to a current model (e.g., `gemini-2.0-flash` or `gemini-2.5-flash`).
+- **Firebase Auth UIDs (all 5 users):**
+  - `admin@zocw.com` → `VtPqYvrpwCZhTFqCpzkP7FR3aZt2`
+  - `noauth@zocw.com` → `0ZhIsvTsClV37xic0KQDYSMeEM33`
+  - `staff@zocw.com` → `cf9f1YBWFhNAB9KLbk1qVdoE1tE2`
+  - `clinician@zocw.com` → `uKbxuvulVLUDSa5INUxGh9S4QSh1`
+  - `cameron.plummer@gmail.com` → `OdUDBVGgX8WNvlT4uXFy4mnBX3w2`
+- **Next steps:**
+  1. Fix Gemini model name in `src/lib/gemini.ts` (change `gemini-2.0-flash-lite` to current model)
+  2. Push all commits to GitHub (still blocked — needs `gh auth login`)
+  3. Test login with new users (staff@, noauth@, admin@) to verify role assignment works
+  4. See "What to do at office" list in the March 21 entry below
+
+### March 22, 2026 — Full Doc & Code Audit (Opus 4.6, Cowork)
+- **Scope:** Read-only audit of all project files and documents. No code changes.
+- **Files audited:** HANDOFF.md, MASTER_RUNBOOK.md, NAMING_CONTRACT.md, IMPORT_MAP.md, ZOCW_REFERENCE.md, TEST_VALIDATION.md, BUG_FIX_PLAN.md, TEST_RESULTS (Mar 20 & 21), TESTING_SESSION_PROMPT.md, MODEL_SELECTION_GUIDE.md, IMAGE_PIPELINE_INTEGRATION.md, all 9 BUILD packets, all 11 UX docs, gemini.ts, router.tsx, all 24 screens, all 11 components, all 12 type files, seed-demo.ts
+- **Source structure verified:**
+  - 24 screen files (18 substantial, 5 root-level Manage stubs at 123–137 bytes, 1 admin/ dir with 5 real implementations at 1.9–10.6KB)
+  - 11 components (NAMING_CONTRACT lists 6; 5 added post-contract: CopilotAutoDraft, ErrorState, FrameViewer, ICDCodeSuggestions, LoadingSkeleton)
+  - 9 lib files, 12 type files — all present and correct
+  - Router imports Manage screens from `screens/admin/` (confirmed correct)
+  - BUILD_09 planning deliverables all exist (types, architecture doc, build packet)
+  - `useCapsuleFrames` and `getCapsuleFrames` referenced but not yet implemented (expected — BUILD_09 pending)
+- **Gemini model confirmed:** `src/lib/gemini.ts` line 12 uses `gemini-2.0-flash-lite` — deprecated by Google. Change to `gemini-2.0-flash` or `gemini-2.5-flash`.
+
+#### Stale Documents Found (need updating next session):
+
+1. **TEST_VALIDATION.md (Section 1)** — Still says "Additional test users require Firebase Console → Authentication → Add User". All 3 users now exist in Auth AND Firestore. Update credentials table to include all 5 users.
+2. **NAMING_CONTRACT.md** — Lists 6 components; there are now 11. Missing: CopilotAutoDraft, ErrorState, FrameViewer, ICDCodeSuggestions, LoadingSkeleton. Last updated March 16.
+3. **IMPORT_MAP.md** — Lists 7 components; there are now 11. Same 5 missing. Also does not reflect bug fix session additions (e.g., CopilotAutoDraft imports gemini.ts). Last updated March 19.
+4. **MASTER_RUNBOOK.md** — "Last Updated: March 19" and "Current Step: Phase 9 in planning". Doesn't mention testing sessions, bug fixes, UX remediation, or Firebase Console setup. The "WHERE WE ARE" section is significantly behind.
+5. **ZOCW_REFERENCE.md** — "Last Updated: 2026-03-19". Doesn't reflect bug fix changes (WorkflowStepper added to 4 screens, Worklist rewritten, notification routing, etc.)
+6. **TESTING_SESSION_PROMPT.md** — Still references "Gemini API returns 429 RESOURCE_EXHAUSTED — billing not linked". Billing is now linked. Error is now 404 (model deprecated).
+7. **SESSION4_COMPREHENSIVE_RESULTS.txt** — References "billing not linked" as a known issue. Historical doc, low priority to update.
+8. **seed-demo.ts** — Does NOT include the 3 new test users (staff@, noauth@, admin@). If re-seeded, their Firestore user docs would be lost. Recommend adding them to the seed script.
+
+#### Documents Confirmed Current:
+- HANDOFF.md — Updated this session with all completed work
+- PROJECT_INSTRUCTIONS.md — Updated this session
+- BUG_FIX_PLAN.md — Accurate (52 bugs classified, matches session reports)
+- BUG_FIX_SESSION_REPORT.md — Accurate (27 bugs fixed)
+- UX_FIX_SESSION_REPORT.md — Accurate (6 fixes)
+- IMAGE_PIPELINE_INTEGRATION.md — Accurate for current state
+- All 9 BUILD packets — Accurate
+- All UX docs in "UX Test Inputs/" — Accurate
+
+#### Work Queue Accuracy Check:
+- Priority 1A (Image Pipeline): ✅ Planning complete, 4 implementation items still pending — accurate
+- Priority 1 Bugs: ✅ Bug #6, #8 still open; Bug #3, #4, #5, #7 marked fixed — accurate
+- Admin Testing Blocker: ✅ Now resolved (updated this session)
+- Gemini Billing: ✅ Now resolved, new model deprecation blocker added this session
+- Git Push: Still pending — accurate
+- Priority 1B (Pipeline Backend): Still pending — accurate
+- Priority 2/3/4: All accurate, nothing newly resolved
+
+---
 
 ### March 21, 2026 — HOME OFFICE SESSION SUMMARY (for next office session)
 
@@ -321,11 +412,13 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 - [x] **Bug #5 — Fix seed data mismatch for William Taylor sb diagnostic** ✅ FIXED (Mar 21 bug fix session) — `seed-demo.ts` report seeding now sets `status: 'draft'` (no signedAt/signedBy) for draft/appended_draft procedures. Only completed/completed_appended/closed get signed reports.
 
 #### ⚠️ ADMIN TESTING BLOCKER: Google OAuth popup
-- [ ] **Enable email/password login for cameron.plummer@gmail.com** — Currently this account uses Google sign-in only. Adding an email/password credential (or creating a second `clinician_admin` test user with email/password) would allow automated browser testing of all AD-xx admin persona scenarios without the OAuth popup limitation. Do this via Firebase Console → Authentication → Users.
+- [x] **Created email/password admin test user** ✅ (Mar 22) — `admin@zocw.com` / `password` created in Firebase Auth.
+- [x] **Create Firestore user docs for new Auth users** ✅ (Mar 22) — All 3 new users have Firestore `users` docs with correct roles, practiceId, clinicIds. Created via Firestore REST API. Unblocks all role-specific test scenarios (AD-xx admin, CN-xx clinician_noauth, CS-xx clinical_staff).
 
-#### ⚠️ IMMEDIATE NEXT STEP: Enable Gemini API billing
-- [ ] **Link billing account to cw-e7c19** — Go to https://console.cloud.google.com/billing?project=cw-e7c19 → Link a billing account. The free tier won't charge you but needs an active billing account to enable quotas. After linking, wait 2-3 minutes, then test Copilot Auto-Draft in the app at https://cw-e7c19.web.app (navigate to a Report screen → click "Generate Clinical Impression").
-- [ ] **Set budget alert** — After linking billing, go to Billing → Budgets & Alerts → Create Budget → $10/month on cw-e7c19.
+#### ✅ COMPLETED: Gemini API billing
+- [x] **Link billing account to cw-e7c19** ✅ (Mar 22) — Blaze plan activated, CW Budget set at $20/month. Billing works (no more quota errors).
+- [x] **Set budget alert** ✅ (Mar 22) — CW Budget created at $20/month.
+- [x] **Fix deprecated Gemini model** ✅ (Mar 23) — `src/lib/gemini.ts` updated: `gemini-2.0-flash-lite` → `gemini-2.0-flash`. Verified no remaining references to old model in src/.
 
 #### ⚠️ PRE-REQUISITE: Push bug fix commit to GitHub
 - [ ] **Git push pending (commit `6cb7f6b`)** — Bug fix session changes (27 bugs fixed, 128 files changed) are committed locally but NOT pushed to GitHub. HTTPS auth needs to be set up first (Personal Access Token or `gh auth login`). Run from Mac Terminal at office:
@@ -387,8 +480,12 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 
 **ZoCW App (cw-e7c19):**
 - **Email/password:** clinician@zocw.com / password (role: clinician_auth)
+- **Email/password:** staff@zocw.com / password (role: clinical_staff — Sandra persona) *(Created Mar 22)*
+- **Email/password:** noauth@zocw.com / password (role: clinician_noauth) *(Created Mar 22)*
+- **Email/password:** admin@zocw.com / password (role: admin — Marcus persona) *(Created Mar 22)*
 - **Email/password:** cameron.plummer@gmail.com / [your password] (role: clinician_admin)
 - **Google sign-in:** Blocked in Firebase Studio dev environment. Works after Firebase Hosting deploy.
+- **✅ Note:** All Auth users now have matching Firestore `users` docs with correct roles (created Mar 22).
 
 **Image Pipeline (podium-capsule-ingest):**
 - **GCP Project:** `podium-capsule-ingest` (us-west2)

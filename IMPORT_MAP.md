@@ -1,6 +1,6 @@
 # ZoCW Import Map v1.0
 **Purpose:** Complete dependency map for every project file. When renaming anything, consult this map to find ALL files that need updating.
-**Last Updated:** March 19, 2026
+**Last Updated:** March 23, 2026
 
 ---
 
@@ -132,7 +132,7 @@ Dashboard, Worklist, Patients, Procedures, ReportsHub, Education, Admin, Activit
 
 ---
 
-## components/ (7 files)
+## components/ (11 files)
 
 | Component | Exports | Imports From Project |
 |-----------|---------|---------------------|
@@ -143,9 +143,16 @@ Dashboard, Worklist, Patients, Procedures, ReportsHub, Education, Admin, Activit
 | PreReviewBanner.tsx | `PreReviewBanner` | `useAuth`, `updateProcedure` from ../lib/hooks |
 | FrameViewer.tsx | `FrameViewer` | (none — receives frames as props) |
 | ErrorBoundary.tsx | `ErrorBoundary`, `withErrorBoundary` | (none) |
+| CopilotAutoDraft.tsx | `CopilotAutoDraft` | `generateClinicalImpression`, `generateRecommendations` from ../lib/gemini |
+| ErrorState.tsx | `ErrorState` | (none — standalone utility component) |
+| ICDCodeSuggestions.tsx | `ICDCodeSuggestions` | (none — receives suggestions as props) |
+| LoadingSkeleton.tsx | `LoadingSkeleton` | (none — standalone utility component) |
 
 **Sidebar + Header imported by:** All screen files
 **FrameViewer imported by:** Viewer (SCR-10)
+**CopilotAutoDraft imported by:** Report (SCR-12) — depends on lib/gemini.ts
+**ICDCodeSuggestions imported by:** Report (SCR-12)
+**ErrorState + LoadingSkeleton imported by:** Various screens (utility components)
 
 ---
 

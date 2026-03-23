@@ -1,6 +1,6 @@
 # ZoCW Naming Contract v1.0
 **Status:** LOCKED — Do not rename without updating this file AND every file in the Import Map.
-**Last Updated:** March 16, 2026
+**Last Updated:** March 23, 2026
 **Purpose:** Prevent naming conflicts that consumed ~55 turns (6+ hours) in the prior build attempt.
 
 ---
@@ -60,6 +60,11 @@
 | `ErrorBoundary` | components/ErrorBoundary.tsx | Named export |
 | `PreReviewBanner` | components/PreReviewBanner.tsx | Named export |
 | `NotificationDrawer` | components/NotificationDrawer.tsx | Named export |
+| `CopilotAutoDraft` | components/CopilotAutoDraft.tsx | Named export |
+| `ErrorState` | components/ErrorState.tsx | Named export |
+| `FrameViewer` | components/FrameViewer.tsx | Named export |
+| `ICDCodeSuggestions` | components/ICDCodeSuggestions.tsx | Named export |
+| `LoadingSkeleton` | components/LoadingSkeleton.tsx | Named export |
 
 ---
 

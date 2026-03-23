@@ -1,7 +1,7 @@
 # Test Validation Packet — Zo Clinicians Workbench (ZoCW) v3.2.0
 
 **Purpose:** Acceptance criteria and testable scenarios for functional user testing. Organized by persona (role) with realistic user journeys.
-**Last Updated:** 2026-03-20
+**Last Updated:** 2026-03-23
 **Live App:** https://cw-e7c19.web.app
 **Test Data:** Run `npx tsx seed-demo.ts` in Firebase Studio to populate 10 patients, 15 procedures (all 9 statuses), reports, findings, notifications, audit log, staff, clinics, practice settings.
 
@@ -9,13 +9,17 @@
 
 ## Section 1: Test Credentials & Roles
 
-| Persona | Login | Role | What They Do |
-|---|---|---|---|
-| Dr. Sarah Chen | clinician@zocw.com / password | `clinician_auth` | Reviews studies, confirms findings, signs reports |
-| Cameron Plummer | cameron.plummer@gmail.com / [password] | `clinician_admin` | All clinical work + admin, staff management, practice settings |
-| Google Sign-In | Any Google account | Varies (set via claims) | Only works on cw-e7c19.web.app (not localhost) |
+| Persona | Login | Role | UID | What They Do |
+|---|---|---|---|---|
+| Dr. Sarah Chen | clinician@zocw.com / password | `clinician_auth` | `uKbxuvulVLUDSa5INUxGh9S4QSh1` | Reviews studies, confirms findings, signs reports |
+| Cameron Plummer | cameron.plummer@gmail.com / [Google sign-in] | `clinician_admin` | `OdUDBVGgX8WNvlT4uXFy4mnBX3w2` | All clinical work + admin, staff management, practice settings |
+| Sandra Martinez | staff@zocw.com / password | `clinical_staff` | `cf9f1YBWFhNAB9KLbk1qVdoE1tE2` | Clinical support, capsule upload, check-in |
+| Dr. Priya Nair | noauth@zocw.com / password | `clinician_noauth` | `0ZhIsvTsClV37xic0KQDYSMeEM33` | Reviews studies, cannot sign reports |
+| Marcus Thompson | admin@zocw.com / password | `admin` | `VtPqYvrpwCZhTFqCpzkP7FR3aZt2` | Practice administration, user management, system settings |
 
-**Note:** Additional test users (clinician_noauth, admin, clinical_staff) require Firebase Console → Authentication → Add User, then `setInitialUserClaims` to provision role claims.
+**Note:** All 5 test users exist in Firebase Auth and Firestore. Auth credentials use password `password` except cameron.plummer@gmail.com (Google sign-in on deployed domain). Firestore user documents created March 22, 2026. UIDs are stable — seed-demo.ts now preserves all 5 users on re-seed.
+
+**Gemini API status:** Billing linked (Blaze plan, March 22, 2026). Model updated to `gemini-2.0-flash` (prior model `gemini-2.0-flash-lite` was deprecated by Google and returned 404). Copilot Auto-Draft should now be functional. If 404 errors occur, check model availability at https://ai.google.dev/gemini-api/docs/models/gemini.
 
 ---
 
