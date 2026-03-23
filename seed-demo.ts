@@ -104,8 +104,27 @@ async function seedDemo() {
       displayName: 'Dr. Sarah Chen',
     });
     clinicianUid = user.uid;
-    await auth.setCustomUserClaims(clinicianUid, { role: 'clinician_auth', practiceId: PRACTICE_ID });
     console.log(`Created clinician: ${clinicianUid}`);
+  }
+  // Always set custom claims on clinician (ensures claims survive re-seed)
+  await auth.setCustomUserClaims(clinicianUid, { role: 'clinician_auth', practiceId: PRACTICE_ID });
+  console.log(`  Claims set: clinician_auth`);
+
+  // Set custom claims on all other test users (staff, admin, noauth)
+  // These must exist in Firebase Auth before running seed.
+  const claimsToSet: Array<{ email: string; role: string }> = [
+    { email: 'admin@zocw.com', role: 'admin' },
+    { email: 'staff@zocw.com', role: 'clinical_staff' },
+    { email: 'noauth@zocw.com', role: 'clinician_noauth' },
+  ];
+  for (const { email, role } of claimsToSet) {
+    try {
+      const u = await auth.getUserByEmail(email);
+      await auth.setCustomUserClaims(u.uid, { role, practiceId: PRACTICE_ID });
+      console.log(`  Claims set for ${email}: ${role}`);
+    } catch {
+      console.log(`  Skipped ${email} (not in Firebase Auth)`);
+    }
   }
 
   // Get Cameron's UID if exists
