@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { useAuth } from '../lib/hooks';
@@ -9,14 +9,18 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading } = useAuth();
+
+  // BUG-6: Capture the intended destination from ProtectedRoute redirect
+  const redirectTo = (location.state as any)?.from || '/dashboard';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      navigate('/dashboard');
+      navigate(redirectTo);
     } catch (error) {
       setError("Invalid email or password");
       console.error(error);
@@ -28,7 +32,7 @@ export default function LoginScreen() {
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-      navigate('/dashboard');
+      navigate(redirectTo);
     } catch (error: any) {
       if (error.code === 'auth/popup-blocked') {
         setError("Popup was blocked. Please allow popups for this site and try again.");
@@ -44,7 +48,7 @@ export default function LoginScreen() {
   // If already logged in, redirect to dashboard
   useEffect(() => {
     if (!loading && user) {
-      navigate('/dashboard');
+      navigate(redirectTo);
     }
   }, [loading, user, navigate]);
 

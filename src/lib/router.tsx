@@ -3,6 +3,7 @@ import {
   createBrowserRouter,
   RouterProvider,
   Navigate,
+  useLocation,
 } from 'react-router-dom';
 import { Dashboard } from '../screens/Dashboard';
 import { Worklist } from '../screens/Worklist';
@@ -32,13 +33,15 @@ import { useAuth } from './hooks';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return <div>Loading...</div>; // Or a spinner component
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    // BUG-6: Pass the intended destination so Login can redirect back after auth
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
   return children;
