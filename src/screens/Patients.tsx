@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/hooks';
@@ -7,6 +7,8 @@ import { COLLECTIONS } from '../types/firestore-paths';
 import { Link } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
+import { ErrorState } from '../components/ErrorState';
+import { LoadingSkeleton } from '../components/LoadingSkeleton';
 
 // BRD ZCW-BRD-0011 — Patient Registration
 // Required: First Name, Last Name, DOB, Gender, MRN, Phone, Email
@@ -122,12 +124,35 @@ export function Patients() {
     }
   };
 
+  if (error) {
+    return (
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar />
+        <div className="flex-1 flex flex-col">
+          <Header />
+          <main className="flex-1 flex items-center justify-center">
+            <ErrorState
+              title="Couldn't load patients"
+              message={error}
+              onRetry={fetchPatients}
+            />
+          </main>
+        </div>
+      </div>
+    );
+  }
+
   if (authLoading || loading) {
     return (
       <div className="flex h-screen bg-gray-50">
-        <Sidebar /><div className="flex-1 flex flex-col"><Header />
-        <main className="flex-1 flex items-center justify-center"><p className="text-gray-500">Loading patients...</p></main>
-        </div></div>
+        <Sidebar />
+        <div className="flex-1 flex flex-col">
+          <Header />
+          <main className="flex-1 overflow-y-auto p-6">
+            <LoadingSkeleton rows={8} />
+          </main>
+        </div>
+      </div>
     );
   }
 

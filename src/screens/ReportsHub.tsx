@@ -1,14 +1,27 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { useAuth, useProcedures, usePatients } from '../lib/hooks';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
+import { ErrorState } from '../components/ErrorState';
 
 export const ReportsHub: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, practiceId } = useAuth();
   const procedures = useProcedures();
   const allPatients = usePatients();
+
+  const [screenError, setScreenError] = useState<Error | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
+
+  useEffect(() => {
+    if (!practiceId) return;
+    setScreenError(null);
+    getDocs(query(collection(db, 'procedures'), where('practiceId', '==', practiceId), limit(1)))
+      .catch((err: Error) => setScreenError(err));
+  }, [practiceId, retryKey]);
 
   const patientMap = useMemo(() =>
     new Map(allPatients.map(p => [p.id, `${p.firstName} ${p.lastName}`])),
@@ -19,6 +32,24 @@ export const ReportsHub: React.FC = () => {
   const reportableProcedures = procedures.filter(p =>
     ['draft', 'appended_draft', 'completed', 'completed_appended', 'closed'].includes(p.status)
   );
+
+  if (screenError) {
+    return (
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar />
+        <div className="flex-1 flex flex-col">
+          <Header />
+          <main className="flex-1 flex items-center justify-center">
+            <ErrorState
+              title="Couldn't load reports"
+              message="There was a problem fetching reports. Check your connection and try again."
+              onRetry={() => setRetryKey(k => k + 1)}
+            />
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-gray-50">

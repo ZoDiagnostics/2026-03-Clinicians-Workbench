@@ -131,14 +131,20 @@ export const Viewer: React.FC = () => {
             }`}>
               {isPreReview ? 'Pre-Review Required' : procedure.status.replace(/_/g, ' ')}
             </span>
-            {reviewUnlocked && (
-              <button
-                onClick={() => navigate(`/report/${procedureId}`)}
-                className="text-xs bg-indigo-600 hover:bg-indigo-700 px-3 py-1 rounded"
-              >
-                Go to Report →
-              </button>
-            )}
+            {/* BUG-08: Always visible; disabled (not hidden) during pre-review so the user
+                knows the button exists and sees why it's locked. */}
+            <button
+              onClick={reviewUnlocked ? () => navigate(`/report/${procedureId}`) : undefined}
+              disabled={!reviewUnlocked}
+              title={!reviewUnlocked ? 'Complete pre-review checklist first' : undefined}
+              className={`text-xs px-3 py-1 rounded transition-colors ${
+                reviewUnlocked
+                  ? 'bg-indigo-600 hover:bg-indigo-700 cursor-pointer'
+                  : 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-60'
+              }`}
+            >
+              Go to Report →
+            </button>
           </div>
         </div>
 
@@ -159,9 +165,10 @@ export const Viewer: React.FC = () => {
           </div>
         )}
 
-        <main className="flex-1 flex overflow-hidden relative">
+        {/* flex-col on mobile (frame stacked above findings), flex-row on md+ */}
+        <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
           {/* Main Content: Frame Viewer */}
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col min-h-0">
             <FrameViewer
               frames={frames}
               currentFrame={currentFrame}
@@ -170,8 +177,8 @@ export const Viewer: React.FC = () => {
             />
           </div>
 
-          {/* Right Sidebar: Findings Panel */}
-          <div className={`w-96 bg-gray-900 border-l border-gray-700 flex flex-col transition-opacity ${
+          {/* Findings Panel: full-width on mobile, fixed w-96 sidebar on md+ */}
+          <div className={`w-full md:w-96 bg-gray-900 border-t border-gray-700 md:border-t-0 md:border-l flex flex-col transition-opacity ${
             reviewUnlocked ? 'opacity-100' : 'opacity-40 pointer-events-none'
           }`}>
             <div className="p-4 border-b border-gray-700 flex items-center justify-between">

@@ -1,6 +1,6 @@
 # ZoCW Session Handoff & Work Queue
 **Purpose:** Initialization context for a new Claude Cowork session + prioritized work queue.
-**Last Updated:** March 23, 2026 — Sonnet work session (Sonnet 4.6, Cowork). Gemini model fix, seed-demo.ts users, 6 stale doc updates (NAMING_CONTRACT, IMPORT_MAP, TEST_VALIDATION, TESTING_SESSION_PROMPT, MASTER_RUNBOOK, ZOCW_REFERENCE).
+**Last Updated:** March 23, 2026 — Sonnet implementation session (Sonnet 4.6, Cowork). Phase 1: 7 code tasks (ErrorState + LoadingSkeleton wiring, Sidebar collapse, demo data enrichment, mobile responsiveness, seed cleanup, Bug #8 Go-to-Report gating). Phase 2: TS verification clean.
 
 ## MANDATORY SESSION RULES
 1. **At session start:** Read this file to understand current state and work queue.
@@ -12,6 +12,57 @@
 ---
 
 ## SESSION LOG
+
+### March 23, 2026 — Sonnet Implementation Session #2 (Sonnet 4.6, Cowork)
+- **Scope:** Phase 1 (7 code tasks) + Phase 2 (verification). Phase 3 (browser testing) pending Cameron's deployment confirmation.
+- **Completed — Phase 1:**
+  1. **ErrorState wiring (Task 1.1)** — Added connectivity probe pattern (`getDocs` + `limit(1)`) to Dashboard, Worklist, Analytics, Procedures, ReportsHub. Added onSnapshot error callback to ActivityLog. Wired ErrorState render guard with retry in all 6 screens. Patients and PatientOverview already had try/catch — replaced plain text error with ErrorState component.
+  2. **LoadingSkeleton wiring (Task 1.2)** — Added to Dashboard (stat cards: `showStats statCount={3} rows={5}`), Worklist (`rows={8}`), Patients (`rows={8}`).
+  3. **Sidebar collapse toggle (Task 1.3)** — Full rewrite of Sidebar: lucide-react icons on all nav items, NAV_SECTIONS config with roles, controlled+uncontrolled collapse pattern (`collapsed?` prop + internal `useState`), `w-64`/`w-16` with `transition-all duration-200`, ChevronLeft/Right toggle, icon-only collapsed state, version string.
+  4. **Enrich demo data (Task 1.4)** — `seed-demo.ts`: Added `tailoredReportSections` Map with full clinical text (multi-paragraph findings, impression, recommendations) for 2 completed procedures (sb_diagnostic idx 10, upper_gi idx 11). Added 78-line rich showcase findings block for 3 `ready_for_review` procs (idx 4/5/6) with specific frame numbers, confidence scores, anatomical regions, provenance, and reviewStatus.
+  5. **Mobile responsiveness (Task 1.5)** — Sidebar: `useState(() => window.innerWidth < 768)` + resize listener auto-collapses below md. Worklist: `overflow-x-auto` on table wrapper. Viewer: `flex-col md:flex-row` on main, `w-full md:w-96` on findings panel, `border-t md:border-t-0 md:border-l` for proper divider.
+  6. **Seed cleanup (Task 1.6)** — Added `deleteCollection()` and `deleteSubcollectionForDocs()` helpers. Cleanup block at top of `seedDemo()` deletes procedures/findings, patients, reports, practices (clinics/settings/auditLog sub-collections), and user notifications before re-seeding. Auth users preserved (get-or-create pattern unchanged).
+  7. **Bug #8 — Go to Report gating (Task 1.7)** — Changed `{reviewUnlocked && <button>Go to Report →</button>}` to always-visible button, disabled with `cursor-not-allowed opacity-60` + `title="Complete pre-review checklist first"` tooltip when `!reviewUnlocked`. Active/clickable when `reviewUnlocked`.
+- **Verification (Phase 2):**
+  - `git diff --stat HEAD`: 11 files, 564 insertions, 77 deletions — exactly expected files.
+  - No new TODO/FIXME/HACK introduced (2 pre-existing TODOs in Dashboard and Viewer untouched).
+  - All imports resolve: ErrorState, LoadingSkeleton, ErrorState, lucide-react icons, firebase/firestore, `db`, `useAuth`, React.
+  - `tsc --noEmit` on seed-demo.ts: clean. Front-end TS errors are all pre-existing (`TS7016` lucide/firebase module resolution with bundler mode — works in Vite).
+  - New errors introduced: none. Pre-existing `Patient possibly null` errors in PatientOverview untouched.
+  - Typed `(err: Error)` in 6 error callbacks for consistency.
+- **Pending — Phase 3 (browser testing):**
+  - Deploy: `npm run build && firebase deploy` (or push to trigger CI if configured)
+  - Cameron confirms deployment at https://cw-e7c19.web.app
+  - Test checklist (per original task spec):
+    - [ ] Sidebar collapses on page load on mobile/narrow viewport
+    - [ ] Sidebar toggle works (ChevronLeft/Right) on desktop
+    - [ ] Dashboard / Worklist show LoadingSkeleton briefly on load
+    - [ ] Simulate Firestore error → ErrorState shows with retry button → retry works
+    - [ ] Viewer: "Go to Report" button visible but grayed+disabled in pre-review; enabled after checklist
+    - [ ] Mobile Viewer: findings panel stacks below frame on narrow viewport
+    - [ ] Worklist: horizontal scroll works on mobile
+    - [ ] Run `npx tsx seed-demo.ts` → cleanup log + re-seed completes without errors
+    - [ ] After re-seed: Reports Hub shows 2 tailored reports with full clinical text
+    - [ ] After re-seed: Viewer for idx-4/5/6 procs shows rich findings with frame numbers + confidence
+- **Commit command (ready to run):**
+  ```
+  git add -A && git commit -m "$(cat <<'EOF'
+  feat: ErrorState + LoadingSkeleton wiring, Sidebar collapse, mobile layout, seed enrichment
+
+  Phase 1 of impl session:
+  - Wire ErrorState (connectivity probe + onSnapshot err callback) into 8 screens
+  - Wire LoadingSkeleton into Dashboard, Worklist, Patients
+  - Sidebar: full rewrite with icon-only collapse, CSS transition, auto-collapse on mobile
+  - seed-demo.ts: rich clinical text for 2 reports, showcase findings for 3 procs, cleanup step
+  - Mobile: Sidebar auto-collapse <md, Worklist overflow-x-auto, Viewer flex-col stack
+  - Bug #8: Go to Report always visible; disabled+tooltip when pre-review locked
+
+  Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+  EOF
+  )"
+  git push origin main
+  ```
+- **Issues/Opus escalation:** None. All tasks were bounded execution. No architectural decisions required.
 
 ### March 23, 2026 — Sonnet Work Session (Sonnet 4.6, Cowork)
 - **Scope:** Bounded autonomous work session — 8 pre-approved tasks (1 code fix, 1 seed update, 6 doc updates)
@@ -406,7 +457,7 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 #### ⚠️ BUGS TO FIX (from Session 2 testing)
 - [ ] **Bug #6 — Post-login redirect drops destination** — After unauthenticated redirect to `/login`, successful login routes to `/dashboard` instead of the originally-requested page. Fix: capture target URL in `location.state` or `?redirect=` param before redirecting; restore after login. Severity: MEDIUM.
 - [x] **Bug #7 — Notification items have no navigation handler** ✅ FIXED (Mar 21 bug fix session) — `NotificationDrawer.tsx` now has `resolveNotificationRoute()` that routes based on `routeTo` field or type+entityId fallback. Click handler navigates and closes drawer.
-- [ ] **Bug #8 — "Go to Report" button undocumented gating** — Button is invisible until all 8 pre-review checklist items are confirmed. Likely intentional but undocumented. Update TEST_VALIDATION.md to reflect this; consider UX review for whether always-visible navigation is better. Severity: LOW/UX.
+- [x] **Bug #8 — "Go to Report" button UX** ✅ FIXED (Mar 23 impl session) — Button now always visible; grayed out (`cursor-not-allowed opacity-60`) with tooltip "Complete pre-review checklist first" when `!reviewUnlocked`. Enabled and clickable when review is unlocked. Severity: LOW/UX.
 - [x] **Bug #3 — Mark all as read partial failure** ✅ FIXED (Mar 21 bug fix session) — `NotificationDrawer.tsx` now has "Mark all read" button with `CheckCheck` icon using `Promise.all` across all unread notifications.
 - [x] **Bug #4 — Add void procedure to seed-demo.ts** ✅ FIXED (Mar 21 bug fix session) — `seed-demo.ts` now seeds 16 procedures including one `void crohns_monitor routine` at index 15 (Robert Brown). Unblocks CA-23 and void routing test.
 - [x] **Bug #5 — Fix seed data mismatch for William Taylor sb diagnostic** ✅ FIXED (Mar 21 bug fix session) — `seed-demo.ts` report seeding now sets `status: 'draft'` (no signedAt/signedBy) for draft/appended_draft procedures. Only completed/completed_appended/closed get signed reports.
@@ -446,7 +497,7 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 
 #### 1C: Other Priority 1
 - [ ] **Deploy to Firebase Hosting** — Gives real URL (cw-e7c19.web.app), fixes Google sign-in. Requires Firebase CLI setup in Firebase Studio.
-- [ ] **Build richer drill-down demo data** — Procedures need findings with more detail for Viewer drill-down. Reports need full section content for Report screen. Viewer checklist/video player need procedure-specific test data.
+- [x] **Build richer drill-down demo data** ✅ PARTIALLY DONE (Mar 23 impl session) — seed-demo.ts now has: full clinical report text (impression, recommendations, multi-numbered findings) for 2 completed procedures; rich showcase findings with frame numbers + confidence + anatomical regions for 3 ready_for_review procedures. Seed cleanup step added (delete before re-seed). Viewer video playback still blocked on BUILD_09 (no real capsule frames yet).
 
 ### Priority 2: Feature Refinement
 - [x] **Wire Operations dashboard to real data** — ✅ Done Mar 19.
@@ -457,7 +508,7 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 - [x] **Replace all stub screens** — ✅ Done Mar 19. Procedures, ReportsHub, Summary.
 - [x] **Admin back buttons** — ✅ Done Mar 19. All 5 admin sub-screens.
 - [x] **Add Sidebar/Header to all screens** — ✅ Done Mar 19. 28 screens consistent.
-- [ ] **Implement Sidebar collapse toggle** — Allow users to collapse sidebar for more screen space.
+- [x] **Implement Sidebar collapse toggle** ✅ DONE (Mar 23 impl session) — Full rewrite with lucide icons, controlled+uncontrolled collapse, auto-collapse <md viewport, ChevronLeft/Right toggle, CSS transition.
 - [ ] **Google sign-in** — Works after Firebase Hosting deploy. Currently blocked by unauthorized-domain in dev environment.
 
 ### Priority 3: Infrastructure
@@ -467,8 +518,9 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 - [ ] **Clean up root-level Manage*.tsx stubs** — 5 files (44 lines each) in `src/screens/` are original stubs. The real implementations are in `src/screens/admin/` (imported by router). Root stubs can be deleted. Was misdiagnosed as empty admin/ dir due to OneDrive on-demand sync.
 
 ### Priority 4: Polish
-- [ ] **Error handling** — Add user-facing error states to screens when Firestore queries fail.
-- [ ] **Loading states** — Add skeleton loaders to Dashboard, Worklist, Patients screens.
+- [x] **Error handling** ✅ DONE (Mar 23 impl session) — ErrorState wired into all 8 main screens (Dashboard, Worklist, Analytics, Procedures, ReportsHub, ActivityLog, Patients, PatientOverview) with retry buttons.
+- [x] **Loading states** ✅ DONE (Mar 23 impl session) — LoadingSkeleton wired into Dashboard (stat cards + rows), Worklist (rows), Patients (rows).
+- [ ] **Build richer drill-down demo data** ✅ PARTIALLY DONE (Mar 23 impl session) — 2 reports now have full clinical text; 3 ready_for_review procs have rich showcase findings. Full playback still blocked pending capsule frame upload (BUILD_09).
 - [ ] **Mobile responsiveness** — Test and fix layout on smaller screens.
 - [ ] **Delete old seed data** — Remove duplicate patients/procedures from early seed runs.
 

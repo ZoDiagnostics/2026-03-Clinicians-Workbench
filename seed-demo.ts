@@ -31,8 +31,65 @@ const db = getFirestore(app);
 const PRACTICE_ID = 'practice_abc123';
 const CLINIC_ID = 'clinic_main';
 
+/**
+ * Delete all documents in a top-level collection (up to maxDocs).
+ * Firestore Admin SDK does not provide a recursive delete from client paths,
+ * so we batch-delete 200 at a time. Sub-collections (e.g., findings, notifications)
+ * are handled separately below.
+ */
+async function deleteCollection(collectionPath: string, maxDocs = 2000): Promise<void> {
+  const ref = db.collection(collectionPath);
+  let deleted = 0;
+  let snapshot = await ref.limit(200).get();
+  while (!snapshot.empty) {
+    const batch = db.batch();
+    snapshot.docs.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+    deleted += snapshot.size;
+    if (deleted >= maxDocs) break;
+    snapshot = await ref.limit(200).get();
+  }
+  if (deleted > 0) console.log(`  Deleted ${deleted} docs from /${collectionPath}`);
+}
+
+async function deleteSubcollectionForDocs(
+  parentCol: string,
+  subCol: string,
+): Promise<void> {
+  const parents = await db.collection(parentCol).limit(200).get();
+  for (const parent of parents.docs) {
+    const sub = parent.ref.collection(subCol);
+    let snap = await sub.limit(200).get();
+    while (!snap.empty) {
+      const b = db.batch();
+      snap.docs.forEach(d => b.delete(d.ref));
+      await b.commit();
+      snap = await sub.limit(200).get();
+    }
+  }
+}
+
 async function seedDemo() {
   console.log('=== Starting Comprehensive Demo Seed ===\n');
+
+  // === CLEANUP: Delete existing demo data before re-seeding ===
+  // This prevents duplicate documents accumulating across seed runs.
+  // Auth users are NOT deleted — they are upserted (get or create) below.
+  console.log('--- Cleaning existing seed data ---');
+  // Findings sub-collections must be cleared before their parent procedures
+  await deleteSubcollectionForDocs('procedures', 'findings');
+  await deleteCollection('procedures');
+  await deleteCollection('patients');
+  await deleteCollection('reports');
+  // Practices sub-collections (clinics, settings)
+  const practiceDoc = db.collection('practices').doc(PRACTICE_ID);
+  await deleteCollection(`practices/${PRACTICE_ID}/clinics`);
+  await deleteCollection(`practices/${PRACTICE_ID}/settings`);
+  await deleteCollection(`practices/${PRACTICE_ID}/auditLog`);
+  await practiceDoc.delete();
+  // User-level sub-collections (notifications). Keep user docs — auth-linked.
+  await deleteSubcollectionForDocs('users', 'notifications');
+  console.log('Cleanup complete.\n');
 
   // Get or create the clinician user
   let clinicianUid: string;
@@ -326,11 +383,37 @@ async function seedDemo() {
     ['completed', 'completed_appended', 'closed', 'draft', 'appended_draft'].includes(procedureConfigs[i].status)
   );
 
+  // Full clinical text for two completed procedures (sb_diagnostic index 10, upper_gi index 11)
+  // Used to demonstrate rich report content in Reports Hub and Summary screens
+  const tailoredReportSections = new Map<string, { findings: string; impression: string; recommendations: string }>();
+  tailoredReportSections.set(procedureIds[10], {
+    findings: [
+      '1. 4mm sessile polyp, proximal jejunum, frame 11,342 (AI-detected, confidence 94%). Paris classification 0-IIa. Pale pink, smooth surface, no stalk. Borders well-defined. No surface irregularity or spontaneous bleeding.',
+      '2. Superficial mucosal erosion, duodenal bulb, frame 3,874 (AI-detected, confidence 89%). 6mm diameter. Surrounding erythema and mild edema noted. No active bleeding. Appearance consistent with NSAID-induced mucosal injury.',
+      '3. Small focus of patchy erythema, mid-jejunum, frame 18,203 (clinician-marked). Non-ulcerated. 15mm in longest dimension. May represent early inflammatory change or submucosal hemorrhage; clinical correlation advised.',
+      '4. Normal terminal ileum and cecal valve visualized. No strictures, masses, vascular malformations, or villous atrophy identified. Complete small bowel transit in 4 hours 17 minutes.',
+    ].join('\n'),
+    impression: "Capsule endoscopy demonstrates a 4mm sessile jejunal polyp (Paris 0-IIa, AI confidence 94%), a duodenal erosion likely attributable to NSAID use (confidence 89%), and a small focus of mid-jejunal erythema of uncertain significance. No evidence of active hemorrhage, Crohn's disease, celiac disease, or high-grade dysplasia. Complete small bowel transit achieved with adequate mucosal visualization throughout all segments.",
+    recommendations: "1. Gastroenterology follow-up within 6 weeks to review jejunal polyp finding and determine need for device-assisted enteroscopy with biopsy.\n2. Discontinue or reduce NSAIDs if clinically feasible; initiate proton pump inhibitor therapy (omeprazole 20mg daily) for 8 weeks for duodenal erosion healing.\n3. Repeat capsule endoscopy in 12 months if NSAID use continues or if patient develops recurrent iron-deficiency anemia or overt GI bleeding.\n4. Patient educated on symptoms requiring urgent evaluation: melena, hematemesis, significant change in bowel habits, or syncope.",
+  });
+  tailoredReportSections.set(procedureIds[11], {
+    findings: [
+      "1. 2cm sliding hiatal hernia identified at GEJ. Z-line regular and well-defined. No evidence of erosive reflux esophagitis. Frames 120–340.",
+      "2. Salmon-colored tongues of columnar epithelium extending 1.5cm above GEJ, frame 287 (AI-detected, confidence 86%). No visible nodularity, ulceration, or surface irregularity. Consistent with short-segment Barrett's esophagus requiring endoscopic confirmation.",
+      "3. Gastric antrum: mild diffuse erythema and edema throughout, frame 2,103 (AI-detected, confidence 81%). No ulceration, mass lesion, or active bleeding. Endoscopic biopsy recommended to rule out H. pylori gastritis.",
+      "4. Duodenal bulb and second portion: normal appearance. Mucosa intact. No ulcers, erosions, or masses. Papilla of Vater visualized at frame 4,412 without abnormality.",
+      "5. Proximal jejunum: normal mucosal pattern with intact villi and no pathological findings in visualized segments.",
+    ].join('\n'),
+    impression: "Upper GI capsule endoscopy demonstrates short-segment Barrett's esophagus (1.5cm, AI confidence 86%) with associated small sliding hiatal hernia, and mild antral gastritis without ulceration. No active bleeding source identified in the visualized upper GI tract. The Barrett's finding requires urgent endoscopic confirmation with targeted biopsies. Antral gastritis pattern is consistent with H. pylori infection; formal testing and treatment are indicated.",
+    recommendations: "1. Urgent referral for upper endoscopy (EGD) with biopsies within 4 weeks: (a) four-quadrant biopsies at 1cm intervals within the Barrett's segment per Seattle protocol to assess dysplasia grade; (b) antral and corpus biopsies for H. pylori rapid urease test and histological gastritis grading.\n2. If H. pylori confirmed: initiate standard quadruple eradication therapy (bismuth-based or concomitant) per current ACG guidelines; confirm eradication with stool antigen or urea breath test ≥4 weeks post-treatment.\n3. If Barrett's confirmed without dysplasia: initiate high-dose PPI therapy; schedule EGD surveillance every 3–5 years per ACG/AGA guidelines.\n4. If low-grade dysplasia on biopsy: refer to advanced endoscopy for endoscopic eradication therapy (radiofrequency ablation or EMR).\n5. Lifestyle counseling: smoking cessation, alcohol reduction, weight management, and head-of-bed elevation for GERD symptom control.\n6. Repeat upper GI capsule endoscopy not indicated; ongoing management and surveillance via conventional endoscopy.",
+  });
+
   for (const procId of completedProcIds) {
     const configIdx = procIdToConfigIndex.get(procId)!;
     const procConfig = procedureConfigs[configIdx];
     const isSignedStatus = ['completed', 'completed_appended', 'closed'].includes(procConfig.status);
     const reportStatus = isSignedStatus ? 'signed' : 'draft';
+    const tailored = tailoredReportSections.get(procId);
 
     const reportId = faker.string.uuid();
     batch4.set(db.collection('reports').doc(reportId), {
@@ -340,19 +423,19 @@ async function seedDemo() {
       clinicianId: clinicianUid,
       status: reportStatus,
       sections: {
-        findings: faker.helpers.arrayElement([
+        findings: tailored?.findings ?? faker.helpers.arrayElement([
           '1. 3mm sessile polyp in proximal jejunum at frame 12,847 (AI-detected, confidence 92%). No bleeding noted.\n2. Small erosion in duodenal bulb at frame 4,231 (clinician-marked). Consistent with NSAID use.\n3. Normal cecal appearance. No masses or vascular malformations identified.',
           '1. Moderate erythema and edema in terminal ileum consistent with active Crohn\'s disease. Lewis Score: 450 (moderate).\n2. Two aphthous ulcers in mid-ileum at frames 28,103 and 29,445.\n3. No strictures or obstruction identified. Transit time normal.',
           'No significant pathology identified throughout the small bowel examination. Normal mucosal appearance with adequate visualization of all segments. Complete small bowel transit achieved in 4 hours 23 minutes.',
           '1. 5mm pedunculated polyp in ascending colon at frame 38,921 (AI-detected, confidence 88%).\n2. Angiodysplasia in cecum at frame 41,203 (AI-detected, confidence 76%). No active bleeding.\n3. Normal terminal ileum. No Crohn\'s features.',
         ]),
-        impression: faker.helpers.arrayElement([
+        impression: tailored?.impression ?? faker.helpers.arrayElement([
           'Capsule endoscopy demonstrates small sessile polyp in proximal jejunum and mild duodenal erosion. Overall findings are of low clinical significance. No evidence of active bleeding, Crohn\'s disease, or neoplasia.',
           'Findings consistent with mild-to-moderate Crohn\'s disease activity in the terminal ileum. Lewis Score 450 indicates moderate disease. Recommend gastroenterology follow-up for treatment adjustment.',
           'Normal capsule endoscopy. Complete small bowel examination with no pathology identified. Adequate bowel preparation and complete transit.',
           'Two significant findings requiring follow-up: colonic polyp (recommend polypectomy referral) and cecal angiodysplasia (surveillance recommended). No evidence of active hemorrhage.',
         ]),
-        recommendations: faker.helpers.arrayElement([
+        recommendations: tailored?.recommendations ?? faker.helpers.arrayElement([
           'Routine surveillance follow-up in 12 months. Continue current medications. No dietary restrictions. Patient may resume normal activities.',
           'Recommend gastroenterology referral for treatment escalation. Consider biologic therapy initiation. Repeat capsule endoscopy in 6 months to monitor response. Continue iron supplementation.',
           'No further imaging required at this time. Annual screening per guideline recommendations. Patient counseled on symptoms requiring urgent evaluation.',
@@ -427,6 +510,95 @@ async function seedDemo() {
     }
   }
   console.log('Findings created for 8 procedures.');
+
+  // 8b. Rich showcase findings for the 3 ready_for_review procedures (indices 4, 5, 6)
+  // These have deterministic frame numbers, confidence scores, and anatomical detail
+  // to give the Viewer drill-down meaningful data to display.
+  console.log('\n--- Seeding Rich Showcase Findings (ready_for_review procedures) ---');
+  const showcaseFindings: Array<{ procIdx: number; items: Array<Record<string, unknown>> }> = [
+    {
+      procIdx: 4, // sb_diagnostic, routine — Jennifer Martinez / David Wilson
+      items: [
+        {
+          type: 'polyp', classification: 'Sessile polyp', confidence: 94,
+          description: '3mm sessile polyp, smooth surface, pale pink coloration. Paris classification 0-IIa. No stalk visible. Well-demarcated borders. No surface irregularity or friability.',
+          region: 'jejunum', anatomicalRegion: 'Proximal jejunum',
+          frameNumber: 11342, primaryFrameNumber: 11342, primaryFrameTimestamp: 11342 * 250,
+          provenance: 'ai_detected', reviewStatus: 'confirmed', isIncidental: false,
+        },
+        {
+          type: 'erosion', classification: 'Mucosal erosion', confidence: 89,
+          description: 'Superficial erosion 6mm diameter with surrounding erythema and mild edema. No active bleeding at time of observation. Appearance consistent with NSAID-induced mucosal injury.',
+          region: 'duodenum', anatomicalRegion: 'Duodenal bulb',
+          frameNumber: 3874, primaryFrameNumber: 3874, primaryFrameTimestamp: 3874 * 250,
+          provenance: 'ai_detected', reviewStatus: 'confirmed', isIncidental: false,
+        },
+        {
+          type: 'erythema', classification: 'Mucosal erythema', confidence: 72,
+          description: 'Patchy non-ulcerated erythema, approximately 15mm in longest dimension. May represent early inflammatory change or submucosal hemorrhage; clinical correlation advised.',
+          region: 'jejunum', anatomicalRegion: 'Mid-jejunum',
+          frameNumber: 18203, primaryFrameNumber: 18203, primaryFrameTimestamp: 18203 * 250,
+          provenance: 'clinician_marked', reviewStatus: 'pending', isIncidental: true,
+        },
+      ],
+    },
+    {
+      procIdx: 5, // colon_eval, urgent — Sarah Johnson
+      items: [
+        {
+          type: 'polyp', classification: 'Pedunculated polyp', confidence: 91,
+          description: '6mm pedunculated polyp with 2mm stalk. Head smooth, no lobulation or surface irregularity. Paris classification 0-Ip. Located on haustra fold. Polypectomy referral recommended.',
+          region: 'colon', anatomicalRegion: 'Ascending colon',
+          frameNumber: 38214, primaryFrameNumber: 38214, primaryFrameTimestamp: 38214 * 250,
+          provenance: 'ai_detected', reviewStatus: 'confirmed', isIncidental: false,
+        },
+        {
+          type: 'angiodysplasia', classification: 'Vascular malformation', confidence: 78,
+          description: '3mm angiodysplasia with cherry-red stellate vascular pattern. Flat, non-bleeding at time of capsule passage. Surveillance recommended given size and location.',
+          region: 'cecum', anatomicalRegion: 'Cecum',
+          frameNumber: 41058, primaryFrameNumber: 41058, primaryFrameTimestamp: 41058 * 250,
+          provenance: 'ai_detected', reviewStatus: 'pending', isIncidental: false,
+        },
+      ],
+    },
+    {
+      procIdx: 6, // upper_gi, routine — Robert Brown
+      items: [
+        {
+          type: 'erosion', classification: "Barrett's-like epithelium", confidence: 86,
+          description: "Salmon-colored tongues of columnar epithelium extending 1.5cm above the GEJ. Irregular Z-line. No nodularity, ulceration, or mucosal break. Consistent with short-segment Barrett's esophagus; endoscopic confirmation required.",
+          region: 'esophagus', anatomicalRegion: 'Distal esophagus / GEJ',
+          frameNumber: 287, primaryFrameNumber: 287, primaryFrameTimestamp: 287 * 250,
+          provenance: 'ai_detected', reviewStatus: 'confirmed', isIncidental: false,
+        },
+        {
+          type: 'erythema', classification: 'Antral gastritis', confidence: 81,
+          description: 'Diffuse erythema and mild edema throughout gastric antrum. No ulceration or mass lesion. Pattern consistent with H. pylori-associated gastritis; mucosal biopsy recommended.',
+          region: 'stomach', anatomicalRegion: 'Gastric antrum',
+          frameNumber: 2103, primaryFrameNumber: 2103, primaryFrameTimestamp: 2103 * 250,
+          provenance: 'ai_detected', reviewStatus: 'pending', isIncidental: false,
+        },
+      ],
+    },
+  ];
+
+  for (const showcase of showcaseFindings) {
+    const procId = procedureIds[showcase.procIdx];
+    for (const item of showcase.items) {
+      const findingId = faker.string.uuid();
+      await db.collection('procedures').doc(procId).collection('findings').doc(findingId).set({
+        id: findingId,
+        procedureId: procId,
+        additionalFrames: [],
+        modificationHistory: [],
+        annotations: [],
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+        ...item,
+      });
+    }
+  }
+  console.log('Rich showcase findings seeded for 3 ready-for-review procedures (indices 4, 5, 6).');
 
   // 9. Notifications (for the clinician)
   console.log('\n--- Seeding Notifications ---');

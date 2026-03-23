@@ -1,8 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useProcedures, usePatients } from '../lib/hooks';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { useProcedures, usePatients, useAuth } from '../lib/hooks';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
+import { ErrorState } from '../components/ErrorState';
 
 // BUG-50: BarChart with optional drill-down navigation per bar
 const BarChart: React.FC<{
@@ -44,8 +47,19 @@ const BarChart: React.FC<{
 
 export const Analytics: React.FC = () => {
   const navigate = useNavigate();
+  const { practiceId } = useAuth();
   const procedures = useProcedures();
   const patients = usePatients();
+
+  const [screenError, setScreenError] = useState<Error | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
+
+  useEffect(() => {
+    if (!practiceId) return;
+    setScreenError(null);
+    getDocs(query(collection(db, 'procedures'), where('practiceId', '==', practiceId), limit(1)))
+      .catch((err: Error) => setScreenError(err));
+  }, [practiceId, retryKey]);
 
   const stats = useMemo(() => {
     const studyTypes: Record<string, number> = {};
@@ -69,6 +83,24 @@ export const Analytics: React.FC = () => {
 
     return { studyTypes, statuses, urgencies, sexDistribution };
   }, [procedures, patients]);
+
+  if (screenError) {
+    return (
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar />
+        <div className="flex-1 flex flex-col">
+          <Header />
+          <main className="flex-1 flex items-center justify-center">
+            <ErrorState
+              title="Couldn't load analytics"
+              message="There was a problem fetching analytics data. Check your connection and try again."
+              onRetry={() => setRetryKey(k => k + 1)}
+            />
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-gray-50">

@@ -4,6 +4,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../lib/hooks';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
+import { ErrorState } from '../components/ErrorState';
 
 interface AuditEntry {
   id: string;
@@ -30,6 +31,8 @@ export const ActivityLog: React.FC = () => {
   const { practiceId, role } = useAuth();
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<Error | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   // UX-09: User filter
   const [selectedUser, setSelectedUser] = useState('');
@@ -42,18 +45,28 @@ export const ActivityLog: React.FC = () => {
 
   useEffect(() => {
     if (!practiceId) return;
+    setFetchError(null);
+    setLoading(true);
 
     const auditRef = collection(db, `practices/${practiceId}/auditLog`);
     const q = query(auditRef, orderBy('timestamp', 'desc'), limit(50));
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AuditEntry));
-      setEntries(data);
-      setLoading(false);
-    });
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AuditEntry));
+        setEntries(data);
+        setLoading(false);
+      },
+      (err: Error) => {
+        console.error('ActivityLog fetch error:', err);
+        setFetchError(err);
+        setLoading(false);
+      }
+    );
 
     return () => unsubscribe();
-  }, [practiceId]);
+  }, [practiceId, retryKey]);
 
   if (!hasAccess) {
     return (
@@ -68,6 +81,24 @@ export const ActivityLog: React.FC = () => {
               <p className="text-gray-600">The Activity Log is restricted to administrators and clinician administrators.</p>
               <p className="text-sm text-gray-500 mt-1">Your current role: <span className="font-medium">{role || 'unknown'}</span></p>
             </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar />
+        <div className="flex-1 flex flex-col">
+          <Header />
+          <main className="flex-1 flex items-center justify-center">
+            <ErrorState
+              title="Couldn't load activity log"
+              message="There was a problem fetching audit log entries. Check your connection and try again."
+              onRetry={() => setRetryKey(k => k + 1)}
+            />
           </main>
         </div>
       </div>

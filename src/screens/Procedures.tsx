@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, Timestamp, query, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth, useProcedures, usePatients } from '../lib/hooks';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
+import { ErrorState } from '../components/ErrorState';
 import { routeByStatus } from '../lib/routeByStatus';
 
 // BRD ZCW-BRD-0250 — New Procedure from Patient List
@@ -34,6 +35,16 @@ export const Procedures: React.FC = () => {
   const { user, practiceId } = useAuth();
   const procedures = useProcedures();
   const allPatients = usePatients();
+
+  const [screenError, setScreenError] = useState<Error | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
+
+  useEffect(() => {
+    if (!practiceId) return;
+    setScreenError(null);
+    getDocs(query(collection(db, 'procedures'), where('practiceId', '==', practiceId), limit(1)))
+      .catch((err: Error) => setScreenError(err));
+  }, [practiceId, retryKey]);
 
   const [showModal, setShowModal] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState('');
@@ -103,6 +114,24 @@ export const Procedures: React.FC = () => {
       setSubmitting(false);
     }
   };
+
+  if (screenError) {
+    return (
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar />
+        <div className="flex-1 flex flex-col">
+          <Header />
+          <main className="flex-1 flex items-center justify-center">
+            <ErrorState
+              title="Couldn't load procedures"
+              message="There was a problem fetching procedures. Check your connection and try again."
+              onRetry={() => setRetryKey(k => k + 1)}
+            />
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-gray-50">

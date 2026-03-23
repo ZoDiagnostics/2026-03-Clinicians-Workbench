@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -8,6 +8,7 @@ import { COLLECTIONS } from '../types/firestore-paths';
 import { ProcedureStatus } from '../types/enums';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
+import { ErrorState } from '../components/ErrorState';
 import { routeByStatus } from '../lib/routeByStatus';
 
 // BRD: ZCW-BRD-0014 — Patient overview with procedure history
@@ -75,14 +76,18 @@ export function PatientOverview() {
     );
   }
 
-  if (error || !patient) {
+  if (error || (!loading && !patient)) {
     return (
       <div className="flex h-screen bg-gray-50">
         <Sidebar />
         <div className="flex-1 flex flex-col">
           <Header />
           <main className="flex-1 flex items-center justify-center">
-            <p className="text-red-500">{error || 'Patient not found.'}</p>
+            <ErrorState
+              title="Patient not found"
+              message={error || 'This patient record could not be loaded. It may have been removed or you may not have access.'}
+              onRetry={() => window.location.reload()}
+            />
           </main>
         </div>
       </div>

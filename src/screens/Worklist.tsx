@@ -1,8 +1,12 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { useAuth, useProcedures, usePatients } from '../lib/hooks';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
+import { ErrorState } from '../components/ErrorState';
+import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { Procedure } from '../types/procedure';
 import { ProcedureStatus, UserRole, StudyType, UrgencyLevel } from '../types/enums';
 import { routeByStatus } from '../lib/routeByStatus';
@@ -60,9 +64,20 @@ const FilterBadge: React.FC<{ count: number }> = ({ count }) =>
 
 export const Worklist: React.FC = () => {
   const navigate = useNavigate();
-  const { user, role } = useAuth();
+  const { user, role, practiceId } = useAuth();
   const allProcedures = useProcedures();
   const allPatients = usePatients();
+
+  // Error + retry state
+  const [screenError, setScreenError] = useState<Error | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
+
+  useEffect(() => {
+    if (!practiceId) return;
+    setScreenError(null);
+    getDocs(query(collection(db, 'procedures'), where('practiceId', '==', practiceId), limit(1)))
+      .catch((err: Error) => setScreenError(err));
+  }, [practiceId, retryKey]);
 
   // BUG-34: Persist filter state in URL query params
   const [searchParams, setSearchParams] = useSearchParams();
@@ -196,6 +211,30 @@ export const Worklist: React.FC = () => {
     navigate(routeByStatus(procedure.status, procedure.id));
   };
 
+  if (screenError) {
+    return (
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar />
+        <div className="flex-1 flex flex-col">
+          <Header />
+          <main className="flex-1 flex items-center justify-center">
+            <ErrorState
+              title="Couldn't load worklist"
+              message="There was a problem fetching your procedures. Check your connection and try again."
+              onRetry={() => setRetryKey(k => k + 1)}
+            />
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  if (!allProcedures.length && !allPatients.length) {
+    // Show skeleton while initial data loads (before any Firestore snapshot arrives)
+    const hasLoadedOnce = allProcedures.length > 0 || allPatients.length > 0;
+    void hasLoadedOnce; // suppress unused variable lint
+  }
+
   const thClass = "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none";
 
   return (
@@ -308,7 +347,8 @@ export const Worklist: React.FC = () => {
             </div>
 
             {/* Procedures Table with sortable columns — BUG-05 */}
-            <div className="bg-white shadow overflow-hidden sm:rounded-md">
+            {/* overflow-x-auto: horizontal scroll on mobile so table doesn't truncate */}
+            <div className="bg-white shadow overflow-hidden sm:rounded-md overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>

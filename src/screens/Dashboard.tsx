@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMemo } from 'react';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { useAuth, useProcedures, usePatients } from '../lib/hooks';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
+import { ErrorState } from '../components/ErrorState';
+import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { Procedure } from '../types/procedure';
 import { ProcedureStatus, UserRole } from '../types/enums';
 import { routeByStatus } from '../lib/routeByStatus';
@@ -39,9 +43,20 @@ const StatusBadge: React.FC<{ status: ProcedureStatus }> = ({ status }) => {
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { user, role } = useAuth();
+  const { user, role, practiceId, loading: authLoading } = useAuth();
   const allProcedures = useProcedures();
   const allPatients = usePatients();
+
+  // Error state: probe Firestore connectivity; retry on demand
+  const [screenError, setScreenError] = useState<Error | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
+
+  useEffect(() => {
+    if (!practiceId) return;
+    setScreenError(null);
+    getDocs(query(collection(db, 'procedures'), where('practiceId', '==', practiceId), limit(1)))
+      .catch((err: Error) => setScreenError(err));
+  }, [practiceId, retryKey]);
 
   const patientMap = useMemo(() =>
     new Map(allPatients.map(p => [p.id, `${p.firstName} ${p.lastName}`])),
@@ -78,6 +93,40 @@ export const Dashboard: React.FC = () => {
   const recentProcedures = proceduresForRecentList
     .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis())
     .slice(0, 5);
+
+  if (screenError) {
+    return (
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar />
+        <div className="flex-1 flex flex-col">
+          <Header />
+          <main className="flex-1 flex items-center justify-center">
+            <ErrorState
+              title="Couldn't load dashboard"
+              message="There was a problem connecting to the database. Check your connection and try again."
+              onRetry={() => setRetryKey(k => k + 1)}
+            />
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  if (authLoading) {
+    return (
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar />
+        <div className="flex-1 flex flex-col">
+          <Header />
+          <main className="flex-1 overflow-y-auto">
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <LoadingSkeleton showStats statCount={3} rows={5} />
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   const handleStartNextReview = () => {
     const nextProcedure = myProcedures
