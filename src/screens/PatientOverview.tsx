@@ -94,6 +94,9 @@ export function PatientOverview() {
     );
   }
 
+  // Narrowing guard: error/null cases are handled above; patient is non-null here
+  if (!patient) return null;
+
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
