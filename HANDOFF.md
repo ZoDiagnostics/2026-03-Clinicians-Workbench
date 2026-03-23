@@ -1,6 +1,6 @@
 # ZoCW Session Handoff & Work Queue
 **Purpose:** Initialization context for a new Claude Cowork session + prioritized work queue.
-**Last Updated:** March 23, 2026 — Sonnet implementation session (Sonnet 4.6, Cowork). Phase 1: 7 code tasks (ErrorState + LoadingSkeleton wiring, Sidebar collapse, demo data enrichment, mobile responsiveness, seed cleanup, Bug #8 Go-to-Report gating). Phase 2: TS verification clean. Phase 3: Full browser testing complete — all 11 checklist items passed (ErrorState retry deferred, requires network throttling).
+**Last Updated:** March 23, 2026 — Session 6 regression + UX testing (Sonnet 4.6, Cowork). Phase 1: 22 PASS, 1 PARTIAL FAIL across 23 regression scenarios. Phase 2: All role tests BLOCKED (Firebase auth env issue). Phase 3: 4 UX fixes verified live, 2 BLOCKED (admin-gated). Heuristic re-score: Flow 2 + Flow 3 now PASS, Flow 6 still FAIL.
 
 ## MANDATORY SESSION RULES
 1. **At session start:** Read this file to understand current state and work queue.
@@ -12,6 +12,53 @@
 ---
 
 ## SESSION LOG
+
+### March 23, 2026 — Session 6 Regression + UX Testing (Sonnet 4.6, Cowork)
+- **Scope:** TEST-ONLY (no code changes). Three phases: Phase 1 regression retest of 266 FAIL + 22 BLOCKED scenarios targeting 27 bug fixes; Phase 2 new role testing (Admin, Clinical Staff, Clinician No-Auth); Phase 3 UX fix verification + heuristic re-scoring.
+- **Phase 1 — Regression retest (clinician_auth):** 22 PASS, 1 PARTIAL FAIL across 23 scenarios. All major bug fixes confirmed deployed.
+  - ✅ BUG-04/05/18/34 (Worklist filters + sort), BUG-15/03/07/08 (Notifications), BUG-31/Bug#8/BUG-11/BUG-33 (Viewer), UX-06/UX-07/BUG-43/BUG-42 (Sign & Deliver), BUG-09/10 (Security), BUG-12/13/32/40 (State / read-only)
+  - ⚠️ PARTIAL FAIL — BUG-06: Notification click marks item as read but does NOT navigate to linked procedure or close panel. New issue logged as BUG-51 (Sev 3). The onClick handler only updates read state; `navigate(notification.link)` is not called.
+- **Phase 2 — Role testing: ALL BLOCKED**
+  - **Root cause (ENV-01):** Firebase `auth/network-request-failed` in Claude automation environment. Sign-in API call succeeds (app briefly navigates to /dashboard or /admin), but token refresh to `securetoken.googleapis.com` fails within ~8s and the user is bounced to /login. Only the pre-cached `clinician@zocw.com` session (token persisted in IndexedDB from prior session) remains usable.
+  - **This is NOT a product bug** — credentials ARE accepted; the env blocks sustained sessions. admin@ navigated to /admin (route accessible), staff@ and noauth@ both briefly authenticated before timeout.
+  - **Path forward:** Cameron manually logs in as each role, or pre-seeds auth tokens before the automation session starts.
+- **Phase 3 — UX verification:**
+  - ✅ UX-03 (AI confidence tooltip): All 5 SPAN elements on Sarah Johnson's findings have correct `title` attribute text. Info ⓘ icon visible. DOM-verified via JS.
+  - ✅ UX-04 (no-anomalies copy): No 0-findings procedure in test data to trigger live UI. Verified via bundle fetch — both copy strings present in deployed `index-HXGynHKr.js`. Live trigger requires adding a 0-findings `ready_for_review` procedure to seed.
+  - ✅ UX-06 (scroll gate): Amanda Garcia (draft). Button disabled on load with helper text. Enabled after scroll event on `.max-h-96.overflow-y-auto` container (scrollHeight 533, clientHeight 384). Auto-enable fires correctly when content fits.
+  - ✅ UX-07 (sign modal): After scroll gate satisfied, Sign Report opens dark modal — "Confirm Report Signing" / legally binding warning / Cancel + Sign buttons. Cancel dismisses correctly. Report NOT signed during test.
+  - ❌ UX-09 (Activity Log user filter): BLOCKED — requires admin/clinician_admin. clinician_auth gets "Access Denied" at /activity.
+  - ❌ UX-10 (Activity Log date filter): BLOCKED — same reason.
+  - ✅ New feature smoke tests: Sidebar collapse/expand, Access Denied shield screen, Activity Log access denial (role-specific message), Dashboard stats, Recent Activity feed — all PASS.
+- **Heuristic re-scoring:**
+  - Flow 2 (AI Review to Annotation): 33.5 → **39.5** ✅ PASS (UX-03 live + UX-04 bundle verified)
+  - Flow 3 (Findings Review to Sign): 36.5 → **40.5** ✅ PASS (UX-06 + UX-07 both live verified)
+  - Flow 6 (Activity Log Audit): **34.5 — ❌ FAIL unchanged** — UX-09/10 blocked; score stays at baseline
+- **New issues:**
+  - **BUG-51** (Sev 3): Notification click marks read but does NOT navigate to procedure or close panel. Recommend fix: onClick should call `navigate(notification.link)` in addition to updating read state.
+  - **ENV-01** (env constraint, not product bug): Firebase auth/network-request-failed blocks all fresh sign-ins in Claude automation env.
+- **Remaining test debt:**
+  - Phase 2 role coverage (admin, clinical_staff, clinician_noauth) — requires manual login pre-seeding or token injection
+  - UX-09/10 live verification — requires admin/clinician_admin session
+  - UX-04 live trigger — requires adding a 0-findings `ready_for_review` procedure to seed-demo.ts
+  - Flow 6 heuristic re-score — pending UX-09/10 verification
+- **Test results doc:** `docs/TEST_RESULTS_2026-03-23.md` created this session with full Phase 1–3 tables, heuristic re-score, BUG-51 detail, and test debt summary.
+- **Commit command (test results doc only — no code changes):**
+  ```
+  git add docs/TEST_RESULTS_2026-03-23.md && git commit -m "$(cat <<'EOF'
+  test: Session 6 regression + UX testing results (2026-03-23)
+
+  Phase 1: 22 PASS, 1 PARTIAL FAIL (BUG-06/BUG-51 notification nav) across 23 regression scenarios.
+  Phase 2: All role tests BLOCKED — Firebase auth/network-request-failed in automation env (ENV-01).
+  Phase 3: UX-03/04/06/07 verified, UX-09/10 blocked (admin-gated).
+  Heuristic re-score: Flow 2 → 39.5 PASS, Flow 3 → 40.5 PASS, Flow 6 → 34.5 FAIL (unchanged).
+  New issue: BUG-51 notification click does not navigate to linked procedure.
+
+  Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+  EOF
+  )"
+  git push origin main
+  ```
 
 ### March 23, 2026 — Sonnet Implementation Session #2 (Sonnet 4.6, Cowork)
 - **Scope:** Phase 1 (7 code tasks) + Phase 2 (verification) + Phase 3 (full browser testing). All phases complete.

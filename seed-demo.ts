@@ -322,6 +322,8 @@ async function seedDemo() {
     { status: 'closed', studyType: 'sb_diagnostic', urgency: 'routine' },
     // BUG-SEED-4: void-status procedure (previously missing from seed)
     { status: 'void', studyType: 'crohns_monitor', urgency: 'routine' },
+    // UX-04 test data: ready_for_review with 0 findings to trigger "no anomalies" empty state
+    { status: 'ready_for_review', studyType: 'colon_eval', urgency: 'routine' },
   ];
 
   const procedureIds: string[] = [];
@@ -603,11 +605,12 @@ async function seedDemo() {
   // 9. Notifications (for the clinician)
   console.log('\n--- Seeding Notifications ---');
   const notifBatch = db.batch();
+  // BUG-51 fix: notifications now include routeTo and entityId so clicking navigates to the linked procedure
   const notifications = [
-    { title: 'New Study Assigned', body: 'Patient Jennifer Martinez - Small Bowel Diagnostic has been assigned to you.', type: 'study_assigned', isRead: false },
-    { title: 'Signature Required', body: 'Report for patient Michael Thompson is awaiting your signature.', type: 'signature_required', isRead: false },
-    { title: 'QA Alert', body: 'AI detection confidence below threshold for procedure #4821. Manual review recommended.', type: 'qa_alert', isRead: false },
-    { title: 'Report Delivered', body: 'Report for Emily Davis has been delivered to referring physician Dr. Adams.', type: 'delivery_confirmed', isRead: true },
+    { title: 'New Study Assigned', body: 'Patient Jennifer Martinez - Small Bowel Diagnostic has been assigned to you.', type: 'study_assigned', isRead: false, entityId: procedureIds[0], entityType: 'procedure', routeTo: `/summary/${procedureIds[0]}` },
+    { title: 'Signature Required', body: 'Report for patient Michael Thompson is awaiting your signature.', type: 'signature_required', isRead: false, entityId: procedureIds[7], entityType: 'procedure', routeTo: `/sign-deliver/${procedureIds[7]}` },
+    { title: 'QA Alert', body: 'AI detection confidence below threshold for procedure #4821. Manual review recommended.', type: 'qa_alert', isRead: false, entityId: procedureIds[4], entityType: 'procedure', routeTo: `/viewer/${procedureIds[4]}` },
+    { title: 'Report Delivered', body: 'Report for Emily Davis has been delivered to referring physician Dr. Adams.', type: 'delivery_confirmed', isRead: true, entityId: procedureIds[10], entityType: 'procedure', routeTo: `/summary/${procedureIds[10]}` },
     { title: 'System Update', body: 'ZoCW v3.1.0 has been deployed. See release notes for details.', type: 'system', isRead: true },
   ];
 
