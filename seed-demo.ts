@@ -116,6 +116,7 @@ async function seedDemo() {
     { email: 'admin@zocw.com', role: 'admin' },
     { email: 'staff@zocw.com', role: 'clinical_staff' },
     { email: 'noauth@zocw.com', role: 'clinician_noauth' },
+    { email: 'clinadmin@zocw.com', role: 'clinician_admin' },
   ];
   for (const { email, role } of claimsToSet) {
     try {

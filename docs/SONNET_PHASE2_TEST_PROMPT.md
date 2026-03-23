@@ -3,7 +3,7 @@
 **Session type:** TEST-ONLY (no code changes)
 **Model:** Sonnet 4.6 (Cowork browser automation)
 **App URL:** https://cw-e7c19.web.app
-**Estimated scenarios:** ~357 testable + 74 blocked (no clinician_admin user)
+**Estimated scenarios:** ~431 across 4 roles
 
 ---
 
@@ -83,6 +83,7 @@ Wait 2 seconds, then use the login snippet with the new email.
 | staff@zocw.com | clinical_staff | Full sidebar, NO "Admin & Settings" |
 | noauth@zocw.com | clinician_noauth | Full sidebar, NO "Admin & Settings" |
 | clinician@zocw.com | clinician_auth | Full sidebar, NO "Admin & Settings" |
+| clinadmin@zocw.com | clinician_admin | Full sidebar + "Admin & Settings" (clinician who can also admin) |
 
 **Password for ALL users:** `password`
 
@@ -127,9 +128,20 @@ The functional test scenarios are defined in `Zo_Workbench_Functional_Test_Scena
 
 **Checkpoint:** After testing, take a screenshot showing the Sign & Deliver block and any access-denied screens.
 
-### Phase 2C: Clinician Administrator — 74 scenarios — SKIP (BLOCKED)
+### Phase 2C: Clinician Administrator (clinadmin@zocw.com) — 74 scenarios
 
-**No test user exists** for the `clinician_admin` role. Log this as BLOCKED in results. Do NOT attempt to test these.
+**Login as:** clinadmin@zocw.com
+**Role claim:** `clinician_admin`
+**Persona:** Dr. James Whitfield — Clinician who also administrates
+
+**Key areas to test:**
+- Dashboard, Worklist, Patients, Procedures — standard clinician access
+- Admin & Settings: Should have access (same as admin role for management screens)
+- Manage Staff, Manage Practice, Manage Clinics — verify admin capability
+- Viewer, Summary, Report — verify clinician capability (can review studies)
+- **Sign & Deliver:** clinician_admin SHOULD be able to sign reports (they are an authorized clinician)
+- **Hybrid role validation:** This role combines clinician + admin. Verify BOTH sets of capabilities work.
+- Activity Log — should have access (admin privilege)
 
 ### Phase 2D: Generic "User" scenarios — 56 scenarios
 

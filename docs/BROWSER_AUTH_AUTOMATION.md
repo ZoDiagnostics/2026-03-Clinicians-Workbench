@@ -16,6 +16,7 @@ Custom claims MUST be set on all test users via `fix-claims.ts` (run once from F
 | admin@zocw.com | password | admin | VtPqYvrpwCZhTFqCpzkP7FR3aZt2 |
 | staff@zocw.com | password | clinical_staff | cf9f1YBWFhNAB9KLbk1qVdoE1tE2 |
 | noauth@zocw.com | password | clinician_noauth | 0ZhIsvTsClV37xic0KQDYSMeEM33 |
+| clinadmin@zocw.com | password | clinician_admin | (created by fix-claims.ts) |
 
 ## Login Automation Snippet
 
