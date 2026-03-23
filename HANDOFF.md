@@ -47,7 +47,7 @@
       - Sarah Johnson (sb_diagnostic): Sessile polyp Frame 11342 (AI 94%), Mucosal erosion Frame 3874 (AI 89%), Mucosal erythema Frame 18203 — 5 findings total ✅
       - Robert Brown (colon_eval): Pedunculated polyp Frame 38214 (AI 91%), Vascular malformation Frame 41058, Barrett's-like epithelium Frame 29243 — 3 findings total ✅
       - Lisa Anderson (upper_gi): Barrett's-like epithelium Frame 287 (AI 86%), Antral gastritis Frame 2103 (AI 81%) — 4 findings total ✅
-    - [ ] ErrorState retry: simulate Firestore error — not tested (requires network throttling; defer to future session)
+    - [x] ErrorState retry: error state injected via React fiber dispatch; "Couldn't load dashboard" rendered correctly with Try again button; retryKey incremented to 2 across 2 clicks (confirmed via fiber state); page reload restored Dashboard cleanly ✅
 - **Commit command (ready to run):**
   ```
   git add -A && git commit -m "$(cat <<'EOF'
