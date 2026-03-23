@@ -506,12 +506,14 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 - [ ] **Wire CapsuleUpload.tsx to real upload** — Replace simulated upload with actual upload to `podium-capsule-raw-images-test` bucket using capsule serial number as folder name.
 
 #### ⚠️ BUGS TO FIX (from Session 2 testing)
-- [ ] **Bug #6 — Post-login redirect drops destination** — After unauthenticated redirect to `/login`, successful login routes to `/dashboard` instead of the originally-requested page. Fix: capture target URL in `location.state` or `?redirect=` param before redirecting; restore after login. Severity: MEDIUM.
+- [x] **Bug #6 — Post-login redirect drops destination** ✅ FIXED (Mar 23 work session, commit `51c8a1a`) — `router.tsx` ProtectedRoute passes `{ from: location.pathname }` via state when redirecting to login. `Login.tsx` reads `location.state.from` and redirects there after auth.
 - [x] **Bug #7 — Notification items have no navigation handler** ✅ FIXED (Mar 21 bug fix session) — `NotificationDrawer.tsx` now has `resolveNotificationRoute()` that routes based on `routeTo` field or type+entityId fallback. Click handler navigates and closes drawer.
 - [x] **Bug #8 — "Go to Report" button UX** ✅ FIXED (Mar 23 impl session) — Button now always visible; grayed out (`cursor-not-allowed opacity-60`) with tooltip "Complete pre-review checklist first" when `!reviewUnlocked`. Enabled and clickable when review is unlocked. Severity: LOW/UX.
 - [x] **Bug #3 — Mark all as read partial failure** ✅ FIXED (Mar 21 bug fix session) — `NotificationDrawer.tsx` now has "Mark all read" button with `CheckCheck` icon using `Promise.all` across all unread notifications.
-- [x] **Bug #4 — Add void procedure to seed-demo.ts** ✅ FIXED (Mar 21 bug fix session) — `seed-demo.ts` now seeds 16 procedures including one `void crohns_monitor routine` at index 15 (Robert Brown). Unblocks CA-23 and void routing test.
+- [x] **Bug #4 — Add void procedure to seed-demo.ts** ✅ FIXED (Mar 21 bug fix session) — `seed-demo.ts` now seeds 17 procedures (16 original + 1 UX-04 zero-findings proc at index 16) including one `void crohns_monitor routine` at index 15 (Robert Brown). Unblocks CA-23 and void routing test.
 - [x] **Bug #5 — Fix seed data mismatch for William Taylor sb diagnostic** ✅ FIXED (Mar 21 bug fix session) — `seed-demo.ts` report seeding now sets `status: 'draft'` (no signedAt/signedBy) for draft/appended_draft procedures. Only completed/completed_appended/closed get signed reports.
+- [x] **BUG-51 — Notification click doesn't navigate** ✅ FIXED (Mar 23 Opus session) — Root cause: seed notifications had no `routeTo` or `entityId` fields, so `resolveNotificationRoute()` returned null. Fixed in `seed-demo.ts`: 4 of 5 notifications now include `routeTo`, `entityId`, `entityType` linking to actual seeded procedure IDs. Re-seed required to apply.
+- [x] **UX-04 test data — 0-findings ready_for_review procedure** ✅ ADDED (Mar 23 Opus session) — New procedure at index 16 (`ready_for_review`, `colon_eval`, `routine`) with zero findings. Enables live verification of the "AI analysis complete — no anomalies detected" empty state in Viewer.
 
 #### ⚠️ ADMIN TESTING BLOCKER: Google OAuth popup
 - [x] **Created email/password admin test user** ✅ (Mar 22) — `admin@zocw.com` / `password` created in Firebase Auth.
@@ -522,20 +524,9 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 - [x] **Set budget alert** ✅ (Mar 22) — CW Budget created at $20/month.
 - [x] **Fix deprecated Gemini model** ✅ (Mar 23) — `src/lib/gemini.ts` updated: `gemini-2.0-flash-lite` → `gemini-2.0-flash`. Verified no remaining references to old model in src/.
 
-#### ⚠️ PRE-REQUISITE: Push bug fix commit to GitHub
-- [ ] **Git push pending (commit `6cb7f6b`)** — Bug fix session changes (27 bugs fixed, 128 files changed) are committed locally but NOT pushed to GitHub. HTTPS auth needs to be set up first (Personal Access Token or `gh auth login`). Run from Mac Terminal at office:
-  ```
-  cd /Users/cameronplummer/Library/CloudStorage/OneDrive-SharedLibraries-ZoDiagnostics/SW\ -\ Software\ Dev\ and\ AI-ML\ -\ General/40-Clinician-Workbench/10-Human-Read-Review/90-Demos-Pitches/Claude\ Demo/zocw-firebase-repo
-  # Option A: GitHub CLI (recommended — persistent auth)
-  brew install gh && gh auth login
-  git push origin main
-  # Option B: Personal Access Token (one-time)
-  # Go to github.com → Settings → Developer settings → Personal access tokens → Tokens (classic)
-  # Generate with "repo" scope, then:
-  git push origin main
-  # Enter GitHub username, paste token as password
-  ```
-- [ ] **After push:** Pull in Firebase Studio → `npm run build` to verify no TypeScript errors → smoke-test at https://cw-e7c19.web.app
+#### ✅ COMPLETED: Push bug fix commit to GitHub
+- [x] **Git push completed** ✅ (Mar 23) — All commits from `6cb7f6b` through `c56f6ee` pushed to GitHub. `gh auth login` configured on Mac. Firebase Studio pulled, built, and deployed successfully.
+- [x] **Build verified + deployed** ✅ (Mar 23) — `npm run build` clean. App live at https://cw-e7c19.web.app with all changes through BUG-51 fix.
 
 #### 1B: Image Pipeline — Backend (separate Cowork session / pipeline project)
 ⚠️ **This work is in the pipeline GCP project (`podium-capsule-ingest`), NOT in the ZoCW repo.**
@@ -547,7 +538,7 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 - [ ] **Composite index** — Ensure Firestore index on `capsule_images` collection: `capsule_serial` (asc) + `filename` (asc).
 
 #### 1C: Other Priority 1
-- [ ] **Deploy to Firebase Hosting** — Gives real URL (cw-e7c19.web.app), fixes Google sign-in. Requires Firebase CLI setup in Firebase Studio.
+- [x] **Deploy to Firebase Hosting** ✅ DONE (Mar 20, re-deployed Mar 23) — App live at https://cw-e7c19.web.app. Firebase CLI configured in Firebase Studio.
 - [x] **Build richer drill-down demo data** ✅ PARTIALLY DONE (Mar 23 impl session) — seed-demo.ts now has: full clinical report text (impression, recommendations, multi-numbered findings) for 2 completed procedures; rich showcase findings with frame numbers + confidence + anatomical regions for 3 ready_for_review procedures. Seed cleanup step added (delete before re-seed). Viewer video playback still blocked on BUILD_09 (no real capsule frames yet).
 
 ### Priority 2: Feature Refinement
@@ -566,14 +557,14 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 - [ ] **Deploy Cloud Functions** — Requires Blaze (pay-as-you-go) plan. Functions: onProcedureWrite, validateCapsule, createUser, updateUser, generateAutoDraft, suggestCodes, generateReportPdf, signReport.
 - [ ] **Firebase Studio sunset migration** — Plan migration to Google AI Studio or Antigravity before March 2027.
 - [x] **Move Firebase_Studio_Build_Inputs/ to Archive/** — ✅ Done Mar 19. Moved to Archive/Firebase_Studio_Build_Inputs/.
-- [ ] **Clean up root-level Manage*.tsx stubs** — 5 files (44 lines each) in `src/screens/` are original stubs. The real implementations are in `src/screens/admin/` (imported by router). Root stubs can be deleted. Was misdiagnosed as empty admin/ dir due to OneDrive on-demand sync.
+- [x] **Clean up root-level Manage*.tsx stubs** ✅ DONE (Mar 23, commit `51c8a1a`) — 5 root-level stub files replaced with simple re-exports pointing to the real `admin/` implementations.
 
 ### Priority 4: Polish
 - [x] **Error handling** ✅ DONE (Mar 23 impl session) — ErrorState wired into all 8 main screens (Dashboard, Worklist, Analytics, Procedures, ReportsHub, ActivityLog, Patients, PatientOverview) with retry buttons.
 - [x] **Loading states** ✅ DONE (Mar 23 impl session) — LoadingSkeleton wired into Dashboard (stat cards + rows), Worklist (rows), Patients (rows).
-- [ ] **Build richer drill-down demo data** ✅ PARTIALLY DONE (Mar 23 impl session) — 2 reports now have full clinical text; 3 ready_for_review procs have rich showcase findings. Full playback still blocked pending capsule frame upload (BUILD_09).
-- [ ] **Mobile responsiveness** — Test and fix layout on smaller screens.
-- [ ] **Delete old seed data** — Remove duplicate patients/procedures from early seed runs.
+- [x] **Build richer drill-down demo data** ✅ PARTIALLY DONE (Mar 23 impl session) — 2 reports now have full clinical text; 3 ready_for_review procs have rich showcase findings. Full playback still blocked pending capsule frame upload (BUILD_09). *(See also Priority 1C entry.)*
+- [x] **Mobile responsiveness** ✅ DONE (Mar 23 impl session) — Sidebar auto-collapse below md breakpoint with resize listener, Worklist `overflow-x-auto` table wrapper, Viewer `flex-col md:flex-row` stacking, findings panel `w-full md:w-96`.
+- [x] **Delete old seed data** ✅ DONE (Mar 23 impl session) — `seed-demo.ts` now has `deleteCollection()` and `deleteSubcollectionForDocs()` helpers that clean all seeded collections before re-seeding. No more duplicates on re-run.
 
 ---
 
@@ -619,7 +610,7 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 
 ### Seed Scripts
 - `seed.ts` — Basic seed (3 patients, 5 procedures with full fields)
-- `seed-demo.ts` — Comprehensive demo seed (10 patients, 16 procedures covering all 9 statuses including void, reports with correct signed/draft status, findings, notifications, audit log, staff, clinics, practice settings)
+- `seed-demo.ts` — Comprehensive demo seed (10 patients, 17 procedures covering all 9 statuses including void + 1 zero-findings ready_for_review, reports with correct signed/draft status, rich clinical findings, notifications with routeTo links, cleanup-before-seed, audit log, staff, clinics, practice settings)
 - Run with: `npx tsx seed-demo.ts` in Firebase Studio terminal
 
 ---
