@@ -15,6 +15,40 @@
 
 ## SESSION LOG
 
+### March 24, 2026 (session 3) — Phase 3 Comprehensive Pre-Pipeline Verification (Sonnet 4.6, Cowork)
+- **Scope:** TEST-ONLY (no code changes). Comprehensive verification of all Phase 0–6 feature builds across 14 screens. 119 scenarios logged across clinician_auth and admin roles.
+- **Unit tests:** No test files found in project — vitest exits with code 1 (not a blocker, documented N/A).
+- **Cloud Functions:** CONFIRMED DEPLOYED AND FIRING. Activity Log at `/activity` showed 20 `procedure.created` entries proving `onProcedureWrite` is live. `suggestCodes` and `calculateTransitTimes` output confirmed in SCR-12 and SCR-11 respectively.
+- **Phase 3 bug fixes — all 14 VERIFIED:**
+  - ✅ BUG-16: Urgent case count KPI widget (Dashboard)
+  - ✅ BUG-17: Quick-action shortcuts (Dashboard)
+  - ✅ BUG-22: Inline metadata edit on draft/ready_for_review procedures
+  - ✅ BUG-23: Creation validation + smart prefill from patient history
+  - ✅ BUG-35: Lewis Score, transit times, study-specific panels (Summary)
+  - ✅ BUG-36: Quality metric auto-calculation (Summary)
+  - ✅ BUG-38: Report templates, study-type sections, version history
+  - ✅ BUG-39: Risk scoring + surveillance/follow-up recommendations
+  - ✅ BUG-41: Practice favorites in ICD/CPT suggestions + confidence scores
+  - ✅ BUG-44: Patient demographics editable form
+  - ✅ BUG-45: Medical History, Medications, Allergies tabs (new)
+  - ✅ BUG-47: Signed Reports section in Patient Overview
+  - ✅ BUG-48: Patient-specific Activity Log tab
+  - ✅ BUG-51: Reports Hub tile-based layout redesign
+- **Regression regressions — all PASS (10/10; 2 BLOCKED by ENV):**
+  - ✅ R-01 Dashboard, R-02 /admin blocked, R-03 admin panel, R-04 BUG-52, R-05 BUG-53, R-06 worklist filters, R-07 badge count, R-08 sign gate, R-11 stepper, R-12 finding confirm
+  - ❌ R-09 (clinadmin) and R-10 (staff) BLOCKED by Firebase custom claims ENV issue (see below)
+- **ENV BLOCKER — 3 roles unavailable:** noauth@zocw.com, staff@zocw.com, clinadmin@zocw.com all failed auth due to missing custom claims after IndexedDB clear. **Fix: run `npx tsx fix-claims.ts` in Firebase Studio before next session.**
+- **Heuristic scores updated:** Flow 1: 41.0→44.0, Flow 3: 40.5→47.5. All 4 flows ≥38. ✅
+- **New bugs found:** BUG-54 (Sev 3 — `/procedures/new` 404 for admin, inconsistent routing), BUG-55 (Sev 5 — Patient Activity Log empty state styling)
+- **Session counts:** 110 PASS / 2 FAIL / 33 BLOCKED (119 scenarios)
+- **Cumulative totals:** 368 PASS / 498 FAIL / 142 BLOCKED (56 bugs total, 43 fixed)
+- **Results file:** `docs/TEST_RESULTS_PHASE3_2026-03-24.md`
+- **Next steps:**
+  1. Run `npx tsx fix-claims.ts` in Firebase Studio (re-arm noauth, staff, clinadmin roles)
+  2. Run a follow-up Sonnet session to test the 3 blocked roles (135+ noauth scenarios, staff dashboard, clinadmin hybrid)
+  3. Investigate BUG-54 (`/procedures/new` route consistency)
+  4. Consider unit test scaffolding before pipeline launch
+
 ### March 24, 2026 (session 2) — Opus Orchestration: Cloud Functions Deploy + Package Upgrades (Opus 4.6, Cowork)
 - **Scope:** Fix TypeScript build errors, deploy Cloud Functions, upgrade firebase packages.
 - **Cloud Functions build fixed (66 → 0 errors):**
