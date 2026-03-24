@@ -221,4 +221,41 @@
 
 ---
 
+## Lesson 12: Firestore Security Rules Don't Support `let` Variable Bindings
+
+**Date:** March 24, 2026
+**Category:** Firebase/Deploy
+**Severity:** Medium
+
+**What happened:** `firestore.rules` used `let procedureData = resource.data;` and similar bindings to avoid repeating `resource.data` in rule expressions. The rules were never validated because previous deploys used `--only functions` or `--only functions,hosting`, which skip the Firestore rules compiler. When `firestore` was added to the deploy target for the first time, the compiler rejected all `let` statements: "Missing 'match' keyword before path" / "Unexpected 'let'".
+
+**Root cause:** Firestore Security Rules (rules_version = '2') don't support `let` variable declarations. The syntax looks valid and agents may generate it, but the rules compiler rejects it. The error messages are misleading — they don't say "let is not supported," they report structural parse errors.
+
+**Fix applied:** Replaced all `let` bindings with inline `resource.data` references. For subcollection rules that need parent document data, used `get(/databases/$(database)/documents/...)` path lookups.
+
+**Prevention for future projects:**
+1. Never use `let` in Firestore Security Rules — inline `resource.data` and `request.resource.data` directly
+2. Always deploy with `firestore` included at least once early to validate rules: `--only functions,hosting,firestore`
+3. Use `firebase deploy --only firestore:rules` as a standalone validation step after editing rules
+4. Watch for misleading compiler errors — "Missing 'match' keyword" often means an unsupported statement type
+
+---
+
+## Lesson 13: Deploy Only the Targets You Need
+
+**Date:** March 24, 2026
+**Category:** Firebase/Deploy
+**Severity:** Low
+
+**What happened:** Running `firebase deploy` without `--only` tried to deploy all targets including `storage`, which failed with "Deploy target default not configured for project." The project doesn't use Firebase Storage hosting rules, but `firebase.json` includes a storage section.
+
+**Fix applied:** Always specify explicit targets: `npx firebase-tools@latest deploy --only functions,hosting,firestore`
+
+**Prevention for future projects:**
+1. Never use bare `firebase deploy` — always specify `--only` with the targets you actually need
+2. Remove unused service sections from `firebase.json` to avoid accidental deploy attempts
+3. If adding a new service to the deploy target list, test it in isolation first: `--only firestore:rules`
+
+---
+
 *Add new lessons as they arise. Review before starting new Firebase/React projects.*
