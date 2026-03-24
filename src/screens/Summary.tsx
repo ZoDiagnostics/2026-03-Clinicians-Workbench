@@ -73,6 +73,7 @@ export const Summary: React.FC = () => {
 
   // Helper function to determine risk tier based on study type and findings
   const getRiskTier = () => {
+    if (!procedure) return { tier: 'low', label: 'Low Risk', color: 'bg-green-100 text-green-800' };
     if (procedure.studyType === StudyType.CROHNS_MONITOR) {
       return { tier: 'moderate', label: 'Moderate Risk', color: 'bg-yellow-100 text-yellow-800' };
     }

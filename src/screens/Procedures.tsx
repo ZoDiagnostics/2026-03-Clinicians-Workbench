@@ -88,7 +88,7 @@ export const Procedures: React.FC = () => {
     }
     const mostRecent = procedures
       .filter(p => p.patientId === selectedPatientId)
-      .sort((a, b) => (b.createdAt?.toDate?.() || new Date(0)) - (a.createdAt?.toDate?.() || new Date(0)))[0];
+      .sort((a, b) => (b.createdAt?.toDate?.()?.getTime() || 0) - (a.createdAt?.toDate?.()?.getTime() || 0))[0];
     if (mostRecent) {
       setStudyType(mostRecent.studyType || 'sb_diagnostic');
       setUrgency(mostRecent.urgency || 'routine');
