@@ -14,8 +14,8 @@
 
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import { Report } from '@types/report';
-import { ReportStatus, DeliveryMethod } from '@types/enums';
+import { Report } from '../report';
+import { ReportStatus, DeliveryMethod } from '../enums';
 import { logReportSigned, logReportDelivered } from '../utils/auditLogger';
 import { dispatchDeliveryConfirmedNotification } from '../utils/notificationDispatcher';
 
@@ -108,7 +108,7 @@ async function handleReportSigning(
   const deliveryRecords = [];
 
   for (const method of deliveryMethods) {
-    const deliveryId = admin.firestore.Firestore.FieldValue.arrayUnion({
+    const deliveryRecord = {
       id: `delivery-${Date.now()}`,
       method,
       recipient: getRecipientForMethod(method, reportData, defaultRecipients),
@@ -116,9 +116,8 @@ async function handleReportSigning(
       status: 'queued', // Initial status
       errorMessage: null,
       confirmedAt: null,
-    });
-
-    deliveryRecords.push(deliveryId);
+    };
+    deliveryRecords.push(deliveryRecord);
 
     // For email delivery, create notification entry
     if ((method === 'email_patient' || method === 'email_referring')) {

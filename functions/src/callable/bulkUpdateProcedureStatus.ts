@@ -11,8 +11,8 @@ import * as admin from 'firebase-admin';
 import { z } from 'zod';
 import { validateTransition, validateTransitionDetailed } from '../stateMachine';
 import { logProcedureStatusChange } from '../utils/auditLogger';
-import { Procedure } from '@types/procedure';
-import { ProcedureStatus } from '@types/enums';
+import { Procedure } from '../procedure';
+import { ProcedureStatus } from '../enums';
 
 /**
  * Input schema for bulk status update

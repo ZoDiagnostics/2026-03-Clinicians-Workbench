@@ -9,10 +9,10 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { z } from 'zod';
-import { v4 as uuidv4 } from 'crypto';
+import { randomUUID } from 'crypto';
 import { dispatchRecallNoticeNotification } from '../utils/notificationDispatcher';
 import { logAudit } from '../utils/auditLogger';
-import { Procedure } from '@types/procedure';
+import { Procedure } from '../procedure';
 
 /**
  * Input schema for capsule recall initiation
@@ -106,7 +106,7 @@ export const initiateCapsuleRecall = functions.https.onCall(async (data, context
     });
 
     // Create recall document
-    const recallId = uuidv4();
+    const recallId = randomUUID();
     const recallRef = db
       .collection('practices')
       .doc(practiceId)

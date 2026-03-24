@@ -4,6 +4,7 @@ functions/node_modules/
 
 # Build output
 dist/
+functions/dist/
 
 # Environment (contains real API keys — never commit)
 .env

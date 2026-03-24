@@ -7,8 +7,8 @@
  */
 
 import * as admin from 'firebase-admin';
-import { v4 as uuidv4 } from 'crypto';
-import { NotificationType } from '@types/enums';
+import { randomUUID } from 'crypto';
+import { NotificationType } from '../enums';
 
 /**
  * Parameters for notification dispatch
@@ -64,7 +64,7 @@ export async function dispatchNotification(params: NotificationDispatchParams): 
 
   try {
     // Generate unique notification ID
-    const notificationId = uuidv4();
+    const notificationId = randomUUID();
 
     // Fetch user preferences to determine routing channels
     let userPreferences: any = {};
@@ -100,7 +100,7 @@ export async function dispatchNotification(params: NotificationDispatchParams): 
 
     // Filter channels if in quiet hours (unless mandatory)
     const activeChannels = isInQuietHours && !params.isMandatory
-      ? channels.filter(c => c === 'in_app')
+      ? channels.filter((c: string) => c === 'in_app')
       : channels;
 
     // Create in-app notification entry
@@ -201,7 +201,7 @@ export async function dispatchStudyAssignedNotification(
   await dispatchNotification({
     practiceId,
     userId,
-    type: 'study_assigned',
+    type: NotificationType.STUDY_ASSIGNED,
     title: 'New Study Assigned',
     body: `${patientName} - ${studyType}`,
     routeTo: `/procedures/${procedureId}`,
@@ -227,7 +227,7 @@ export async function dispatchSignatureRequiredNotification(
   await dispatchNotification({
     practiceId,
     userId,
-    type: 'signature_required',
+    type: NotificationType.SIGNATURE_REQUIRED,
     title: 'Report Signature Required',
     body: `${patientName} report awaiting your signature`,
     routeTo: `/reports/${reportId}`,
@@ -254,7 +254,7 @@ export async function dispatchDeliveryConfirmedNotification(
   await dispatchNotification({
     practiceId,
     userId,
-    type: 'delivery_confirmed',
+    type: NotificationType.DELIVERY_CONFIRMED,
     title: 'Report Delivered',
     body: `Report delivered via ${deliveryMethod}`,
     routeTo: `/reports/${reportId}`,
@@ -278,7 +278,7 @@ export async function dispatchRecallNoticeNotification(
   await dispatchNotification({
     practiceId,
     userId,
-    type: 'recall_notice',
+    type: NotificationType.RECALL_NOTICE,
     title: 'Capsule Recall Notice',
     body: `Capsule lot ${lotNumber} has been recalled. Withdraw from inventory immediately.`,
     isMandatory: true,

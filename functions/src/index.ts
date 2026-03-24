@@ -1,40 +1,17 @@
 /**
- * Zo Clinicians Workbench - Firebase Cloud Functions
- * Main entry point exporting all triggers and callable functions
- *
- * Production-ready functions for the ZoCW application.
- * Includes:
- * - Firestore triggers for procedure and report workflows
- * - HTTPS callable functions for clinical operations
- * - Audit logging and notification dispatch utilities
+ * ZoCW Data Model and Type System for Cloud Functions
+ * Simplified version for backend use with firebase-admin Timestamps
  */
 
-import * as admin from 'firebase-admin';
+// Enums
+export * from './enums';
 
-// Initialize Firebase Admin SDK
-if (!admin.apps.length) {
-  admin.initializeApp();
-}
-
-// Export Firestore Triggers
-export { onProcedureWrite } from './triggers/onProcedureWrite';
-export { onReportSign } from './triggers/onReportSign';
-
-// Export HTTPS Callable Functions
-export { generateAutoDraft } from './callable/generateAutoDraft';
-export { suggestCodes } from './callable/suggestCodes';
-export { generateReportPdf } from './callable/generateReportPdf';
-export { validateCapsule } from './callable/validateCapsule';
-export { calculateTransitTimes } from './callable/calculateTransitTimes';
-export { bulkUpdateProcedureStatus } from './callable/bulkUpdateProcedureStatus';
-export { transferReview } from './callable/transferReview';
-export { exportDashboard } from './callable/exportDashboard';
-export { initiateCapsuleRecall } from './callable/initiateCapsuleRecall';
-export { scheduleAnalyticsReport } from './callable/scheduleAnalyticsReport';
-export { setInitialUserClaims } from './callable/setInitialUserClaims';
-export { createUser, updateUser } from './callable/userManagement';
-
-// Export Utilities for direct use if needed
-export * from './utils/auditLogger';
-export * from './utils/notificationDispatcher';
-export * from './stateMachine';
+// Type exports
+export type { Patient, Address, InsuranceInfo, ContactInfo } from './patient';
+export type { Procedure, PreProcedureCheck, PreReviewConfig, TransitTimes, ContraindicationReview } from './procedure';
+export type { Finding, FrameReference, Annotation, ModificationEntry } from './finding';
+export type { Report, CodeEntry, RiskScore, ReferralEntry, SupplementalSection, DeliveryRecord, DeliveryDefaults, ReportSection, SimpleReportSections, AutoDraftSection, AutoDraftReport } from './report';
+export type { User, NotificationPreferences, Delegation } from './user';
+export type { Practice, PracticeSettings, Clinic, SubscriptionInfo, PracticeNotificationConfig, PhiMaskingRule, EmrConfig, AnnotationTemplate, CapsuleInventoryItem, DeliveryDefaults as PracticeDeliveryDefaults } from './practice';
+export type { AuditEntry, AuditAction } from './audit';
+export type { AppNotification } from './notification';

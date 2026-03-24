@@ -4,7 +4,7 @@
     "module": "commonjs",
     "lib": ["ES2022"],
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": "src",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -16,12 +16,13 @@
     "moduleResolution": "node",
     "baseUrl": "./src",
     "paths": {
-      "@types/*": ["../types/*"],
+      "@types/*": ["./*"],
       "@utils/*": ["./utils/*"],
       "@triggers/*": ["./triggers/*"],
       "@callable/*": ["./callable/*"]
-    }
+    },
+    "typeRoots": ["../node_modules/@types"]
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist", "../types"]
 }

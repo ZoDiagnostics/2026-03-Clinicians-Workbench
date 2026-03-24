@@ -9,8 +9,9 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { suggestCodesInputSchema } from '../utils/validators';
-import { Finding } from '@types/finding';
-import { CodeEntry } from '@types/report';
+import { Finding } from '../finding';
+import { CodeEntry } from '../report';
+import { CodeSuggestionStatus } from '../enums';
 
 /**
  * Comprehensive ICD-10 code mapping for GI findings
@@ -239,7 +240,7 @@ function suggestCodesFromFindings(findings: Finding[], favoritesCodes: string[])
         code: option.code,
         description: option.description,
         confidence,
-        status: 'suggested',
+        status: CodeSuggestionStatus.SUGGESTED,
         isFavorite: favoritesCodes.includes(option.code),
         linkedFindingId: finding.id,
         addedAt: admin.firestore.Timestamp.now(),
@@ -257,7 +258,7 @@ function suggestCodesFromFindings(findings: Finding[], favoritesCodes: string[])
       code: procedureCode.code,
       description: procedureCode.description,
       confidence: 0.95, // High confidence for procedure code
-      status: 'suggested',
+      status: CodeSuggestionStatus.SUGGESTED,
       isFavorite: favoritesCodes.includes(procedureCode.code),
       addedAt: admin.firestore.Timestamp.now(),
     });

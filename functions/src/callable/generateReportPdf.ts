@@ -9,10 +9,10 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { generateReportPdfInputSchema } from '../utils/validators';
-import { Report } from '@types/report';
-import { Procedure } from '@types/procedure';
-import { Patient } from '@types/patient';
-import { Finding } from '@types/finding';
+import { Report } from '../report';
+import { Procedure } from '../procedure';
+import { Patient } from '../patient';
+import { Finding } from '../finding';
 
 /**
  * Generate report PDF
@@ -315,7 +315,7 @@ function generatePdfHtml(
         <tbody>
     `;
 
-    report.icdCodes.forEach(code => {
+    report.icdCodes.forEach((code: any) => {
       html += `
         <tr>
           <td>${code.code}</td>
@@ -341,7 +341,7 @@ function generatePdfHtml(
         <tbody>
     `;
 
-    report.cptCodes.forEach(code => {
+    report.cptCodes.forEach((code: any) => {
       html += `
         <tr>
           <td>${code.code}</td>

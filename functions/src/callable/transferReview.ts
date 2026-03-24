@@ -11,7 +11,8 @@ import * as admin from 'firebase-admin';
 import { z } from 'zod';
 import { dispatchNotification } from '../utils/notificationDispatcher';
 import { logAudit } from '../utils/auditLogger';
-import { Procedure } from '@types/procedure';
+import { Procedure } from '../procedure';
+import { NotificationType } from '../enums';
 
 /**
  * Input schema for transfer review
@@ -179,7 +180,7 @@ export const transferReview = functions.https.onCall(async (data, context) => {
     await dispatchNotification({
       practiceId,
       userId: targetClinicianId,
-      type: 'transfer_request',
+      type: NotificationType.TRANSFER_REQUEST,
       title: `${transferTypeLabel} Transfer Assigned`,
       body: `Procedure transferred: ${reason}`,
       routeTo: `/procedures/${procedureId}`,

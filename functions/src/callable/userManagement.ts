@@ -1,7 +1,7 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import { UserRole } from '../../../src/types/enums';
-import { User } from '../../../src/types/user';
+import { UserRole } from '../enums';
+import { User } from '../user';
 
 const db = admin.firestore();
 
@@ -23,7 +23,6 @@ export const createUser = functions.https.onCall(async (data, context) => {
 
   // Create user document in Firestore
   const userDoc: Omit<User, 'id'> = {
-    uid: userRecord.uid,
     practiceId,
     firstName,
     lastName,
@@ -31,8 +30,20 @@ export const createUser = functions.https.onCall(async (data, context) => {
     role,
     clinicIds,
     isActive: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    notificationPreferences: {
+      channels: ['in_app'],
+      digestMode: false,
+      studyAssignmentEnabled: true,
+      signatureRequiredEnabled: true,
+      qaAlertEnabled: true,
+      recallNoticeEnabled: true,
+      transferRequestEnabled: true,
+      updatedAt: admin.firestore.Timestamp.now(),
+    },
+    delegations: [],
+    preferredLanguage: 'en',
+    createdAt: admin.firestore.Timestamp.now(),
+    updatedAt: admin.firestore.Timestamp.now(),
   };
 
   await db.collection('users').doc(userRecord.uid).set(userDoc);

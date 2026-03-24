@@ -9,8 +9,8 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { calculateTransitTimesInputSchema } from '../utils/validators';
-import { Finding } from '@types/finding';
-import { TransitTimes } from '@types/procedure';
+import { Finding } from '../finding';
+import { TransitTimes } from '../procedure';
 
 /**
  * Calculate transit times from findings

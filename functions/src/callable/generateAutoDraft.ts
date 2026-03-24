@@ -9,10 +9,10 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { generateAutoDraftInputSchema } from '../utils/validators';
-import { Finding } from '@types/finding';
-import { Procedure } from '@types/procedure';
-import { AutoDraftReport, AutoDraftSection } from '@types/report';
-import { StudyType } from '@types/enums';
+import { Finding } from '../finding';
+import { Procedure } from '../procedure';
+import { AutoDraftReport, AutoDraftSection } from '../report';
+import { StudyType, DraftSectionStatus } from '../enums';
 
 /**
  * Generate auto-drafted report sections from confirmed findings
@@ -214,7 +214,7 @@ function generateFindingsSection(
     id: 'findings',
     title: 'Findings',
     content,
-    status: 'pending',
+    status: DraftSectionStatus.PENDING,
     linkedEvidence: findings.map(f => f.id),
     draftedAt: admin.firestore.Timestamp.now(),
   };
@@ -274,7 +274,7 @@ function generateImpressionsSection(findings: Finding[], studyType: StudyType): 
     id: 'impressions',
     title: 'Impressions',
     content,
-    status: 'pending',
+    status: DraftSectionStatus.PENDING,
     linkedEvidence: findings.map(f => f.id),
     draftedAt: admin.firestore.Timestamp.now(),
   };
@@ -325,7 +325,7 @@ function generateRecommendationsSection(findings: Finding[], studyType: StudyTyp
     id: 'recommendations',
     title: 'Recommendations',
     content,
-    status: 'pending',
+    status: DraftSectionStatus.PENDING,
     linkedEvidence: findings.map(f => f.id),
     draftedAt: admin.firestore.Timestamp.now(),
   };

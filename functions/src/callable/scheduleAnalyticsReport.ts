@@ -9,7 +9,7 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { z } from 'zod';
-import { v4 as uuidv4 } from 'crypto';
+import { randomUUID } from 'crypto';
 import { logAudit } from '../utils/auditLogger';
 
 /**
@@ -130,7 +130,7 @@ export const scheduleAnalyticsReport = functions.https.onCall(async (data, conte
     const nextRunAt = calculateNextRunTime(schedule);
 
     // Create scheduled report document
-    const reportId = uuidv4();
+    const reportId = randomUUID();
     const reportRef = db
       .collection('practices')
       .doc(practiceId)
@@ -203,10 +203,10 @@ export const scheduleAnalyticsReport = functions.https.onCall(async (data, conte
  * @returns Date object representing next scheduled run time
  */
 function calculateNextRunTime(schedule: {
-  frequency: string;
+  frequency: 'daily' | 'weekly' | 'monthly';
   time: string;
-  dayOfWeek?: string;
-  dayOfMonth?: string;
+  dayOfWeek?: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+  dayOfMonth?: number;
 }): Date {
   const [hours, minutes] = schedule.time.split(':').map(Number);
   const now = new Date();
@@ -250,7 +250,7 @@ function calculateNextRunTime(schedule: {
 
     case 'monthly':
       if (schedule.dayOfMonth) {
-        const targetDay = schedule.dayOfMonth;
+        const targetDay = schedule.dayOfMonth as number;
         nextRun.setDate(targetDay);
 
         if (nextRun <= now) {

@@ -6,7 +6,7 @@
  * Procedures follow a strict state machine with defined valid transitions.
  */
 
-import { ProcedureStatus, VALID_PROCEDURE_TRANSITIONS } from '@types/enums';
+import { ProcedureStatus, VALID_PROCEDURE_TRANSITIONS } from './enums';
 
 /**
  * Valid state transitions for procedure lifecycle.
@@ -207,7 +207,7 @@ export function validateTransitionDetailed(fromStatus: ProcedureStatus, toStatus
  */
 export function getPossiblePath(currentStatus: ProcedureStatus): ProcedureStatus[] {
   // Build a possible path using breadth-first search from initial state
-  const initialState: ProcedureStatus = 'capsule_return_pending';
+  const initialState: ProcedureStatus = ProcedureStatus.CAPSULE_RETURN_PENDING;
 
   if (currentStatus === initialState) {
     return [initialState];

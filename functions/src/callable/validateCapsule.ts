@@ -12,8 +12,8 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { validateCapsuleInputSchema } from '../utils/validators';
-import { Procedure } from '@types/procedure';
-import { PracticeSettings } from '@types/practice';
+import { Procedure } from '../procedure';
+import { PracticeSettings } from '../practice';
 
 /**
  * Validate capsule lot and serial number
@@ -283,6 +283,9 @@ export async function getCapsuleInventoryStatus(
     }
 
     const clinic = clinicDoc.data();
+    if (!clinic) {
+      return null;
+    }
     const capsuleInventory = clinic.capsuleInventory || [];
 
     const inventoryItem = capsuleInventory.find((item: any) => item.lotNumber === lotNumber);

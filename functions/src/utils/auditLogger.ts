@@ -7,8 +7,8 @@
  */
 
 import * as admin from 'firebase-admin';
-import { v4 as uuidv4 } from 'crypto';
-import { AuditAction } from '@types/audit';
+import { randomUUID } from 'crypto';
+import { AuditAction } from '../audit';
 
 /**
  * Parameters for audit logging
@@ -73,7 +73,7 @@ export async function logAudit(params: AuditLogParams): Promise<void> {
 
   try {
     // Generate unique audit entry ID
-    const auditEntryId = uuidv4();
+    const auditEntryId = randomUUID();
 
     // Create audit entry document
     const auditEntry = {

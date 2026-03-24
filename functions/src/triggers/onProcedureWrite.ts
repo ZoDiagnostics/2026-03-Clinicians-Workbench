@@ -11,8 +11,8 @@
 
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import { Procedure } from '@types/procedure';
-import { ProcedureStatus } from '@types/enums';
+import { Procedure } from '../procedure';
+import { ProcedureStatus } from '../enums';
 import { validateTransition, isTerminal } from '../stateMachine';
 import { logAudit, logProcedureStatusChange } from '../utils/auditLogger';
 import { dispatchStudyAssignedNotification, dispatchSignatureRequiredNotification } from '../utils/notificationDispatcher';
