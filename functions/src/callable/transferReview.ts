@@ -6,7 +6,7 @@
  * Handles permanent transfer or temporary coverage assignment of procedures.
  */
 
-import * as functions from 'firebase-functions';
+import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 import { z } from 'zod';
 import { dispatchNotification } from '../utils/notificationDispatcher';

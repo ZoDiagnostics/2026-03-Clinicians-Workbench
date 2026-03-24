@@ -6,7 +6,7 @@
  * TODO: Integration with Puppeteer or pdf-lib for actual PDF rendering.
  */
 
-import * as functions from 'firebase-functions';
+import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 import { generateReportPdfInputSchema } from '../utils/validators';
 import { Report } from '../report';

@@ -12,7 +12,7 @@
  * Defined in ZCW-BRD-0298 (Delivery Defaults).
  */
 
-import * as functions from 'firebase-functions';
+import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 import { Report } from '../report';
 import { ReportStatus, DeliveryMethod } from '../enums';

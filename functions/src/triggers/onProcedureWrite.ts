@@ -9,7 +9,7 @@
  * Defined in ZCW-BRD-0226 through ZCW-BRD-0245.
  */
 
-import * as functions from 'firebase-functions';
+import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 import { Procedure } from '../procedure';
 import { ProcedureStatus } from '../enums';

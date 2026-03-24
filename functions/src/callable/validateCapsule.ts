@@ -9,7 +9,7 @@
  * 3. Lot/serial format validation
  */
 
-import * as functions from 'firebase-functions';
+import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 import { validateCapsuleInputSchema } from '../utils/validators';
 import { Procedure } from '../procedure';

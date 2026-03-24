@@ -6,7 +6,7 @@
  * Maps finding classifications to standardized medical codes with confidence scoring.
  */
 
-import * as functions from 'firebase-functions';
+import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 import { suggestCodesInputSchema } from '../utils/validators';
 import { Finding } from '../finding';
