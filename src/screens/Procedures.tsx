@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, addDoc, Timestamp, query, where, getDocs, limit } from 'firebase/firestore';
+import { collection, addDoc, Timestamp, query, where, getDocs, limit, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth, useProcedures, usePatients } from '../lib/hooks';
 import { Sidebar } from '../components/Sidebar';
@@ -54,10 +54,46 @@ export const Procedures: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // BUG-22: Inline metadata editing
+  const [editingProcId, setEditingProcId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ studyType: '', urgency: '', notes: '' });
+
+  // BUG-23: Duplicate acknowledgment
+  const [dupAcknowledged, setDupAcknowledged] = useState(false);
+
   const patientMap = useMemo(() =>
     new Map(allPatients.map(p => [p.id, `${p.firstName} ${p.lastName}`])),
     [allPatients]
   );
+
+  // BUG-23: Duplicate check — 30 day lookback
+  const hasDuplicate = useMemo(() => {
+    if (!selectedPatientId || !studyType) return null;
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const match = procedures.find(p =>
+      p.patientId === selectedPatientId &&
+      p.studyType === studyType &&
+      p.createdAt?.toDate?.() > thirtyDaysAgo
+    );
+    return match ? { studyType: match.studyType, createdAt: match.createdAt?.toDate?.() } : null;
+  }, [selectedPatientId, studyType, procedures]);
+
+  // BUG-23: Smart prefill — find most recent procedure for patient
+  useEffect(() => {
+    if (!selectedPatientId) {
+      setStudyType('sb_diagnostic');
+      setUrgency('routine');
+      return;
+    }
+    const mostRecent = procedures
+      .filter(p => p.patientId === selectedPatientId)
+      .sort((a, b) => (b.createdAt?.toDate?.() || new Date(0)) - (a.createdAt?.toDate?.() || new Date(0)))[0];
+    if (mostRecent) {
+      setStudyType(mostRecent.studyType || 'sb_diagnostic');
+      setUrgency(mostRecent.urgency || 'routine');
+    }
+  }, [selectedPatientId, procedures]);
 
   const handleCreateProcedure = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +101,13 @@ export const Procedures: React.FC = () => {
 
     if (!selectedPatientId) {
       setFormError('Please select a patient.');
+      return;
+    }
+
+    // BUG-23: Duplicate check
+    if (hasDuplicate && !dupAcknowledged) {
+      const dateStr = hasDuplicate.createdAt?.toLocaleDateString();
+      setFormError(`This patient already has a ${hasDuplicate.studyType?.replace(/_/g, ' ')} procedure from ${dateStr}. Check the box below to continue anyway.`);
       return;
     }
 
@@ -105,6 +148,7 @@ export const Procedures: React.FC = () => {
       setStudyType('sb_diagnostic');
       setUrgency('routine');
       setIndications('');
+      setDupAcknowledged(false);
       // Navigate to the new procedure's checkin
       navigate(`/checkin/${docRef.id}`);
     } catch (err) {
@@ -112,6 +156,22 @@ export const Procedures: React.FC = () => {
       setFormError('Failed to create procedure.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // BUG-22: Handle inline edit save
+  const handleSaveInlineEdit = async (procId: string) => {
+    try {
+      await updateDoc(doc(db, 'procedures', procId), {
+        studyType: editForm.studyType,
+        urgency: editForm.urgency,
+        updatedAt: Timestamp.now(),
+      });
+      setEditingProcId(null);
+      setEditForm({ studyType: '', urgency: '', notes: '' });
+    } catch (err) {
+      console.error('Failed to save inline edit:', err);
+      setFormError('Failed to save changes.');
     }
   };
 
@@ -159,35 +219,103 @@ export const Procedures: React.FC = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Urgency</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {procedures.map((proc) => (
-                    <tr
-                      key={proc.id}
-                      className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => navigate(routeByStatus(proc.status, proc.id))}
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {patientMap.get(proc.patientId) || 'Unknown Patient'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {proc.studyType?.replace(/_/g, ' ') || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <StatusBadge status={proc.status} />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {proc.urgency || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {proc.createdAt?.toDate?.() ? proc.createdAt.toDate().toLocaleDateString() : '-'}
-                      </td>
-                    </tr>
-                  ))}
+                  {procedures.map((proc) => {
+                    const isEditing = editingProcId === proc.id;
+                    const canEdit = ['capsule_return_pending', 'capsule_received', 'ready_for_review', 'draft'].includes(proc.status);
+                    return (
+                      <tr
+                        key={proc.id}
+                        className={isEditing ? 'bg-blue-50' : 'hover:bg-gray-50 cursor-pointer'}
+                        onClick={() => !isEditing && navigate(routeByStatus(proc.status, proc.id))}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {patientMap.get(proc.patientId) || 'Unknown Patient'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {isEditing ? (
+                            <select
+                              value={editForm.studyType}
+                              onChange={e => setEditForm({ ...editForm, studyType: e.target.value })}
+                              className="border border-gray-300 rounded-md py-1 px-2 text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                            >
+                              <option value="sb_diagnostic">Small Bowel — Diagnostic</option>
+                              <option value="upper_gi">Upper GI — Evaluation</option>
+                              <option value="crohns_monitor">Small Bowel — Crohn's Monitoring</option>
+                              <option value="colon_eval">Colon — Evaluation</option>
+                            </select>
+                          ) : (
+                            proc.studyType?.replace(/_/g, ' ') || '-'
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <StatusBadge status={proc.status} />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {isEditing ? (
+                            <select
+                              value={editForm.urgency}
+                              onChange={e => setEditForm({ ...editForm, urgency: e.target.value })}
+                              className="border border-gray-300 rounded-md py-1 px-2 text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                            >
+                              <option value="routine">Routine</option>
+                              <option value="urgent">Urgent</option>
+                              <option value="emergent">Emergent</option>
+                            </select>
+                          ) : (
+                            proc.urgency || '-'
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {proc.createdAt?.toDate?.() ? proc.createdAt.toDate().toLocaleDateString() : '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {isEditing ? (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSaveInlineEdit(proc.id);
+                                }}
+                                className="text-white bg-green-600 hover:bg-green-700 px-2 py-1 rounded text-xs"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingProcId(null);
+                                  setEditForm({ studyType: '', urgency: '', notes: '' });
+                                }}
+                                className="text-gray-700 bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded text-xs"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : canEdit ? (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingProcId(proc.id);
+                                setEditForm({ studyType: proc.studyType, urgency: proc.urgency, notes: '' });
+                              }}
+                              className="text-indigo-600 hover:text-indigo-900 font-medium text-xs"
+                            >
+                              Edit
+                            </button>
+                          ) : (
+                            <span className="text-gray-400 text-xs">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {procedures.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-gray-500">No procedures found.</td>
+                      <td colSpan={6} className="px-6 py-12 text-center text-gray-500">No procedures found.</td>
                     </tr>
                   )}
                 </tbody>
@@ -198,10 +326,17 @@ export const Procedures: React.FC = () => {
             {showModal && (
               <div className="fixed inset-0 z-50 overflow-y-auto">
                 <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                  <div className="fixed inset-0 bg-gray-500 opacity-75" onClick={() => setShowModal(false)} />
+                  <div className="fixed inset-0 bg-gray-500 opacity-75" onClick={() => {
+                    setShowModal(false);
+                    setDupAcknowledged(false);
+                    setFormError(null);
+                  }} />
                   <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
                     <form onSubmit={handleCreateProcedure}>
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">New Procedure</h3>
+                      <h3 className="text-lg font-medium text-gray-900 mb-1">New Procedure</h3>
+                      {selectedPatientId && procedures.filter(p => p.patientId === selectedPatientId).length > 0 && (
+                        <p className="text-xs text-gray-600 mb-4">Prefilled from last procedure</p>
+                      )}
 
                       <div className="space-y-4">
                         <div>
@@ -244,10 +379,29 @@ export const Procedures: React.FC = () => {
                         </div>
                       </div>
 
-                      {formError && <p className="mt-3 text-sm text-red-600">{formError}</p>}
+                      {formError && (
+                        <div className="mt-3">
+                          <p className="text-sm text-red-600 mb-2">{formError}</p>
+                          {hasDuplicate && !dupAcknowledged && (
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={dupAcknowledged}
+                                onChange={e => setDupAcknowledged(e.target.checked)}
+                                className="rounded border-gray-300"
+                              />
+                              <span className="text-sm text-gray-700">I understand and want to continue</span>
+                            </label>
+                          )}
+                        </div>
+                      )}
 
                       <div className="mt-6 flex justify-end gap-3">
-                        <button type="button" onClick={() => setShowModal(false)}
+                        <button type="button" onClick={() => {
+                          setShowModal(false);
+                          setDupAcknowledged(false);
+                          setFormError(null);
+                        }}
                           className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm text-gray-700 bg-white hover:bg-gray-50">
                           Cancel
                         </button>
