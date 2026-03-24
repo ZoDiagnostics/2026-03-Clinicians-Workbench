@@ -1,6 +1,6 @@
 # ZoCW Session Handoff & Work Queue
 **Purpose:** Initialization context for a new Claude Cowork session + prioritized work queue.
-**Last Updated:** March 24, 2026 — Opus orchestration session: Phase 0 housekeeping complete. 2 duplicates closed (BUG-01, BUG-49), BUG-36 reclassified. Pre-pipeline build plan created (14 bugs, 6 phases). 31 of 52 unique bugs resolved.
+**Last Updated:** March 24, 2026 — Opus session 2: Cloud Functions deployed (14 functions). Package upgrades (firebase-functions v7, firebase-admin v13). BLOCKER: firebase deploy "extensions" error after upgrade — see OPUS_CONTINUATION_PROMPT.md for fix path.
 
 ## MANDATORY SESSION RULES
 1. **At session start:** Read this file to understand current state and work queue.
@@ -15,7 +15,22 @@
 
 ## SESSION LOG
 
-### March 24, 2026 — Opus Orchestration: Pre-Pipeline Planning + Phase 0 Housekeeping (Opus 4.6, Cowork)
+### March 24, 2026 (session 2) — Opus Orchestration: Cloud Functions Deploy + Package Upgrades (Opus 4.6, Cowork)
+- **Scope:** Fix TypeScript build errors, deploy Cloud Functions, upgrade firebase packages.
+- **Cloud Functions build fixed (66 → 0 errors):**
+  - Root cause: Sonnet agent created compiled `.d.ts` files in `functions/types/` instead of `.ts` source files
+  - Fix: Changed `@types/*` path alias to resolve to `functions/src/` (where proper `.ts` files exist), replaced all `@types/` imports with relative paths across 14 files
+  - Added 3 missing AuditAction values, replaced string literals with enum constants
+  - Fixed `userManagement.ts` stray `id` field in `Omit<User, 'id'>` literal
+- **Cloud Functions DEPLOYED:** 14 functions successfully deployed to `cw-e7c19` (first-ever deploy)
+- **firebase.json updated:** Added `functions` deployment target block (was missing entirely)
+- **Package upgrades:** firebase-functions ^4.9→^7.2, firebase-admin ^12→^13.7, @types/node ^20→^22
+  - Gen 1 imports changed to `firebase-functions/v1` subpath (13 files)
+  - Node.js engine kept at 20 (Firebase Cloud Functions doesn't support 22 yet)
+- **⚠️ BLOCKER:** After package upgrade, `firebase deploy --only functions` fails with "Unexpected key extensions" error. Firebase Studio's bundled CLI (13.10.0) doesn't understand firebase-functions v7 build metadata. Global npm install of CLI 15.11.0 didn't override the bundled binary. See `docs/OPUS_CONTINUATION_PROMPT.md` for fix options.
+- **Commits:** `2b46825` (TS build fixes), `c478380` (firebase.json functions target), `3636bfc` (package upgrades), `1a5f1b6` (revert Node 22→20)
+
+### March 24, 2026 (session 1) — Opus Orchestration: Pre-Pipeline Planning + Phase 0 Housekeeping (Opus 4.6, Cowork)
 - **Scope:** OneDrive/Git handoff solution, bug reclassification, pre-pipeline build plan, Phase 3 Sonnet test prompt.
 - **OneDrive solution:** Created `preflight.sh` (6 checks: lock files, fileMode, permissions, GitHub CLI, file accessibility, cloud-only file detection with retry). Updated HANDOFF rules 2 & 7. Updated OPUS and SONNET continuation prompts with pre-flight instructions. Installed `coreutils` on Mac Studio (TODO: home Mac).
 - **BUG-52/53 verified live:** 8/8 PASS via browser automation. Results in `docs/VERIFICATION_RESULTS_2026-03-24.md`.

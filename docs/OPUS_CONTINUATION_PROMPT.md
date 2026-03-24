@@ -1,5 +1,5 @@
 # Opus Continuation Prompt — ZoCW Session Handoff
-**Last Updated:** March 23, 2026 (post-Phase 2 testing + BUG-52/53 fixes)
+**Last Updated:** March 24, 2026 (post-Cloud Functions deploy + package upgrades)
 
 **Context:** This prompt catches up a new Opus Cowork session to take over from the previous one. Use this if you're starting a fresh Opus session and need full project awareness.
 
@@ -34,33 +34,55 @@ If the script reports `✅ READY`, proceed. If it reports manual issues:
 
 ### Step 2: Understand Current State
 
-**What's done (as of March 24):**
-- 29 of 54 bugs fixed and verified (27 original + BUG-52 + BUG-53)
-- 6 UX fixes implemented and deployed; UX-03/04/06/07 verified live; **UX-09/10 now verified** (Activity Log filters present and rendered)
-- **Phase 2 role testing COMPLETE** — 35 PASS, 1 FAIL across 431 scenarios (admin 166, noauth 135, clinadmin 74, user 56)
-- All 5 test users working: clinician@, admin@, staff@, noauth@, clinadmin@zocw.com (all password: `password`)
-- Firebase Auth custom claims fixed for all users
-- **All 4 heuristic flows now PASS** (≥38 threshold): Flow 1: 41.0, Flow 2: 39.5, Flow 3: 40.5, Flow 6: 41.0
-- **BUG-52 FIXED & VERIFIED** — ManagePractice.tsx React hooks violation. Deployed and verified live (8/8 PASS).
-- **BUG-53 FIXED & VERIFIED** — Activity Log sidebar link role-gated. Verified across admin, clinician_auth, clinician_admin roles.
+**What's done (as of March 24, end of Opus session 2):**
+- 31 of 54 bugs resolved (29 fixed + 2 duplicates closed: BUG-01, BUG-49)
+- 14 bugs reclassified as pre-pipeline feature builds (see `docs/PRE_PIPELINE_BUILD_PLAN.md`)
+- 11 bugs deferred to image pipeline build
+- BUG-36 reclassified from duplicate to FEATURE-BUILD (quality metric auto-calc)
+- **Cloud Functions: 14 functions DEPLOYED to cw-e7c19** (Phase 1 of build plan COMPLETE)
+  - TypeScript build fixed: replaced broken @types/* path alias with relative imports
+  - Added backend-adapted type source files to functions/src/
+  - Added 3 missing AuditAction values, replaced string literals with enum constants
+  - firebase.json updated with functions deployment target
+- **Package upgrades applied:**
+  - firebase-functions ^4.9 → ^7.2 (Gen 1 imports moved to `firebase-functions/v1`)
+  - firebase-admin ^12 → ^13.7
+  - @types/node ^20 → ^22
+- **OneDrive/Git handoff solution deployed** — `preflight.sh` script + HANDOFF rules
+- **Sonnet Phase 3 test prompt written** — 425 scenarios across 14 screens, all 5 roles
 - **Cumulative test totals:** 258 PASS / 496 FAIL / 109 BLOCKED across all sessions
-- **OneDrive/Git handoff solution deployed** — `preflight.sh` script + HANDOFF mandatory rules updated
 
-**What's next (prioritized):**
-1. **Re-seed Firestore** — `npx tsx seed-demo.ts` in Firebase Studio. Needed to populate audit log entries so UX-09/10 filter *behavior* can be verified (UI controls are confirmed present but 0 entries in collection).
-2. **Verify BUG-52/53 fixes live** — /admin/practice should load for admin; Activity Log link should be hidden for non-admin roles.
-3. **Regression re-test Phase 2 failures** — BUG-52 was the only FAIL; re-verify after fix.
-4. **BUILD_09 Image Pipeline (frontend)** — 4 implementation items:
-   - Implement `getCapsuleFrames` callable Cloud Function
-   - Implement `useCapsuleFrames` hook
-   - Wire Viewer.tsx to real frame data + AI findings
-   - Wire CapsuleUpload.tsx to real upload
-5. **BUILD_09 Image Pipeline (backend)** — In pipeline project (`podium-capsule-ingest`):
-   - Rename `procedure_id` → `capsule_serial` in Cloud Functions
-   - CORS configuration on storage bucket
-   - Cross-project service account IAM
-6. **Deploy Cloud Functions** — `cw-e7c19` project (requires Blaze plan, which is now active)
-7. **clinical_staff testing** — staff@zocw.com was not included in Phase 2 test plan; needs separate coverage
+**BLOCKER — Firebase deploy "extensions" error:**
+The deploy succeeded ONCE (first deploy with firebase-functions ^4.9). After upgrading to firebase-functions v7, deploys fail with:
+```
+Error: Failed to parse build specification:
+- FirebaseError Unexpected key extensions. You may need to install a newer version of the Firebase CLI.
+```
+This happens even after upgrading Firebase CLI to 15.11.0 in Firebase Studio. The issue is that Firebase Studio's bundled `firebase` binary overrides the global npm install. Root cause per [firebase-tools#9328](https://github.com/firebase/firebase-tools/issues/9328): CLI version incompatibility with firebase-functions v7 build metadata.
+
+**Attempted fixes that did NOT work:**
+- `npm install -g firebase-tools@latest` → installed 13.10.0 (npm registry lag)
+- `npm install -g firebase-tools@15.11.0` → installed but Studio's PATH still uses bundled 13.10.0
+- Downgrading to firebase-functions v6 → same error (v6 also emits `extensions` key)
+- `npx firebase-tools@15.11.0 deploy --only functions` → NOT YET TRIED (last suggestion before session ended)
+
+**What the next Opus session needs to do FIRST:**
+1. **Resolve the firebase deploy extensions error.** Try in Firebase Studio:
+   ```bash
+   cd ~/2026-03-Clinicians-Workbench
+   npx firebase-tools@latest deploy --only functions
+   ```
+   If that fails, the nuclear option: downgrade firebase-functions back to ^4.9.0, revert imports from `firebase-functions/v1` back to `firebase-functions`, and redeploy. The initial deploy with v4.9 worked. The upgrade can wait until Firebase Studio's CLI catches up.
+2. **Re-seed Firestore** — `npx tsx seed-demo.ts` in Firebase Studio
+3. **Continue Phases 2–6** of `docs/PRE_PIPELINE_BUILD_PLAN.md` (Dashboard, Patient Overview, Procedures, Summary, Report feature builds — 14 bugs)
+4. **Run Phase 3 Sonnet test session** — `docs/SONNET_PHASE3_TEST_PROMPT.md` (425 scenarios)
+
+**What's next (prioritized after deploy fix):**
+1. **Re-seed Firestore** — `npx tsx seed-demo.ts` in Firebase Studio
+2. **Phases 2–6 Sonnet build sessions** — 14 feature builds per `docs/PRE_PIPELINE_BUILD_PLAN.md`
+3. **Phase 3 Sonnet test session** — 425-scenario verification
+4. **BUILD_09 Image Pipeline** — deferred to after pre-pipeline builds
+5. **clinical_staff testing** — staff@zocw.com needs separate coverage
 
 **Key architectural decisions (binding):**
 - Two GCP projects: `cw-e7c19` (app) and `podium-capsule-ingest` (image pipeline)
@@ -90,7 +112,20 @@ Check with Cameron what he wants to focus on. Typical priorities:
 - **Test spreadsheet:** `Zo_Workbench_Functional_Test_Scenarios_v2_4.xlsx` in Claude Demo root (825 scenarios, 5 roles)
 - **Deployed version:** v3.1.0
 - **Cameron's git push workflow:** Run commands in Mac Terminal (VM has no GitHub credentials)
-- **Firebase Studio deploy:** `git pull origin main && npm run build && firebase deploy --only hosting`
+- **Firebase Studio deploy (hosting):** `git pull origin main && npm run build && firebase deploy --only hosting`
+- **Firebase Studio deploy (functions):** `cd functions && npm run build && firebase deploy --only functions` — BUT see BLOCKER above re: extensions error
 - **Re-seed command:** `npx tsx seed-demo.ts` in Firebase Studio terminal
 - **Pre-flight script:** `bash preflight.sh` — run before any git operations (handles OneDrive lock files, permission flips, sync locks)
 - **OneDrive repo warning:** Repo is in OneDrive-synced folder. See Lessons 6, 8, 9 in `docs/LESSONS_LEARNED.md` for known issues and mitigations.
+- **Cowork VM limitation:** Cannot delete files from mounted OneDrive folder. Workaround: overwrite with empty content, or ask Cameron to delete manually.
+- **Firebase Studio limitation:** Bundled `firebase` binary overrides global npm installs. Use `npx firebase-tools@<version>` to force a specific version.
+- **Git lock files:** Cowork VM leaves stale `.git/HEAD.lock` and `.git/index.lock` after commits. Cameron must run `rm -f .git/HEAD.lock .git/index.lock` before pushing.
+
+### Lessons Learned This Session (March 24, Opus Session 2)
+
+1. **Test the full deploy path before upgrading packages.** The firebase-functions v7 upgrade passed `tsc` locally but failed at deploy time due to CLI incompatibility. Should have tested `firebase deploy` before committing the upgrade.
+2. **Firebase Studio has its own toolchain.** Global npm installs don't override Studio's bundled binaries. Always verify with `which firebase && firebase --version` or use `npx`.
+3. **Node.js 22 not yet supported by Firebase Cloud Functions deploy.** Despite the deprecation warning for Node 20, setting engine to 22 causes a hard failure. Keep at 20 until Google/Firebase adds support.
+4. **Cowork VM file deletion is blocked.** The sandbox prevents `rm` on mounted folder files. Plan for this — use overwrite-to-empty as workaround, or ask the user to delete.
+5. **The Sonnet agent's .d.ts file strategy was wrong.** It created compiled declaration files instead of TypeScript source files for the functions/types/ directory. The fix was to use the .ts source files already in functions/src/ and change the path alias to resolve there.
+6. **Always verify `npm install -g` actually updated the binary in PATH.** Check `which <tool>` and `<tool> --version` after installing.
