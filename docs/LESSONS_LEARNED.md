@@ -1,6 +1,6 @@
 # ZoCW Lessons Learned
 **Purpose:** Capture operational lessons from the ZoCW build for future Firebase/React projects.
-**Last Updated:** March 20, 2026
+**Last Updated:** March 23, 2026
 
 ---
 
@@ -133,6 +133,50 @@
 2. Always commit and push before ending a session
 3. Include "wrap up" as a trigger word for updating handoff docs
 4. Schedule automated reminders (5pm weekday) to update handoff before leaving
+
+---
+
+## Lesson 8: OneDrive Flips File Permissions — Use `git config core.fileMode false`
+
+**Date:** March 23, 2026
+**Category:** Environment/Tooling
+**Severity:** Medium
+
+**What happened:** From the home Mac, the Cowork VM mounted the OneDrive-synced repo folder. Several recently-modified files were unreadable from the VM — returning "Resource deadlock avoided" errors (OneDrive holding sync locks). Separately, on the home Mac terminal, `git status` showed **every file in the repo as modified** (~120 files). Investigation with `git diff src/main.tsx` revealed no content changes — only permission changes: `old mode 100644` → `new mode 100755`. OneDrive was flipping all files to executable during sync.
+
+**Root cause:** OneDrive sync on macOS does not preserve Unix file permission bits. When syncing between cloud/Windows and macOS, it resets permissions, making git see every file as changed. Additionally, OneDrive holds file-level locks during sync that prevent the Cowork VM (which mounts the same folder) from reading those files.
+
+**Additional issue:** A stale `.git/index.lock` file blocked `git commit` on the Mac. Likely left by the Cowork VM's earlier git operations or by OneDrive interfering with the `.git` directory.
+
+**Fixes applied (home Mac terminal):**
+1. `git config core.fileMode false` — tells git to ignore permission changes for this repo. After this, `git status` correctly showed only 6 real changes + 1 new file.
+2. `rm -f .git/index.lock` — removes stale lock file so `git commit` works.
+
+**Prevention for future projects:**
+1. Run `git config core.fileMode false` immediately after cloning any repo into an OneDrive-synced folder — on EVERY machine (home Mac, office Mac)
+2. If `git commit` fails with "index.lock exists", remove it with `rm -f .git/index.lock` (or `del .git\index.lock` on Windows)
+3. If the Cowork VM can't read a file ("Resource deadlock avoided"), wait for OneDrive sync to complete or close the file in other editors
+4. Consider Lesson 6 advice: keep active dev repos in a normal local directory, not a cloud-synced folder
+
+---
+
+## Lesson 9: GitHub CLI Setup for Push Access
+
+**Date:** March 23, 2026
+**Category:** Environment/Tooling
+**Severity:** Low
+
+**What happened:** Git push was blocked because HTTPS authentication wasn't configured on the home Mac. The repo remote was correct (`origin → https://github.com/ZoDiagnostics/2026-03-Clinicians-Workbench.git`) but no credential helper was in place.
+
+**Fix applied (home Mac terminal):**
+1. `brew install gh` — installs GitHub CLI v2.88.1
+2. `gh auth login` → GitHub.com → HTTPS → Yes (authenticate Git) → Login with a web browser
+3. Authenticated as `ZoDiagnostics`. Git push now works from home Mac.
+
+**For office Mac — same setup needed if not already done:**
+1. `brew install gh` (if not installed)
+2. `gh auth login` — same flow
+3. Also run `git config core.fileMode false` on office Mac (see Lesson 8)
 
 ---
 

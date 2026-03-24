@@ -1,6 +1,7 @@
 # Opus Continuation Prompt — ZoCW Session Handoff
+**Last Updated:** March 23, 2026 (post-Phase 2 testing + BUG-52/53 fixes)
 
-**Context:** This prompt catches up a new Opus Cowork session to take over from the previous one that hit context limits. Use this if you're starting a fresh Opus session and need full project awareness.
+**Context:** This prompt catches up a new Opus Cowork session to take over from the previous one. Use this if you're starting a fresh Opus session and need full project awareness.
 
 ---
 
@@ -12,45 +13,63 @@ You are the **Opus orchestration session** for ZoCW (Zo Clinicians Workbench) �
 
 1. `HANDOFF.md` (repo root) — full project state, session log, work queue
 2. `docs/ZoCW_Model_Selection_Guide.md` — mandatory model routing rules
-3. `docs/BROWSER_AUTH_AUTOMATION.md` — how to automate login for all 4 test roles
-4. `docs/TEST_RESULTS_2026-03-23.md` — latest test results including Phase 1 regression (22 PASS) and Phase 2 status
+3. `docs/BROWSER_AUTH_AUTOMATION.md` — how to automate login for all 5 test roles
+4. `docs/TEST_RESULTS_PHASE2_2026-03-23.md` — Phase 2 role-based test results (35 PASS, 1 FAIL, 2 new bugs)
+5. `docs/TEST_RESULTS_2026-03-23.md` — Phase 1 regression results (22 PASS, 1 partial fail)
 
 ### Step 2: Understand Current State
 
-**What's done:**
-- 27 of 52 bugs fixed and verified via regression testing (Session 6)
-- 6 UX fixes implemented, 4 verified live (UX-03, UX-06, UX-07 confirmed; UX-04 bundle-verified)
-- BUG-51 fixed (notification click navigation — seed data fix in `seed-demo.ts`)
-- UX-04 test data added (0-findings `ready_for_review` procedure at index 16)
-- **Firebase Auth custom claims fixed** — all 4 test users now have `{ role, practiceId }` claims. Root cause was missing claims, NOT network blocking.
-- Browser automation login works for all roles: admin@zocw.com, staff@zocw.com, noauth@zocw.com, clinician@zocw.com (all use password `password`)
-- Heuristic re-scores: Flow 2 → 39.5 PASS, Flow 3 → 40.5 PASS, Flow 6 → 34.5 FAIL (pending UX-09/10 verification)
+**What's done (as of end-of-day March 23):**
+- 27 of 52 bugs fixed and verified via Session 6 regression testing (22 PASS, 1 partial)
+- 6 UX fixes implemented and deployed; UX-03/04/06/07 verified live; **UX-09/10 now verified** (Activity Log filters present and rendered)
+- **Phase 2 role testing COMPLETE** — 35 PASS, 1 FAIL across 431 scenarios (admin 166, noauth 135, clinadmin 74, user 56)
+- All 5 test users working: clinician@, admin@, staff@, noauth@, clinadmin@zocw.com (all password: `password`)
+- Firebase Auth custom claims fixed for all users
+- **All 4 heuristic flows now PASS** (≥38 threshold): Flow 1: 41.0, Flow 2: 39.5, Flow 3: 40.5, Flow 6: 41.0
+- **BUG-52 FIXED** (uncommitted) — ManagePractice.tsx React hooks violation causing /admin/practice crash. Moved useState/useEffect above role gate.
+- **BUG-53 FIXED** (uncommitted) — Activity Log sidebar link now role-gated to admin/clinician_admin only.
 
-**What's in progress / next:**
-- **Phase 2 role testing** — ~375+ scenarios across Administrator (166), Clinician Not Auth to Sign (135), Clinician Administrator (74, BLOCKED — no test user with `clinician_admin` role), and User (56). A Sonnet prompt (`SONNET_PHASE2_TEST_PROMPT.md`) was prepared for this.
-- **UX-09/UX-10 live verification** — Activity Log user and date filters, admin-gated. Now testable with admin@ login working.
-- **Flow 6 heuristic re-scoring** — depends on UX-09/10 verification results
-- **UX-04 live trigger** — 0-findings procedure seeded; needs deploy + live verification
-- **Remaining work queue** — see HANDOFF.md WORK QUEUE section for BUILD_09 (Image Pipeline), Cloud Functions deploy, Google sign-in
+**What needs to happen first (uncommitted changes):**
+1. Cameron needs to push BUG-52/53 fixes: `git add -A && git commit -m "fix: BUG-52 ManagePractice hooks order + BUG-53 Activity Log sidebar RBAC" && git push origin main`
+2. Deploy: In Firebase Studio: `git pull origin main && npm run build && firebase deploy --only hosting`
+3. Verify /admin/practice loads without crash for admin role
 
-**Key architectural decisions:**
+**What's next (prioritized):**
+1. **Re-seed Firestore** — `npx tsx seed-demo.ts` in Firebase Studio. Needed to populate audit log entries so UX-09/10 filter *behavior* can be verified (UI controls are confirmed present but 0 entries in collection).
+2. **Verify BUG-52/53 fixes live** — /admin/practice should load for admin; Activity Log link should be hidden for non-admin roles.
+3. **Regression re-test Phase 2 failures** — BUG-52 was the only FAIL; re-verify after fix.
+4. **BUILD_09 Image Pipeline (frontend)** — 4 implementation items:
+   - Implement `getCapsuleFrames` callable Cloud Function
+   - Implement `useCapsuleFrames` hook
+   - Wire Viewer.tsx to real frame data + AI findings
+   - Wire CapsuleUpload.tsx to real upload
+5. **BUILD_09 Image Pipeline (backend)** — In pipeline project (`podium-capsule-ingest`):
+   - Rename `procedure_id` → `capsule_serial` in Cloud Functions
+   - CORS configuration on storage bucket
+   - Cross-project service account IAM
+6. **Deploy Cloud Functions** — `cw-e7c19` project (requires Blaze plan, which is now active)
+7. **clinical_staff testing** — staff@zocw.com was not included in Phase 2 test plan; needs separate coverage
+
+**Key architectural decisions (binding):**
 - Two GCP projects: `cw-e7c19` (app) and `podium-capsule-ingest` (image pipeline)
 - Git workflow: Claude edits locally → Cameron pushes from Mac Terminal → pulls in Firebase Studio → builds → deploys
 - Firebase Auth custom claims are the single source of truth for RBAC (not Firestore docs)
-- `useAuth()` hook in `src/lib/hooks.tsx` requires `claims.role` AND `claims.practiceId` in the ID token
+- Capsule serial number is the linkage key between physical capsule, image pipeline, and patient record
+- Image pipeline data accessed via proxy Cloud Function, NOT a second Firebase app in frontend
+- Viewer does single bulk fetch at mount time — no real-time listeners for capsule_images
 
 **Known gaps:**
-- No `clinician_admin` test user exists in Firebase Auth (needed for 74 scenarios)
 - `cameron.plummer@gmail.com` only works with Google sign-in on deployed domain
-- Seed data shows 0 counts for non-clinician roles on dashboard (Firestore queries scoped to practiceId)
+- Seed data shows 0 counts for non-clinician roles on dashboard (Firestore queries scoped to practiceId + assigned clinician)
+- Activity Log collection currently empty — needs re-seed to populate audit entries
 
 ### Step 3: Resume Work
 
 Check with Cameron what he wants to focus on. Typical priorities:
-1. Review Sonnet Phase 2 test results (if session has been run)
-2. Fix any failures found in Phase 2
-3. Continue BUILD_09 (Image Pipeline) implementation
-4. Deploy and verify UX-04 live trigger
+1. Push + deploy BUG-52/53 fixes, re-seed, and verify
+2. Continue BUILD_09 (Image Pipeline) implementation
+3. Prepare for demo (polish, data enrichment)
+4. Address remaining test debt (clinical_staff coverage, UX-09/10 filter behavior verification)
 
 ### Environment Notes
 
@@ -60,3 +79,4 @@ Check with Cameron what he wants to focus on. Typical priorities:
 - **Deployed version:** v3.1.0
 - **Cameron's git push workflow:** Run commands in Mac Terminal (VM has no GitHub credentials)
 - **Firebase Studio deploy:** `git pull origin main && npm run build && firebase deploy --only hosting`
+- **Re-seed command:** `npx tsx seed-demo.ts` in Firebase Studio terminal

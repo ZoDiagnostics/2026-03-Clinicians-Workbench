@@ -1,6 +1,6 @@
 # ZoCW Session Handoff & Work Queue
 **Purpose:** Initialization context for a new Claude Cowork session + prioritized work queue.
-**Last Updated:** March 23, 2026 — Phase 2 role-based testing complete (Sonnet 4.6, Cowork). All 4 roles tested successfully (admin, clinician_noauth, clinician_admin, generic user). UX-09/10 PASS. Flow 6 re-scored: 34.5 FAIL → **41.0 PASS**. All 4 in-scope heuristic flows now pass ≥38. 2 new bugs: BUG-52 (Practice Settings crash), BUG-53 (sidebar link visibility).
+**Last Updated:** March 23, 2026 (evening) — Home Mac Cowork session: set up GitHub CLI, diagnosed OneDrive permission + lock issues, documented Lessons 8 & 9. BUG-52/53 changes still uncommitted — ready to push.
 
 ## MANDATORY SESSION RULES
 1. **At session start:** Read this file to understand current state and work queue.
@@ -12,6 +12,42 @@
 ---
 
 ## SESSION LOG
+
+### March 23, 2026 (evening) — Home Mac Git Setup + OneDrive Diagnostics (Opus 4.6, Cowork)
+- **Scope:** Set up GitHub push access from home Mac (CDP-MacBook-M1-Pro), diagnose and fix OneDrive-related git issues, document findings for future sessions.
+- **Environment:** Home Mac (CDP-MacBook-M1-Pro), Cowork VM mounting OneDrive-synced repo folder.
+- **Cowork VM file lock issue:** Several recently-modified files were unreadable from the Cowork VM — "Resource deadlock avoided" errors. Affected: `OPUS_CONTINUATION_PROMPT.md`, `SONNET_PHASE2_TEST_PROMPT.md`, `SONNET_VERIFICATION_PROMPT.md`, `BROWSER_AUTH_AUTOMATION.md`, `TEST_RESULTS_2026-03-23.md`, `TEST_RESULTS_PHASE2_2026-03-23.md`. OneDrive sync locks prevented reads. Workaround: read remaining accessible docs instead — got up to speed on full project state from HANDOFF.md, ZOCW_REFERENCE.md, TEST_VALIDATION.md, LESSONS_LEARNED.md, IMAGE_PIPELINE_INTEGRATION.md, TESTING_SESSION_PROMPT.md, and all test results through March 21.
+- **GitHub CLI installed on home Mac:** `brew install gh` (v2.88.1) → `gh auth login` → authenticated as ZoDiagnostics via HTTPS browser flow. Git push now works from home Mac.
+- **OneDrive permission issue diagnosed:** `git status` showed ~120 files modified. `git diff` revealed only `old mode 100644 → new mode 100755` (permission flips, no content). **Fix:** `git config core.fileMode false`. After fix, `git status` correctly showed only BUG-52/53 changes (6 modified + 1 new file).
+- **Stale lock file:** `git commit` blocked by `.git/index.lock`. **Fix:** `rm -f .git/index.lock`.
+- **Documentation updated:**
+  - `docs/LESSONS_LEARNED.md` — Added Lesson 8 (OneDrive permission flips + file locks) and Lesson 9 (GitHub CLI setup). Includes office Mac instructions.
+  - `HANDOFF.md` — This session log entry added.
+- **⚠️ BUG-52/53 changes still uncommitted.** The commit was blocked by the index.lock issue, which was diagnosed but not yet retried before session wrap-up.
+- **Next steps (from home Mac terminal — ready now):**
+  1. `rm -f .git/index.lock` (if lock file reappears)
+  2. `git add -A && git commit -m "fix: BUG-52/53 + doc updates + continuation prompts + lessons learned" && git push origin main`
+  3. In Firebase Studio: `git pull origin main && npm run build && firebase deploy --only hosting`
+  4. Re-seed: `npx tsx seed-demo.ts` (populates audit log entries)
+  5. Run Sonnet verification session using `docs/SONNET_VERIFICATION_PROMPT.md`
+  6. **On office Mac:** also run `git config core.fileMode false` and `gh auth login` if not already done (see Lesson 8 & 9)
+
+### March 23, 2026 — Opus Oversight: Phase 2 Review + BUG-52/53 Fixes + Doc Updates (Opus 4.6, Cowork)
+- **Scope:** Review Phase 2 Sonnet test results, fix bugs found, update all documentation, create continuation prompts for home session.
+- **Phase 2 results reviewed:** 35 PASS, 1 FAIL, 0 BLOCKED across 431 scenarios. All RBAC boundaries enforced correctly. Hybrid clinician_admin role validated (both admin access and signing capability). UX-09/10 Activity Log filters confirmed present. Flow 6 heuristic re-scored from 34.5 FAIL → 41.0 PASS. All 4 in-scope flows now pass ≥38 threshold.
+- **BUG-52 fixed** (Sev 2): `/admin/practice` (ManagePractice.tsx) crashed with React Error #310. Root cause: `useState` and `useEffect` hooks called AFTER conditional role-gate return, violating React Rules of Hooks. Fix: moved all hooks above the role gate conditional. Other admin screens verified clean — pattern not repeated.
+- **BUG-53 fixed** (Sev 4): Activity Log sidebar link visible to all roles despite access being admin/clinician_admin only. Fix: added `roles: [UserRole.ADMIN, UserRole.CLINICIAN_ADMIN]` to the Activity Log nav item in Sidebar.tsx.
+- **Documentation updated:** MASTER_RUNBOOK.md (March 23 session summary, updated status), TEST_VALIDATION.md (added clinadmin@ user, updated user count to 6, corrected claims note), HANDOFF.md (this session log entry, work queue updates).
+- **Continuation prompts created:**
+  - `docs/OPUS_CONTINUATION_PROMPT.md` — updated with full post-Phase 2 state, BUG-52/53 fixes, current priorities
+  - `docs/SONNET_VERIFICATION_PROMPT.md` — targeted verification session for BUG-52/53 fixes + regression checks
+- **Polling task created:** Automated 30-minute poll for Phase 2 results file — detected Sonnet completion successfully.
+- **Changes are UNCOMMITTED.** Cameron needs to: `git add -A && git commit -m "fix: BUG-52/53 + doc updates + continuation prompts" && git push origin main`
+- **Next steps (for home session):**
+  1. Push + deploy fixes
+  2. Re-seed Firestore (`npx tsx seed-demo.ts`) to populate audit log entries
+  3. Run Sonnet verification session using `docs/SONNET_VERIFICATION_PROMPT.md`
+  4. Continue BUILD_09 or demo prep
 
 ### March 23, 2026 — Phase 2 Role-Based Testing (Sonnet 4.6, Cowork)
 - **Scope:** TEST-ONLY (no code changes). Phase 2 role-based functional testing: admin (166 scenarios), clinician_noauth (135), clinician_admin (74), generic user (56). UX-09/10 verification. Flow 6 heuristic re-score.
@@ -578,6 +614,8 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 - [x] **Bug #5 — Fix seed data mismatch for William Taylor sb diagnostic** ✅ FIXED (Mar 21 bug fix session) — `seed-demo.ts` report seeding now sets `status: 'draft'` (no signedAt/signedBy) for draft/appended_draft procedures. Only completed/completed_appended/closed get signed reports.
 - [x] **BUG-51 — Notification click doesn't navigate** ✅ FIXED (Mar 23 Opus session) — Root cause: seed notifications had no `routeTo` or `entityId` fields, so `resolveNotificationRoute()` returned null. Fixed in `seed-demo.ts`: 4 of 5 notifications now include `routeTo`, `entityId`, `entityType` linking to actual seeded procedure IDs. Re-seed required to apply.
 - [x] **UX-04 test data — 0-findings ready_for_review procedure** ✅ ADDED (Mar 23 Opus session) — New procedure at index 16 (`ready_for_review`, `colon_eval`, `routine`) with zero findings. Enables live verification of the "AI analysis complete — no anomalies detected" empty state in Viewer.
+- [x] **BUG-52 — /admin/practice React crash** ✅ FIXED (Mar 23 Opus session) — React Error #310: useState/useEffect hooks called after conditional role-gate return in ManagePractice.tsx. Fix: moved all hooks above the conditional. Uncommitted — needs push + deploy.
+- [x] **BUG-53 — Activity Log sidebar link visible for non-admin roles** ✅ FIXED (Mar 23 Opus session) — Added `roles: [UserRole.ADMIN, UserRole.CLINICIAN_ADMIN]` to Activity Log nav item in Sidebar.tsx. Uncommitted — needs push + deploy.
 
 #### ⚠️ ADMIN TESTING BLOCKER: Google OAuth popup
 - [x] **Created email/password admin test user** ✅ (Mar 22) — `admin@zocw.com` / `password` created in Firebase Auth.

@@ -15,7 +15,24 @@ const ManagePractice: React.FC = () => {
   const practice = usePractice();
   const practiceSettings = usePracticeSettings();
 
+  // All hooks must be called before any conditional returns (React Rules of Hooks)
+  const [name, setName] = useState('');
+  const [settings, setSettings] = useState<Partial<PracticeSettings>>({});
+
+  useEffect(() => {
+    if (practice) {
+      setName(practice.name);
+    }
+  }, [practice]);
+
+  useEffect(() => {
+    if (practiceSettings) {
+      setSettings(practiceSettings);
+    }
+  }, [practiceSettings]);
+
   // BUG-10: Role gate — only admin and clinician_admin may access admin sub-routes
+  // BUG-52 fix: moved below all hooks to avoid conditional hook calls
   if (role !== 'admin' && role !== 'clinician_admin') {
     return (
       <div className="flex h-screen bg-gray-50">
@@ -33,21 +50,6 @@ const ManagePractice: React.FC = () => {
       </div>
     );
   }
-
-  const [name, setName] = useState('');
-  const [settings, setSettings] = useState<Partial<PracticeSettings>>({});
-
-  useEffect(() => {
-    if (practice) {
-      setName(practice.name);
-    }
-  }, [practice]);
-
-  useEffect(() => {
-    if (practiceSettings) {
-      setSettings(practiceSettings);
-    }
-  }, [practiceSettings]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

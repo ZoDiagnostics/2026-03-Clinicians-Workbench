@@ -16,8 +16,9 @@
 | Sandra Martinez | staff@zocw.com / password | `clinical_staff` | `cf9f1YBWFhNAB9KLbk1qVdoE1tE2` | Clinical support, capsule upload, check-in |
 | Dr. Priya Nair | noauth@zocw.com / password | `clinician_noauth` | `0ZhIsvTsClV37xic0KQDYSMeEM33` | Reviews studies, cannot sign reports |
 | Marcus Thompson | admin@zocw.com / password | `admin` | `VtPqYvrpwCZhTFqCpzkP7FR3aZt2` | Practice administration, user management, system settings |
+| Dr. James Whitfield | clinadmin@zocw.com / password | `clinician_admin` | *(created by fix-claims.ts)* | All clinical work + admin — hybrid role (can sign AND manage) |
 
-**Note:** All 5 test users exist in Firebase Auth and Firestore. Auth credentials use password `password` except cameron.plummer@gmail.com (Google sign-in on deployed domain). Firestore user documents created March 22, 2026. UIDs are stable — seed-demo.ts now preserves all 5 users on re-seed.
+**Note:** All 6 test users exist in Firebase Auth with custom claims (`{ role, practiceId }`). Auth credentials use password `password` except cameron.plummer@gmail.com (Google sign-in on deployed domain). Custom claims are set by `seed-demo.ts` on every run, or can be set independently via `fix-claims.ts`. UIDs are stable — seed-demo.ts preserves all users on re-seed.
 
 **Gemini API status:** Billing linked (Blaze plan, March 22, 2026). Model updated to `gemini-2.0-flash` (prior model `gemini-2.0-flash-lite` was deprecated by Google and returned 404). Copilot Auto-Draft should now be functional. If 404 errors occur, check model availability at https://ai.google.dev/gemini-api/docs/models/gemini.
 

@@ -47,7 +47,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
       { label: 'Operations', path: '/operations', icon: Activity },
       { label: 'Analytics', path: '/analytics', icon: BarChart2 },
       { label: 'AI QA', path: '/qa', icon: Cpu },
-      { label: 'Activity Log', path: '/activity', icon: FileText },
+      { label: 'Activity Log', path: '/activity', icon: FileText, roles: [UserRole.ADMIN, UserRole.CLINICIAN_ADMIN] },
     ],
   },
   {

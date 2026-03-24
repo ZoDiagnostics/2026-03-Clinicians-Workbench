@@ -8,8 +8,19 @@
 ## WHERE WE ARE RIGHT NOW
 
 **Current Step:** Phases 1-8 COMPLETE ✅ — Phase 9 (Image Pipeline Integration) planned, implementation pending
-**Status:** 5 functional testing sessions complete. 52 bugs found, 27 fixed, 6 UX refinements applied. 3 Auth users created (staff@, noauth@, admin@). Billing upgraded to Blaze plan. Gemini model updated to `gemini-2.0-flash`. Stale docs updated. Git push to GitHub pending.
-**Blockers:** Pipeline field rename (`procedure_id` → `capsule_serial`) and cross-project IAM setup must complete before BUILD_09 implementation. Git push still requires `gh auth login` or PAT setup.
+**Status:** 7 testing sessions complete (Sessions 1–6 + Phase 2). 54 bugs found total (52 original + BUG-52/53), 29 fixed (27 original + BUG-52/53). 6 UX refinements applied and verified. 5 Auth users working (clinician@, admin@, staff@, noauth@, clinadmin@). All 4 heuristic flows PASS (≥38). Phase 2 role testing complete: 35 PASS, 1 FAIL across 431 scenarios. Git push configured and working.
+**Blockers:** Pipeline field rename (`procedure_id` → `capsule_serial`) and cross-project IAM setup must complete before BUILD_09 implementation. BUG-52/53 fixes committed locally but need push + deploy.
+
+### March 23, 2026 — Phase 2 Testing + Bug Fixes
+- **Phase 2 role testing COMPLETE:** 35 PASS, 1 FAIL, 0 BLOCKED across 431 scenarios (admin 166, clinician_noauth 135, clinician_admin 74, generic user 56).
+- **All 4 heuristic flows now PASS** (≥38 threshold): Flow 1: 41.0, Flow 2: 39.5, Flow 3: 40.5, Flow 6: 41.0 (was 34.5 FAIL, now PASS after UX-09/10 verification).
+- **UX-09/10 verified** — Activity Log user filter dropdown and date range inputs confirmed present and rendered for admin/clinician_admin roles.
+- **5th test user created:** clinadmin@zocw.com (Dr. James Whitfield, clinician_admin role) — unblocked 74 previously-gapped scenarios.
+- **Firebase Auth custom claims root cause found and fixed** — missing claims on 3 of 4 test users caused Phase 2 ENV-01 blocker. `fix-claims.ts` created, `seed-demo.ts` updated to set claims on every run.
+- **BUG-52 found + fixed** (Sev 2): /admin/practice crashed with React Error #310 (hooks called after conditional return). Fixed by moving useState/useEffect above role gate.
+- **BUG-53 found + fixed** (Sev 4): Activity Log sidebar link visible for non-admin roles. Fixed by adding roles filter to nav item.
+- **Session 6 regression:** 22 PASS, 1 partial fail (BUG-06/51 notification nav) across 23 scenarios.
+- **BUG-51 fixed** — notification click navigation. Root cause: seed notifications missing routeTo/entityId fields.
 
 ### March 20–22, 2026 Session Summary
 - **Testing Sessions 1–5 completed:** 825 scenarios defined. 339 tested (clinician_auth), 51 PASS, 266 FAIL, 22 BLOCKED, 54 pre-blocked. 432 untested (other roles).
