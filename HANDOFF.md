@@ -1,6 +1,6 @@
 # ZoCW Session Handoff & Work Queue
 **Purpose:** Initialization context for a new Claude Cowork session + prioritized work queue.
-**Last Updated:** March 23, 2026 (evening) — Home Mac Cowork session: set up GitHub CLI, diagnosed OneDrive permission + lock issues, documented Lessons 8 & 9. BUG-52/53 changes still uncommitted — ready to push.
+**Last Updated:** March 24, 2026 — Opus orchestration session: Phase 0 housekeeping complete. 2 duplicates closed (BUG-01, BUG-49), BUG-36 reclassified. Pre-pipeline build plan created (14 bugs, 6 phases). 31 of 52 unique bugs resolved.
 
 ## MANDATORY SESSION RULES
 1. **At session start:** Read this file to understand current state and work queue.
@@ -14,6 +14,17 @@
 ---
 
 ## SESSION LOG
+
+### March 24, 2026 — Opus Orchestration: Pre-Pipeline Planning + Phase 0 Housekeeping (Opus 4.6, Cowork)
+- **Scope:** OneDrive/Git handoff solution, bug reclassification, pre-pipeline build plan, Phase 3 Sonnet test prompt.
+- **OneDrive solution:** Created `preflight.sh` (6 checks: lock files, fileMode, permissions, GitHub CLI, file accessibility, cloud-only file detection with retry). Updated HANDOFF rules 2 & 7. Updated OPUS and SONNET continuation prompts with pre-flight instructions. Installed `coreutils` on Mac Studio (TODO: home Mac).
+- **BUG-52/53 verified live:** 8/8 PASS via browser automation. Results in `docs/VERIFICATION_RESULTS_2026-03-24.md`.
+- **Phase 0 housekeeping:** Closed BUG-01 (dup of BUG-03), closed BUG-49 (dup of BUG-09), reclassified BUG-36 from duplicate to FEATURE-BUILD. Updated BUG_FIX_SESSION_REPORT.md with corrected classifications.
+- **Bug reclassification:** Analyzed all 25 remaining bugs. Original "blocked" labels were inaccurate — most are frontend feature builds with no external blockers. 2 duplicates closed, 11 deferred to pipeline, 12 buildable now.
+- **Pre-pipeline build plan:** Created `docs/PRE_PIPELINE_BUILD_PLAN.md` — 7 phases (0: housekeeping, 1: deploy CFs, 2–6: Sonnet feature builds). 14 bugs across Dashboard, Patient Overview, Procedures, Summary, Report, Reports Hub.
+- **Sonnet test prompt:** Created `docs/SONNET_PHASE3_TEST_PROMPT.md` — 425 scenarios across 14 screens, all 5 roles, spreadsheet-driven.
+- **Bug totals:** 52 unique bugs, 31 resolved, 14 scheduled for pre-pipeline build, 11 deferred to image pipeline.
+- **Commits:** `794d247` (preflight + HANDOFF rules), `fc84e95` (cloud-only detection), `31a2920` (build plan + test prompt).
 
 ### March 23, 2026 (evening) — Home Mac Git Setup + OneDrive Diagnostics (Opus 4.6, Cowork)
 - **Scope:** Set up GitHub push access from home Mac (CDP-MacBook-M1-Pro), diagnose and fix OneDrive-related git issues, document findings for future sessions.
@@ -632,9 +643,24 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 - [x] **Git push completed** ✅ (Mar 23) — All commits from `6cb7f6b` through `c56f6ee` pushed to GitHub. `gh auth login` configured on Mac. Firebase Studio pulled, built, and deployed successfully.
 - [x] **Build verified + deployed** ✅ (Mar 23) — `npm run build` clean. App live at https://cw-e7c19.web.app with all changes through BUG-51 fix.
 
-#### ⚠️ NEW BUGS FROM PHASE 2 TESTING (Mar 23)
-- [ ] **BUG-52 (Sev 2) — Practice Settings crash** — `/admin/practice` throws full-page React error #310 (hook called outside of function component). Component: `Mr` in `index-HXGynHKr.js:139:35592`. Fix: investigate `PracticeSettings.tsx` for hook called conditionally or outside component body.
-- [ ] **BUG-53 (Sev 4) — Activity Log sidebar link visible for non-admin roles** — Sidebar renders "Activity Log" link for `clinician_noauth`, `clinician_auth`, and likely `clinical_staff`. The page correctly shows "Access Denied" on navigation, but the link creates confusion. Fix: gate the Activity Log nav item in `Sidebar.tsx` to only render for `admin` and `clinician_admin` roles (mirror the same gate used by the page itself).
+#### ✅ BUGS FROM PHASE 2 TESTING — FIXED (Mar 23–24)
+- [x] **BUG-52 (Sev 2) — Practice Settings crash** ✅ FIXED & VERIFIED (Mar 24) — React hooks moved above role gate in ManagePractice.tsx. Deployed, verified live (8/8 PASS).
+- [x] **BUG-53 (Sev 4) — Activity Log sidebar link visible for non-admin roles** ✅ FIXED & VERIFIED (Mar 24) — Added roles filter to Sidebar.tsx nav item. Verified across 3 roles.
+
+#### ✅ DUPLICATES CLOSED (Mar 24, Phase 0 housekeeping)
+- [x] **BUG-01** — DUPLICATE of BUG-03 (notification "Clear All"). Closed.
+- [x] **BUG-49** — DUPLICATE of BUG-09 (Activity Log role gate). Closed.
+- [x] **BUG-36** — Reclassified from "DUPLICATE of BUG-11" to FEATURE-BUILD (quality metric auto-calc). See `docs/PRE_PIPELINE_BUILD_PLAN.md`.
+
+#### 📋 PRE-PIPELINE BUILD PLAN (Mar 24)
+**See `docs/PRE_PIPELINE_BUILD_PLAN.md` for full plan.** 14 bugs across 6 phases, targeting 12 feature builds + 2 duplicate closures. Phases 2–6 are Sonnet execution tasks. Cloud Functions deploy (Phase 1) is a Cameron manual step in Firebase Studio.
+
+**Bug status after Phase 0:**
+- Total unique bugs: 52 (54 - 2 duplicates)
+- Resolved: 31 (27 Session 1 + BUG-52 + BUG-53 + BUG-01 dup + BUG-49 dup)
+- Pre-pipeline build (Phases 2–6): 14
+- Deferred to image pipeline: 11
+- **Sonnet test prompt:** `docs/SONNET_PHASE3_TEST_PROMPT.md` (425 scenarios across 14 screens, all 5 roles)
 
 #### 1B: Image Pipeline — Backend (separate Cowork session / pipeline project)
 ⚠️ **This work is in the pipeline GCP project (`podium-capsule-ingest`), NOT in the ZoCW repo.**
@@ -662,7 +688,7 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 - [ ] **Google sign-in** — Works after Firebase Hosting deploy. Currently blocked by unauthorized-domain in dev environment.
 
 ### Priority 3: Infrastructure
-- [ ] **Deploy Cloud Functions** — Requires Blaze (pay-as-you-go) plan. Functions: onProcedureWrite, validateCapsule, createUser, updateUser, generateAutoDraft, suggestCodes, generateReportPdf, signReport.
+- [ ] **Deploy Cloud Functions** — ⚡ NOW UNBLOCKED (Blaze plan active). 14 functions in `functions/src/` ready to deploy. Run in Firebase Studio: `cd functions && npm install && npm run build && firebase deploy --only functions`. This is Phase 1 of the Pre-Pipeline Build Plan and must complete before Phases 5–6 (Summary + Report enhancements that wire to `calculateTransitTimes` and `suggestCodes`).
 - [ ] **Firebase Studio sunset migration** — Plan migration to Google AI Studio or Antigravity before March 2027.
 - [x] **Move Firebase_Studio_Build_Inputs/ to Archive/** — ✅ Done Mar 19. Moved to Archive/Firebase_Studio_Build_Inputs/.
 - [x] **Clean up root-level Manage*.tsx stubs** ✅ DONE (Mar 23, commit `51c8a1a`) — 5 root-level stub files replaced with simple re-exports pointing to the real `admin/` implementations.

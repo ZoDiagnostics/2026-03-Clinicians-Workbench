@@ -22,9 +22,15 @@
 - **Session 6 regression:** 22 PASS, 1 partial fail (BUG-06/51 notification nav) across 23 scenarios.
 - **BUG-51 fixed** — notification click navigation. Root cause: seed notifications missing routeTo/entityId fields.
 
+### March 24, 2026 — Pre-Pipeline Planning + Phase 0 Housekeeping
+- **Bug reclassification:** Analyzed all 25 remaining bugs. Closed 2 duplicates (BUG-01 = BUG-03, BUG-49 = BUG-09), reclassified BUG-36 from duplicate to FEATURE-BUILD. **31 of 52 unique bugs now resolved.**
+- **Pre-pipeline build plan created:** `docs/PRE_PIPELINE_BUILD_PLAN.md` — 14 bugs across 6 build phases (Dashboard, Patient Overview, Procedures, Summary, Report, Reports Hub). 11 bugs deferred to image pipeline.
+- **Phase 3 Sonnet test prompt:** `docs/SONNET_PHASE3_TEST_PROMPT.md` — 425 scenarios across 14 screens, all 5 roles, spreadsheet-driven.
+- **OneDrive/Git handoff solution:** `preflight.sh` script (6 checks), HANDOFF rules updated, continuation prompts updated.
+
 ### March 20–22, 2026 Session Summary
 - **Testing Sessions 1–5 completed:** 825 scenarios defined. 339 tested (clinician_auth), 51 PASS, 266 FAIL, 22 BLOCKED, 54 pre-blocked. 432 untested (other roles).
-- **52 bugs found** (BUG-01 through BUG-52) across security, data integrity, AI errors, notifications, stepper, Worklist, Viewer, Sign/Deliver, and seed data.
+- **54 bugs found** (BUG-01 through BUG-53 + 1 duplicate) — later reclassified to 52 unique bugs after closing BUG-01 and BUG-49 as duplicates.
 - **27 bugs fixed** — committed as `6cb7f6b` (128 files, +2975/-866). Key fixes: role gates on admin screens and ActivityLog, WorkflowStepper added to 4 workflow screens (Viewer/Summary/Report/SignDeliver), Worklist rewritten as table layout with sort/filter/persistence, notification routing, two-step finding delete, copilot error handling, bowel prep quality score.
 - **6 UX refinements applied** — confidence tooltip, no-anomalies copy, scroll gate on Sign, sign confirmation modal, user + date filters on ActivityLog.
 - **3 Auth users created** via Firebase Console: staff@zocw.com (Sandra Martinez, clinical_staff), noauth@zocw.com (Priya Nair, clinician_noauth), admin@zocw.com (Marcus Thompson, admin). All 3 Firestore user docs created.

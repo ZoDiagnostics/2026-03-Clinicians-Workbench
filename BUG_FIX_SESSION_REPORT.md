@@ -162,22 +162,67 @@
 
 ---
 
-## Bugs NOT Fixed (skipped per plan classification)
+## Bugs NOT Fixed in Session 1 (reclassified March 24, 2026)
 
-The following bugs were classified as BLOCKED, DUPLICATE, or deferred in the source plan and were not touched this session:
+**Note:** The original classifications below were inaccurate. A full reclassification was performed on March 24 by the Opus orchestration session. See `docs/PRE_PIPELINE_BUILD_PLAN.md` for the corrected plan.
 
-| Bug | Classification | Reason |
-|-----|---------------|--------|
-| BUG-01 | BLOCKED | Requires Firebase Functions (Blaze plan) for notification fan-out |
-| BUG-16, BUG-17 | BLOCKED | Requires deployed Cloud Functions for PDF generation and ICD code suggestion |
-| BUG-19, BUG-20, BUG-21 | BLOCKED | Require capsule image pipeline integration (Phase 9) |
-| BUG-22 through BUG-30 | BLOCKED | Admin OAuth / additional test user creds not available |
-| BUG-35 through BUG-39 | BLOCKED | Depend on image pipeline or Cloud Functions |
-| BUG-41 | BLOCKED | Requires post-sign PDF generation via Cloud Function |
-| BUG-44, BUG-45 | BLOCKED | Require Cloud Functions + HL7/FHIR integration |
-| BUG-47, BUG-48, BUG-49 | BLOCKED | Require admin test credentials |
-| BUG-51, BUG-52 | BLOCKED | Require deployment pipeline and mobile testing setup |
-| BUG-36 | DUPLICATE | Duplicate of BUG-11 (finding delete) |
+### Closed as Duplicates (2 bugs)
+
+| Bug | Resolution | Details |
+|-----|-----------|---------|
+| BUG-01 | **DUPLICATE of BUG-03** | Originally "notification fan-out" — actually the same "Clear All" notifications issue fixed in BUG-03. Closed March 24. |
+| BUG-49 | **DUPLICATE of BUG-09** | Originally "Require admin test credentials" — actually the same Activity Log role gate issue fixed in BUG-09. The fix in ActivityLog.tsx already restricts access to admin/clinician_admin. Closed March 24. |
+
+### Reclassified (1 bug)
+
+| Bug | Original | Corrected | Details |
+|-----|----------|-----------|---------|
+| BUG-36 | DUPLICATE of BUG-11 (finding delete) | **FEATURE-BUILD** (quality metric auto-calculation on Summary) | Session 1 incorrectly classified this. BUG-36 is about auto-calculating quality metrics (bowel prep, duration, detection rate) on Summary.tsx. BUG-11 is about finding delete confirmation in Viewer.tsx. Completely unrelated. Reclassified March 24. |
+
+### Deferred to Image Pipeline — BUILD_09 (11 bugs)
+
+| Bug | Description |
+|-----|------------|
+| BUG-19, BUG-20, BUG-21 | Capsule image pipeline integration |
+| BUG-24 | AI Impression panels (needs Gemini + frame data) |
+| BUG-25 | Incidental finding tray in Viewer |
+| BUG-26 | Viewer toolbar (measurement, voice, stepper) |
+| BUG-27 | Incidental findings across workflow |
+| BUG-28 | Annotation panel interactions |
+| BUG-29 | GI Map component |
+| BUG-30 | Video playback timeline |
+| BUG-37 | Findings thumbnails on Summary |
+
+### Scheduled for Pre-Pipeline Build Phases 2–6 (12 bugs)
+
+| Bug | Phase | Screen | Description |
+|-----|-------|--------|-------------|
+| BUG-16 | 2 | Dashboard | Urgent case count KPI widget |
+| BUG-17 | 2 | Dashboard | Quick-action shortcuts |
+| BUG-51 | 2 | Reports Hub | Tile-based layout redesign |
+| BUG-44 | 3 | Patient Overview | Demographics editable form |
+| BUG-45 | 3 | Patient Overview | Medical History / Medications / Allergies tabs |
+| BUG-47 | 3 | Patient Overview | Signed reports section |
+| BUG-48 | 3 | Patient Overview | Patient-specific activity log |
+| BUG-22 | 4 | Procedures | Inline metadata editing |
+| BUG-23 | 4 | Procedures | Creation validation + prefill |
+| BUG-35 | 5 | Summary | Lewis Score, transit times, study panels |
+| BUG-36 | 5 | Summary | Quality metric auto-calculation |
+| BUG-39 | 5 | Summary | Risk scoring + surveillance recommendations |
+| BUG-38 | 6 | Report | Template system, versioning |
+| BUG-41 | 6 | Report | Practice favorites in code suggestions |
+
+### Previously Fixed (now 31 total)
+
+| Status | Count |
+|--------|-------|
+| Fixed in Session 1 (Sonnet) | 27 |
+| Fixed post-Session 1 (BUG-52, BUG-53) | 2 |
+| Closed as duplicates (BUG-01, BUG-49) | 2 |
+| **Total resolved** | **31** |
+| Remaining (pre-pipeline build) | 14 |
+| Remaining (deferred to pipeline) | 11 |
+| **Total unique bugs** | **52** (54 original - 2 duplicates) |
 
 ---
 
