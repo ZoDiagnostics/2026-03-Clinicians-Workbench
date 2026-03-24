@@ -4,10 +4,12 @@
 
 ## MANDATORY SESSION RULES
 1. **At session start:** Read this file to understand current state and work queue.
-2. **At session end:** When user says "wrap up" or indicates they're done, UPDATE this file with: what was accomplished, any new queue items, and update the "Last Updated" date. Then commit and push to GitHub.
-3. **After every major milestone:** Update the WORK QUEUE section to reflect completed items.
+2. **Pre-flight check (before any git operations):** Run `bash preflight.sh` from the repo root (or have Cameron run it from Mac Terminal). This detects and fixes OneDrive sync issues: stale lock files, permission flips, file accessibility. See `docs/LESSONS_LEARNED.md` Lessons 6, 8, 9 for background. If the Cowork VM cannot run preflight.sh (no git push credentials), instruct Cameron to run it before any commit/push cycle.
+3. **At session end:** When user says "wrap up" or indicates they're done, UPDATE this file with: what was accomplished, any new queue items, and update the "Last Updated" date. Then commit and push to GitHub.
+4. **After every major milestone:** Update the WORK QUEUE section to reflect completed items.
 5. **Doc audit scope:** When auditing docs for currency, ALWAYS include: MASTER_RUNBOOK.md, ZOCW_REFERENCE.md, IMPORT_MAP.md, NAMING_CONTRACT.md, docs/TEST_VALIDATION.md, and `Zo_Workbench_Functional_Test_Scenarios_v2_4.xlsx` (in Claude Demo/ root). Test artifacts must stay in sync with actual routes, screens, and features.
-4. **Model selection:** Follow `docs/ZoCW_Model_Selection_Guide.md` for all tasks. For multi-step work, produce a Model-Routed Task Plan table before executing. Default to Sonnet; escalate to Opus only when the task is more judgment than execution. See guide for ZoCW-specific escalation triggers.
+6. **Model selection:** Follow `docs/ZoCW_Model_Selection_Guide.md` for all tasks. For multi-step work, produce a Model-Routed Task Plan table before executing. Default to Sonnet; escalate to Opus only when the task is more judgment than execution. See guide for ZoCW-specific escalation triggers.
+7. **OneDrive "Resource deadlock avoided" errors:** If the Cowork VM cannot read a file, it is likely locked by OneDrive sync. Do NOT assume the file is missing or empty. Wait and retry, or read other accessible files first. See Lesson 6 and Lesson 8.
 
 ---
 

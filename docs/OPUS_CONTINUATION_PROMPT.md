@@ -9,6 +9,20 @@
 
 You are the **Opus orchestration session** for ZoCW (Zo Clinicians Workbench) — a React + TypeScript + Vite + Firebase clinical workflow app for capsule endoscopy. Your job is judgment, architecture, cross-artifact auditing, and orchestrating Sonnet sessions for bounded execution.
 
+### Step 0: Pre-Flight Check (MANDATORY — run before ANY git operations)
+
+The repo lives in a OneDrive-synced folder. OneDrive causes three recurring issues: stale `.git/` lock files, file permission flips (644→755), and file sync locks. A pre-flight script handles all of them.
+
+**Run this immediately:**
+```bash
+bash preflight.sh
+```
+
+If the script reports `✅ READY`, proceed. If it reports manual issues:
+- **GitHub CLI not authenticated:** Tell Cameron to run `gh auth login` on this machine
+- **Files locked by OneDrive sync:** Wait 30 seconds and re-run the script
+- **Permission-only changes persist:** Run `git checkout -- .` to reset them
+
 ### Step 1: Read These Files (in order)
 
 1. `HANDOFF.md` (repo root) — full project state, session log, work queue
@@ -16,23 +30,21 @@ You are the **Opus orchestration session** for ZoCW (Zo Clinicians Workbench) �
 3. `docs/BROWSER_AUTH_AUTOMATION.md` — how to automate login for all 5 test roles
 4. `docs/TEST_RESULTS_PHASE2_2026-03-23.md` — Phase 2 role-based test results (35 PASS, 1 FAIL, 2 new bugs)
 5. `docs/TEST_RESULTS_2026-03-23.md` — Phase 1 regression results (22 PASS, 1 partial fail)
+6. `docs/VERIFICATION_RESULTS_2026-03-24.md` — BUG-52/53 verification (8/8 PASS)
 
 ### Step 2: Understand Current State
 
-**What's done (as of end-of-day March 23):**
-- 27 of 52 bugs fixed and verified via Session 6 regression testing (22 PASS, 1 partial)
+**What's done (as of March 24):**
+- 29 of 54 bugs fixed and verified (27 original + BUG-52 + BUG-53)
 - 6 UX fixes implemented and deployed; UX-03/04/06/07 verified live; **UX-09/10 now verified** (Activity Log filters present and rendered)
 - **Phase 2 role testing COMPLETE** — 35 PASS, 1 FAIL across 431 scenarios (admin 166, noauth 135, clinadmin 74, user 56)
 - All 5 test users working: clinician@, admin@, staff@, noauth@, clinadmin@zocw.com (all password: `password`)
 - Firebase Auth custom claims fixed for all users
 - **All 4 heuristic flows now PASS** (≥38 threshold): Flow 1: 41.0, Flow 2: 39.5, Flow 3: 40.5, Flow 6: 41.0
-- **BUG-52 FIXED** (uncommitted) — ManagePractice.tsx React hooks violation causing /admin/practice crash. Moved useState/useEffect above role gate.
-- **BUG-53 FIXED** (uncommitted) — Activity Log sidebar link now role-gated to admin/clinician_admin only.
-
-**What needs to happen first (uncommitted changes):**
-1. Cameron needs to push BUG-52/53 fixes: `git add -A && git commit -m "fix: BUG-52 ManagePractice hooks order + BUG-53 Activity Log sidebar RBAC" && git push origin main`
-2. Deploy: In Firebase Studio: `git pull origin main && npm run build && firebase deploy --only hosting`
-3. Verify /admin/practice loads without crash for admin role
+- **BUG-52 FIXED & VERIFIED** — ManagePractice.tsx React hooks violation. Deployed and verified live (8/8 PASS).
+- **BUG-53 FIXED & VERIFIED** — Activity Log sidebar link role-gated. Verified across admin, clinician_auth, clinician_admin roles.
+- **Cumulative test totals:** 258 PASS / 496 FAIL / 109 BLOCKED across all sessions
+- **OneDrive/Git handoff solution deployed** — `preflight.sh` script + HANDOFF mandatory rules updated
 
 **What's next (prioritized):**
 1. **Re-seed Firestore** — `npx tsx seed-demo.ts` in Firebase Studio. Needed to populate audit log entries so UX-09/10 filter *behavior* can be verified (UI controls are confirmed present but 0 entries in collection).
@@ -80,3 +92,5 @@ Check with Cameron what he wants to focus on. Typical priorities:
 - **Cameron's git push workflow:** Run commands in Mac Terminal (VM has no GitHub credentials)
 - **Firebase Studio deploy:** `git pull origin main && npm run build && firebase deploy --only hosting`
 - **Re-seed command:** `npx tsx seed-demo.ts` in Firebase Studio terminal
+- **Pre-flight script:** `bash preflight.sh` — run before any git operations (handles OneDrive lock files, permission flips, sync locks)
+- **OneDrive repo warning:** Repo is in OneDrive-synced folder. See Lessons 6, 8, 9 in `docs/LESSONS_LEARNED.md` for known issues and mitigations.

@@ -12,9 +12,25 @@ You are executing a **targeted verification session** for ZoCW after two bug fix
 
 ---
 
-## STEP 0: READ REQUIRED DOCS
+## STEP 0A: PRE-FLIGHT CHECK (MANDATORY)
 
-Before doing ANYTHING, read these files:
+The repo lives in a OneDrive-synced folder. Before ANY git operations, run:
+
+```bash
+bash preflight.sh
+```
+
+This checks for stale git lock files, sets `core.fileMode false` (prevents OneDrive permission-flip noise), verifies GitHub CLI auth, and checks file accessibility. If it reports `✅ READY`, proceed. If issues remain, follow the on-screen instructions.
+
+**If `preflight.sh` doesn't exist** (older checkout), run manually:
+```bash
+git config core.fileMode false
+rm -f .git/index.lock .git/HEAD.lock .git/refs/heads/main.lock
+```
+
+## STEP 0B: READ REQUIRED DOCS
+
+Before doing ANYTHING else, read these files:
 
 1. `docs/BROWSER_AUTH_AUTOMATION.md` — Login automation snippets (CRITICAL for React forms)
 2. `docs/TEST_RESULTS_PHASE2_2026-03-23.md` — Phase 2 results showing the bugs you're verifying
@@ -166,8 +182,9 @@ Create `docs/VERIFICATION_RESULTS_2026-03-24.md` (adjust date as needed) with:
 
 ## STEP 7: WRAP-UP
 
-1. Update `HANDOFF.md` with session log entry
-2. Stage and commit (DO NOT PUSH):
+1. Run `bash preflight.sh` to ensure clean git state before committing
+2. Update `HANDOFF.md` with session log entry
+3. Stage and commit (DO NOT PUSH):
    ```
    git add docs/VERIFICATION_RESULTS_2026-03-24.md HANDOFF.md
    git commit -m "test: BUG-52/53 verification + regression checks
@@ -178,7 +195,7 @@ Create `docs/VERIFICATION_RESULTS_2026-03-24.md` (adjust date as needed) with:
 
    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
    ```
-3. Tell Cameron the results and remind: `git push origin main`
+4. Tell Cameron the results and remind: `git push origin main`
 
 ---
 
