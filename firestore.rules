@@ -154,9 +154,7 @@ service cloud.firestore {
      * clinician_admin can update any procedure in their practice.
      */
     match /procedures/{procedureId} {
-      let procedureData = resource.data;
-
-      allow read: if inPractice(procedureData.practiceId) && hasAnyRole([
+      allow read: if inPractice(resource.data.practiceId) && hasAnyRole([
         'clinical_staff',
         'clinician_auth',
         'clinician_noauth',
@@ -165,8 +163,8 @@ service cloud.firestore {
 
       allow create: if isClinicalStaff();
 
-      allow update: if inPractice(procedureData.practiceId) && (
-        isAssignedClinician(procedureData) ||
+      allow update: if inPractice(resource.data.practiceId) && (
+        isAssignedClinician(resource.data) ||
         hasRole('clinician_admin')
       );
 
@@ -175,17 +173,19 @@ service cloud.firestore {
        * clinical staff has read-only access.
        */
       match /findings/{findingId} {
-        let finding = resource.data;
-
-        allow read: if inPractice(procedureData.practiceId) && hasAnyRole([
+        allow read: if inPractice(
+          get(/databases/$(database)/documents/procedures/$(procedureId)).data.practiceId
+        ) && hasAnyRole([
           'clinical_staff',
           'clinician_auth',
           'clinician_noauth',
           'clinician_admin'
         ]);
 
-        allow create, update, delete: if inPractice(procedureData.practiceId) && (
-          isAssignedClinician(procedureData) ||
+        allow create, update, delete: if inPractice(
+          get(/databases/$(database)/documents/procedures/$(procedureId)).data.practiceId
+        ) && (
+          isAssignedClinician(get(/databases/$(database)/documents/procedures/$(procedureId)).data) ||
           hasRole('clinician_admin')
         );
       }
@@ -200,34 +200,31 @@ service cloud.firestore {
      * Clinician_auth can create and update own reports; clinician_noauth can draft only.
      */
     match /reports/{reportId} {
-      let reportData = resource.data;
-      let inReportPractice = inPractice(reportData.practiceId);
-
       // Read: All authenticated users in practice can read signed reports
-      allow read: if inReportPractice && hasAnyRole([
+      allow read: if inPractice(resource.data.practiceId) && hasAnyRole([
         'clinical_staff',
         'clinician_auth',
         'clinician_noauth',
         'clinician_admin'
-      ]) && reportData.status == 'signed';
+      ]) && resource.data.status == 'signed';
 
       // Draft read: Clinician can read own drafts
-      allow read: if inReportPractice && (
+      allow read: if inPractice(resource.data.practiceId) && (
         isClinician() &&
-        request.auth.uid == reportData.clinicianId &&
-        reportData.status in ['draft', 'auto_drafted', 'in_review']
+        request.auth.uid == resource.data.clinicianId &&
+        resource.data.status in ['draft', 'auto_drafted', 'in_review']
       );
 
       // Create: Authorized clinicians and admins
-      allow create: if inReportPractice && hasAnyRole([
+      allow create: if inPractice(request.resource.data.practiceId) && hasAnyRole([
         'clinician_auth',
         'clinician_admin'
       ]);
 
       // Update: Clinician can edit own reports until signed; admin/clinician_admin can amend
-      allow update: if inReportPractice && (
-        (request.auth.uid == reportData.clinicianId &&
-         reportData.status in ['draft', 'auto_drafted', 'in_review']) ||
+      allow update: if inPractice(resource.data.practiceId) && (
+        (request.auth.uid == resource.data.clinicianId &&
+         resource.data.status in ['draft', 'auto_drafted', 'in_review']) ||
         hasRole('clinician_admin')
       );
     }
