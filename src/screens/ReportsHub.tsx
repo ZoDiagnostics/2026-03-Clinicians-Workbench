@@ -15,6 +15,7 @@ export const ReportsHub: React.FC = () => {
 
   const [screenError, setScreenError] = useState<Error | null>(null);
   const [retryKey, setRetryKey] = useState(0);
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
 
   useEffect(() => {
     if (!practiceId) return;
@@ -32,6 +33,42 @@ export const ReportsHub: React.FC = () => {
   const reportableProcedures = procedures.filter(p =>
     ['draft', 'appended_draft', 'completed', 'completed_appended', 'closed'].includes(p.status)
   );
+
+  // Compute filter counts
+  const pendingCount = reportableProcedures.filter(p =>
+    ['draft', 'appended_draft'].includes(p.status)
+  ).length;
+
+  const signedCount = reportableProcedures.filter(p =>
+    ['completed', 'completed_appended'].includes(p.status)
+  ).length;
+
+  const overdueCount = reportableProcedures.filter(p =>
+    p.status === 'draft' && Date.now() - p.createdAt.toDate().getTime() > 14 * 24 * 60 * 60 * 1000
+  ).length;
+
+  const allCount = reportableProcedures.length;
+
+  // Filter procedures based on active filter
+  const filteredProcedures = useMemo(() => {
+    if (!activeFilter || activeFilter === 'all') return reportableProcedures;
+    if (activeFilter === 'pending') {
+      return reportableProcedures.filter(p =>
+        ['draft', 'appended_draft'].includes(p.status)
+      );
+    }
+    if (activeFilter === 'signed') {
+      return reportableProcedures.filter(p =>
+        ['completed', 'completed_appended'].includes(p.status)
+      );
+    }
+    if (activeFilter === 'overdue') {
+      return reportableProcedures.filter(p =>
+        p.status === 'draft' && Date.now() - p.createdAt.toDate().getTime() > 14 * 24 * 60 * 60 * 1000
+      );
+    }
+    return reportableProcedures;
+  }, [reportableProcedures, activeFilter]);
 
   if (screenError) {
     return (
@@ -61,6 +98,63 @@ export const ReportsHub: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-900 mb-6">Reports Hub</h1>
             <p className="text-sm text-gray-500 mb-6">View and manage reports for completed and in-progress procedures.</p>
 
+            {/* Filter Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              {/* Pending Reports Card */}
+              <div
+                onClick={() => setActiveFilter('pending')}
+                className={`bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-md transition-shadow border-l-4 border-indigo-500 ${
+                  activeFilter === 'pending' ? 'ring-2 ring-indigo-500' : ''
+                }`}
+              >
+                <h3 className="text-sm font-medium text-gray-500">Pending Reports</h3>
+                <p className="mt-2 text-3xl font-bold text-indigo-600">{pendingCount}</p>
+              </div>
+
+              {/* Signed Reports Card */}
+              <div
+                onClick={() => setActiveFilter('signed')}
+                className={`bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-md transition-shadow border-l-4 border-green-500 ${
+                  activeFilter === 'signed' ? 'ring-2 ring-indigo-500' : ''
+                }`}
+              >
+                <h3 className="text-sm font-medium text-gray-500">Signed Reports</h3>
+                <p className="mt-2 text-3xl font-bold text-green-600">{signedCount}</p>
+              </div>
+
+              {/* Overdue Reports Card */}
+              <div
+                onClick={() => setActiveFilter('overdue')}
+                className={`bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-md transition-shadow border-l-4 border-red-500 ${
+                  activeFilter === 'overdue' ? 'ring-2 ring-indigo-500' : ''
+                }`}
+              >
+                <h3 className="text-sm font-medium text-gray-500">Overdue Reports</h3>
+                <p className="mt-2 text-3xl font-bold text-red-600">{overdueCount}</p>
+              </div>
+
+              {/* All Reports Card */}
+              <div
+                onClick={() => setActiveFilter('all')}
+                className={`bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-md transition-shadow border-l-4 border-gray-500 ${
+                  activeFilter === 'all' ? 'ring-2 ring-indigo-500' : ''
+                }`}
+              >
+                <h3 className="text-sm font-medium text-gray-500">All Reports</h3>
+                <p className="mt-2 text-3xl font-bold text-gray-900">{allCount}</p>
+              </div>
+            </div>
+
+            {/* Clear Filter Button */}
+            {activeFilter && (
+              <button
+                onClick={() => setActiveFilter(null)}
+                className="text-sm text-indigo-600 hover:text-indigo-800 mb-4"
+              >
+                Clear filter
+              </button>
+            )}
+
             <div className="bg-white shadow overflow-hidden sm:rounded-md">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -72,7 +166,7 @@ export const ReportsHub: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {reportableProcedures.map((proc) => (
+                  {filteredProcedures.map((proc) => (
                     <tr key={proc.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {patientMap.get(proc.patientId) || 'Unknown Patient'}
@@ -107,10 +201,10 @@ export const ReportsHub: React.FC = () => {
                       </td>
                     </tr>
                   ))}
-                  {reportableProcedures.length === 0 && (
+                  {filteredProcedures.length === 0 && (
                     <tr>
                       <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
-                        No reports available. Complete a procedure review to generate a report.
+                        {activeFilter ? 'No reports match this filter.' : 'No reports available. Complete a procedure review to generate a report.'}
                       </td>
                     </tr>
                   )}

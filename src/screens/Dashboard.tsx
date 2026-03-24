@@ -9,16 +9,19 @@ import { Header } from '../components/Header';
 import { ErrorState } from '../components/ErrorState';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { Procedure } from '../types/procedure';
-import { ProcedureStatus, UserRole } from '../types/enums';
+import { ProcedureStatus, UserRole, UrgencyLevel } from '../types/enums';
 import { routeByStatus } from '../lib/routeByStatus';
 
 // A simple stat card component
-const StatCard: React.FC<{ title: string; value: number | string; }> = ({ title, value }) => (
-  <div className="bg-white p-6 rounded-lg shadow">
-    <h3 className="text-sm font-medium text-gray-500">{title}</h3>
-    <p className="mt-2 text-3xl font-bold text-gray-900">{value}</p>
-  </div>
-);
+const StatCard: React.FC<{ title: string; value: number | string; accent?: string; onClick?: () => void; }> = ({ title, value, accent, onClick }) => {
+  const containerClasses = onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : '';
+  return (
+    <div className={`bg-white p-6 rounded-lg shadow ${containerClasses}`} onClick={onClick}>
+      <h3 className="text-sm font-medium text-gray-500">{title}</h3>
+      <p className={`mt-2 text-3xl font-bold ${accent || 'text-gray-900'}`}>{value}</p>
+    </div>
+  );
+};
 
 // A simple procedure status badge component
 const StatusBadge: React.FC<{ status: ProcedureStatus }> = ({ status }) => {
@@ -74,6 +77,10 @@ export const Dashboard: React.FC = () => {
   ).length;
 
   const inProgressCount = myProcedures.filter(p => p.status === ProcedureStatus.DRAFT).length;
+
+  const urgentCasesCount = myProcedures.filter(p =>
+    p.urgency === UrgencyLevel.URGENT || p.urgency === UrgencyLevel.EMERGENT
+  ).length;
 
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -168,10 +175,40 @@ export const Dashboard: React.FC = () => {
             </div>
             
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard title="Awaiting Review" value={awaitingReviewCount} />
               <StatCard title="In Progress" value={inProgressCount} />
               <StatCard title="Completed This Week" value={completedThisWeekCount} />
+              <StatCard
+                title="Urgent Cases"
+                value={urgentCasesCount}
+                accent="text-red-600"
+                onClick={() => navigate('/worklist?urgency=urgent')}
+              />
+            </div>
+
+            {/* Quick-Action Shortcuts */}
+            <div className="mt-6 flex flex-wrap gap-3">
+              {(role === UserRole.CLINICIAN_AUTH || role === UserRole.CLINICIAN_ADMIN || role === UserRole.ADMIN || role === UserRole.CLINICAL_STAFF) && (
+                <button
+                  onClick={() => navigate('/procedures/new')}
+                  className="px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                >
+                  New Procedure
+                </button>
+              )}
+              <button
+                onClick={() => navigate('/worklist?status=ready_for_review')}
+                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-green-50 text-green-700 hover:bg-green-100"
+              >
+                Review Pending
+              </button>
+              <button
+                onClick={() => navigate('/reports-hub')}
+                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-purple-50 text-purple-700 hover:bg-purple-100"
+              >
+                Reports Hub
+              </button>
             </div>
 
             {/* Recent Procedures Table */}

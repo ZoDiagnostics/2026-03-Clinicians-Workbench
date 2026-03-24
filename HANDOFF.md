@@ -1,6 +1,6 @@
 # ZoCW Session Handoff & Work Queue
 **Purpose:** Initialization context for a new Claude Cowork session + prioritized work queue.
-**Last Updated:** March 24, 2026 — Opus session 2: Cloud Functions deployed (14 functions). Package upgrades (firebase-functions v7, firebase-admin v13). BLOCKER: firebase deploy "extensions" error after upgrade — see OPUS_CONTINUATION_PROMPT.md for fix path.
+**Last Updated:** March 24, 2026 — Opus session 3: Firebase deploy "extensions" BLOCKER RESOLVED. Fix: `npx firebase-tools@latest deploy --only functions` (CLI 15.11.0 understands v7 build metadata). All 14 Cloud Functions redeployed to cw-e7c19.
 
 ## MANDATORY SESSION RULES
 1. **At session start:** Read this file to understand current state and work queue.
@@ -27,7 +27,7 @@
 - **Package upgrades:** firebase-functions ^4.9→^7.2, firebase-admin ^12→^13.7, @types/node ^20→^22
   - Gen 1 imports changed to `firebase-functions/v1` subpath (13 files)
   - Node.js engine kept at 20 (Firebase Cloud Functions doesn't support 22 yet)
-- **⚠️ BLOCKER:** After package upgrade, `firebase deploy --only functions` fails with "Unexpected key extensions" error. Firebase Studio's bundled CLI (13.10.0) doesn't understand firebase-functions v7 build metadata. Global npm install of CLI 15.11.0 didn't override the bundled binary. See `docs/OPUS_CONTINUATION_PROMPT.md` for fix options.
+- **✅ RESOLVED (Opus session 3):** Firebase deploy "extensions" error fixed. Root cause: Studio's bundled CLI (13.10.0) didn't understand firebase-functions v7 build metadata. Fix: `npx firebase-tools@latest deploy --only functions` bypasses the bundled binary and uses CLI 15.11.0. All 14 functions redeployed successfully.
 - **Commits:** `2b46825` (TS build fixes), `c478380` (firebase.json functions target), `3636bfc` (package upgrades), `1a5f1b6` (revert Node 22→20)
 
 ### March 24, 2026 (session 1) — Opus Orchestration: Pre-Pipeline Planning + Phase 0 Housekeeping (Opus 4.6, Cowork)
@@ -703,7 +703,8 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 - [ ] **Google sign-in** — Works after Firebase Hosting deploy. Currently blocked by unauthorized-domain in dev environment.
 
 ### Priority 3: Infrastructure
-- [ ] **Deploy Cloud Functions** — ⚡ NOW UNBLOCKED (Blaze plan active). 14 functions in `functions/src/` ready to deploy. Run in Firebase Studio: `cd functions && npm install && npm run build && firebase deploy --only functions`. This is Phase 1 of the Pre-Pipeline Build Plan and must complete before Phases 5–6 (Summary + Report enhancements that wire to `calculateTransitTimes` and `suggestCodes`).
+- [x] **Deploy Cloud Functions** — ✅ DONE (Mar 24, Opus session 3). 14 functions deployed to cw-e7c19. Deploy command: `npx firebase-tools@latest deploy --only functions` (bypasses Studio's bundled CLI).
+- [ ] **Upgrade Node.js runtime from 20 → 22** — Node.js 20 will be deprecated on **2026-04-30** and decommissioned on **2026-10-30**. Target: attempt upgrade in **mid-April 2026** (before deprecation date). Requires: (1) verify Firebase Cloud Functions officially supports Node 22, (2) update `engines.node` in `functions/package.json` from `"20"` to `"22"`, (3) test full deploy. As of Mar 24, Node 22 causes a hard deploy failure — wait for Google/Firebase to add support. Track via [Firebase runtime support page](https://cloud.google.com/functions/docs/runtime-support).
 - [ ] **Firebase Studio sunset migration** — Plan migration to Google AI Studio or Antigravity before March 2027.
 - [x] **Move Firebase_Studio_Build_Inputs/ to Archive/** — ✅ Done Mar 19. Moved to Archive/Firebase_Studio_Build_Inputs/.
 - [x] **Clean up root-level Manage*.tsx stubs** ✅ DONE (Mar 23, commit `51c8a1a`) — 5 root-level stub files replaced with simple re-exports pointing to the real `admin/` implementations.
