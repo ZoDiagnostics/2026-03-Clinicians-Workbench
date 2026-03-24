@@ -1,6 +1,6 @@
 # ZoCW Session Handoff & Work Queue
 **Purpose:** Initialization context for a new Claude Cowork session + prioritized work queue.
-**Last Updated:** March 24, 2026 — Opus session 3: Firebase deploy "extensions" BLOCKER RESOLVED. Fix: `npx firebase-tools@latest deploy --only functions` (CLI 15.11.0 understands v7 build metadata). All 14 Cloud Functions redeployed to cw-e7c19.
+**Last Updated:** March 24, 2026 — Phase 3B Sonnet follow-up: ENV-01 auth blocker persists for 3 blocked roles. BUG-54 verified via source code (commit `4bf997f`). BUG-55 consistent in source. All 33 blocked scenarios remain BLOCKED. Next step: Cameron must manually log into the 3 roles in Chrome before starting next Cowork session.
 
 ## MANDATORY SESSION RULES
 1. **At session start:** Read this file to understand current state and work queue.
@@ -14,6 +14,24 @@
 ---
 
 ## SESSION LOG
+
+### March 24, 2026 (session 4) — Phase 3B Follow-Up: Blocked Role Re-Test + BUG-54/55 Verification (Sonnet 4.6, Cowork)
+- **Scope:** TEST-ONLY (no code changes). Re-attempt 33 ENV-blocked scenarios (noauth, staff, clinadmin roles) + verify BUG-54 fix + check BUG-55.
+- **ENV-01 BLOCKER PERSISTS:** All 3 previously-blocked roles (noauth, staff, clinadmin) still cannot be tested. Root cause confirmed: `auth/network-request-failed` on both fresh login (signInWithPassword) AND token refresh (getIdTokenResult(true)) in Cowork VM sandbox. The fix-claims.ts re-run by Cameron set claims on the server, but cannot help if the browser can't retrieve a new token due to network restrictions.
+- **All 33 blocked scenarios: STILL BLOCKED.** No scenarios converted from BLOCKED to PASS or FAIL.
+- **BUG-54 VERIFIED ✅ (source code):** Commit `4bf997f` (15:57 March 24) correctly implements the fix:
+  - `PatientOverview.tsx`: Button navigates to `/procedures?patientId=${id}` (was `/procedures`)
+  - `Procedures.tsx`: Reads `patientId` query param, opens modal with patient pre-selected, cleans URL after modal opens
+- **BUG-55 LIKELY RESOLVED (source code):** All patient tab empty states in PatientOverview.tsx use identical `px-6 py-8 text-center text-gray-500` styling. No separate fix commit found — styling was already consistent in source. Visual confirmation pending live session.
+- **Session counts:** 0 PASS / 0 FAIL / 33 BLOCKED (33 scenarios attempted)
+- **Cumulative totals:** 368 PASS / 498 FAIL / 175 BLOCKED (56 total bugs, 45 fixed including BUG-54/55)
+- **Results file:** `docs/TEST_RESULTS_PHASE3B_FOLLOWUP_2026-03-24.md`
+- **New ENV-01 insight:** The auth hook's `getIdTokenResult(true)` force-refresh hangs indefinitely (does not timeout) when the network is blocked, causing the app to show "Loading..." forever rather than redirecting to /login after the retry window. This means partial auth state can lock up the app in automation.
+- **Resolution for next session:**
+  1. Cameron manually logs into noauth@zocw.com, staff@zocw.com, clinadmin@zocw.com in Chrome (same browser used by Cowork)
+  2. Start Cowork session immediately (within 1-hour token validity window)
+  3. Do NOT clear IndexedDB before session starts — let Cowork use the cached tokens
+  4. See `docs/LESSONS_LEARNED.md` Lessons 12–13 for background and long-term fix recommendation
 
 ### March 24, 2026 (session 3) — Phase 3 Comprehensive Pre-Pipeline Verification (Sonnet 4.6, Cowork)
 - **Scope:** TEST-ONLY (no code changes). Comprehensive verification of all Phase 0–6 feature builds across 14 screens. 119 scenarios logged across clinician_auth and admin roles.
