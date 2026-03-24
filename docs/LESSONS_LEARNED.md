@@ -180,4 +180,45 @@
 
 ---
 
+## Lesson 10: Stale Compiled .js Files in src/ Shadow .ts Sources During Vite Build
+
+**Date:** March 24, 2026
+**Category:** Build Verification
+**Severity:** Critical
+
+**What happened:** After deploying Phases 2–6 feature builds, `npm run build` in Firebase Studio failed with `"UserRole" is not exported by "src/types/enums.js"`. The TypeScript source (`enums.ts`) correctly exported `UserRole`, but Rollup was picking up a stale compiled `enums.js` file sitting in the same directory instead of the `.ts` source.
+
+**Root cause:** A previous `tsc` run in Firebase Studio (before `noEmit: true` was set in tsconfig, or from the functions build) had emitted compiled `.js`, `.d.ts`, `.js.map`, and `.d.ts.map` files alongside the `.ts` sources in `src/types/`. Rollup resolves `.js` files with higher priority than `.ts`, so it read the stale compiled output which didn't include the enum exports (esbuild strips enums during compilation).
+
+**Files found:** `enums.js`, `enums.js.map`, `enums.d.ts`, `enums.d.ts.map` all sitting next to `enums.ts`.
+
+**Fix applied:**
+1. `rm -f src/types/enums.js src/types/enums.js.map src/types/enums.d.ts src/types/enums.d.ts.map` in Firebase Studio
+2. `find src/types -name '*.js' -o -name '*.js.map' -o -name '*.d.ts' -o -name '*.d.ts.map' | xargs rm -f` to clean all stale compiled files
+
+**Prevention for future projects:**
+1. Always set `noEmit: true` in tsconfig.json for Vite projects — `tsc` should only type-check, never emit
+2. Add `*.js` and `*.js.map` to `src/**/.gitignore` (or global .gitignore) to prevent accidental commits of compiled output in source directories
+3. After ANY build failure, check for stale `.js` files alongside `.ts` sources: `find src -name '*.js' | head`
+4. If switching between `tsc` with emit and `tsc --noEmit`, clean up leftover compiled files immediately
+
+---
+
+## Lesson 11: Firebase Studio Bundled CLI Overrides Global npm Installs
+
+**Date:** March 24, 2026
+**Category:** Environment/Tooling
+**Severity:** High
+
+**What happened:** After upgrading `firebase-functions` to v7, `firebase deploy --only functions` failed with "Unexpected key extensions." The fix was `npm install -g firebase-tools@15.11.0`, but deploying still used the bundled CLI (13.10.0) because Firebase Studio's PATH prioritizes its own binaries.
+
+**Fix applied:** `npx firebase-tools@latest deploy --only functions` bypasses the bundled binary entirely and uses the latest CLI (15.11.0).
+
+**Prevention for future projects:**
+1. Always verify which binary is active: `which firebase && firebase --version`
+2. Use `npx firebase-tools@latest` instead of bare `firebase` in Firebase Studio
+3. Don't trust `npm install -g` in Firebase Studio — it installs but Studio's PATH wins
+
+---
+
 *Add new lessons as they arise. Review before starting new Firebase/React projects.*

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { collection, addDoc, Timestamp, query, where, getDocs, limit, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth, useProcedures, usePatients } from '../lib/hooks';
@@ -32,6 +32,7 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
 
 export const Procedures: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, practiceId } = useAuth();
   const procedures = useProcedures();
   const allPatients = usePatients();
@@ -48,6 +49,18 @@ export const Procedures: React.FC = () => {
 
   const [showModal, setShowModal] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState('');
+
+  // Auto-open modal with pre-selected patient from query param (e.g., from Patient Overview)
+  useEffect(() => {
+    const patientIdParam = searchParams.get('patientId');
+    if (patientIdParam && allPatients.length > 0) {
+      setSelectedPatientId(patientIdParam);
+      setShowModal(true);
+      // Clear the param so refreshing doesn't re-trigger
+      searchParams.delete('patientId');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, allPatients]);
   const [studyType, setStudyType] = useState('sb_diagnostic');
   const [urgency, setUrgency] = useState('routine');
   const [indications, setIndications] = useState('');

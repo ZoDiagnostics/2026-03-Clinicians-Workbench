@@ -551,7 +551,7 @@ export function PatientOverview() {
                       Date {procDateSort === 'desc' ? '↓ Newest' : '↑ Oldest'}
                     </button>
                     <button
-                      onClick={() => navigate(`/procedures`)}
+                      onClick={() => navigate(`/procedures?patientId=${id}`)}
                       className="text-sm bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700"
                     >
                       + New Procedure
