@@ -1,6 +1,6 @@
 # ZoCW Session Handoff & Work Queue
 **Purpose:** Initialization context for a new Claude Cowork session + prioritized work queue.
-**Last Updated:** March 24, 2026 — Phase 3B Sonnet follow-up: ENV-01 auth blocker persists for 3 blocked roles. BUG-54 verified via source code (commit `4bf997f`). BUG-55 consistent in source. All 33 blocked scenarios remain BLOCKED. Next step: Cameron must manually log into the 3 roles in Chrome before starting next Cowork session.
+**Last Updated:** March 24, 2026 (evening) — Opus session: deployed Firestore rules + hosting, committed BUG-54 fix + Lessons 10-11, investigated Cowork Chrome network restrictions (confirmed platform limitation — Firebase Auth APIs blocked in tab group). Created overnight prompts for Sonnet (unit test scaffolding) and Opus (BUILD_09 planning). 33 blocked scenarios deferred pending manual pre-login workaround.
 
 ## MANDATORY SESSION RULES
 1. **At session start:** Read this file to understand current state and work queue.
@@ -14,6 +14,22 @@
 ---
 
 ## SESSION LOG
+
+### March 24, 2026 (session 5) — Deploy + Network Investigation + Overnight Prompts (Opus 4.6, Cowork)
+- **Scope:** Deploy Firestore rules + hosting, investigate Cowork Chrome auth restriction, create overnight session prompts.
+- **Firestore rules deployed** — first-ever `firestore` target deploy. Fixed 3 `let` variable bindings rejected by rules compiler (Firestore rules_version '2' doesn't support `let`). Replaced with inline `resource.data` references. Subcollection rules use `get()` path lookups for parent doc data.
+- **Firestore indexes file created** — `firestore.indexes.json` was missing (required by `firestore` deploy target). Empty indexes file added.
+- **Hosting deployed** — latest build including BUG-54 fix deployed to `cw-e7c19.web.app`.
+- **Cowork Chrome network restriction investigated** — extensive testing confirmed Firebase Auth endpoints (`identitytoolkit.googleapis.com`, `securetoken.googleapis.com`) are blocked in the Cowork-managed Chrome tab group. This is a platform limitation, not a code issue. Multiple approaches tested (keyboard typing, native input setter, React fiber onChange injection, direct Firebase SDK JS calls) — all fail at the network level. See Lesson 12.
+- **Lessons 12-13 added** to `docs/LESSONS_LEARNED.md`:
+  - Lesson 12: Firestore Security Rules don't support `let` variable bindings; misleading error messages
+  - Lesson 13: Deploy only the targets you need (`--only functions,hosting,firestore`)
+- **33 blocked scenarios deferred** — cannot be tested via Cowork browser automation. Require manual pre-login in Chrome (within 1-hour token window) before starting Cowork session.
+- **Overnight prompts created:**
+  - `docs/SONNET_UNIT_TEST_PROMPT.md` — vitest test suite: RBAC hooks, ProtectedRoute, component smoke tests, screen render tests
+  - `docs/OPUS_BUILD09_PLANNING_PROMPT.md` — BUILD_09 image pipeline planning: prerequisite audit, gap analysis, risk assessment, Sonnet-dispatchable phases
+- **Commits this session:** BUG-54 fix + Lessons 10-11 (committed by Cameron), Firestore rules fix (committed), Phase 3B results (Sonnet commit `330a832`)
+- **Unstaged:** Lessons 12-13 in `docs/LESSONS_LEARNED.md` — Cameron to commit from Mac Terminal
 
 ### March 24, 2026 (session 4) — Phase 3B Follow-Up: Blocked Role Re-Test + BUG-54/55 Verification (Sonnet 4.6, Cowork)
 - **Scope:** TEST-ONLY (no code changes). Re-attempt 33 ENV-blocked scenarios (noauth, staff, clinadmin roles) + verify BUG-54 fix + check BUG-55.
