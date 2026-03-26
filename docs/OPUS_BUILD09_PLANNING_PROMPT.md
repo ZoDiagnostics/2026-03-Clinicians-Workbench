@@ -6,6 +6,15 @@
 
 ---
 
+> **STATUS (Mar 24 evening):** Step 1 (Prerequisite Audit) is COMPLETE.
+> Output: `docs/BUILD_09_PREREQUISITE_AUDIT.md`
+> **Start from Step 0 (pre-flight reads), then skip Step 1 and proceed directly to Step 2 (Gap Analysis).**
+> The audit found 3 hard blockers (IAM grants, composite index, CORS) — all require Cameron manual action.
+> Field rename has a compatibility workaround. Test data linkage is unverified.
+> The audit also surfaced 4 observations for the gap analysis — see its "Observations for Step 2" section.
+
+---
+
 ## YOUR ROLE
 
 You are the **Opus architect** for ZoCW. Your job is to read the existing architecture docs and BUILD_09 packet, identify gaps, risks, and decision points, then produce a concrete implementation plan that a Sonnet session can execute without needing to make architectural decisions.
@@ -19,8 +28,9 @@ You are the **Opus architect** for ZoCW. Your job is to read the existing archit
 Read these files (in this exact order — each builds on the previous):
 
 1. `HANDOFF.md` — current project state, session log, work queue
-2. `docs/IMAGE_PIPELINE_INTEGRATION.md` — approved architecture for cross-project integration
-3. `docs/build-packets/BUILD_09_Image_Pipeline_Integration.md` — the build packet with implementation steps
+2. `docs/BUILD_09_PREREQUISITE_AUDIT.md` — **COMPLETED Step 1 output** — prerequisite statuses, blockers, Cameron action checklist, observations for gap analysis
+3. `docs/IMAGE_PIPELINE_INTEGRATION.md` — approved architecture for cross-project integration
+4. `docs/build-packets/BUILD_09_Image_Pipeline_Integration.md` — the build packet with implementation steps
 4. `docs/ZOCW_REFERENCE.md` — component registry, screen list, routing table, role matrix
 5. `src/types/capsule-image.ts` — existing type definitions for pipeline data
 6. `src/screens/Viewer.tsx` — current Viewer implementation (has TODO for frames)

@@ -1,6 +1,6 @@
 # ZoCW Session Handoff & Work Queue
 **Purpose:** Initialization context for a new Claude Cowork session + prioritized work queue.
-**Last Updated:** March 24, 2026 (evening) — Opus session: deployed Firestore rules + hosting, committed BUG-54 fix + Lessons 10-11, investigated Cowork Chrome network restrictions (confirmed platform limitation — Firebase Auth APIs blocked in tab group). Created overnight prompts for Sonnet (unit test scaffolding) and Opus (BUILD_09 planning). 33 blocked scenarios deferred pending manual pre-login workaround.
+**Last Updated:** March 24, 2026 (late night) — Opus session: completed BUILD_09 prerequisite audit (`docs/BUILD_09_PREREQUISITE_AUDIT.md`), rewrote WORK QUEUE with clear Build vs Test groupings, updated Opus morning prompt for BUILD_09 planning continuation (Steps 2–6).
 
 ## MANDATORY SESSION RULES
 1. **At session start:** Read this file to understand current state and work queue.
@@ -14,6 +14,13 @@
 ---
 
 ## SESSION LOG
+
+### March 24, 2026 (session 6) — BUILD_09 Prerequisite Audit + Work Queue Reorg (Opus 4.6, Cowork)
+- **Scope:** BUILD_09 planning Step 1, HANDOFF.md restructuring, Opus morning prompt update.
+- **BUILD_09 Prerequisite Audit completed** — `docs/BUILD_09_PREREQUISITE_AUDIT.md`. Audited all 7 prerequisites (4 pipeline backend, 3 ZoCW). Found 3 hard blockers requiring Cameron manual action (IAM grants, composite index, CORS). Field rename has compatibility workaround. Test data linkage unverified. Includes exact `gcloud` commands for Cameron.
+- **WORK QUEUE restructured** — Replaced flat priority list with clear Build vs Test groupings. Builds: BUILD_09 (planning + implementation + backend), Google sign-in, infra deferred. Tests: TEST-01 through TEST-05 covering unit tests, 33 blocked role scenarios, 432 untested role scenarios, regression retest, BUILD_09 integration testing. All completed items collapsed into expandable `<details>` block.
+- **Opus morning prompt updated** — `docs/OPUS_BUILD09_PLANNING_PROMPT.md` now has a note that Step 1 is complete, continue from Step 2.
+- **No code changes this session.** Documentation only.
 
 ### March 24, 2026 (session 5) — Deploy + Network Investigation + Overnight Prompts (Opus 4.6, Cowork)
 - **Scope:** Deploy Firestore rules + hosting, investigate Cowork Chrome auth restriction, create overnight session prompts.
@@ -423,18 +430,10 @@
    - Updated PROJECT_INSTRUCTIONS.md artifact registry with all UX documents
 9. **Sonnet ran UX remediation session** — implemented 6 approved fixes across 3 files (Viewer.tsx, SignDeliver.tsx, ActivityLog.tsx). All fixes landed per spec, no deviations.
 
-#### What's uncommitted (TWO change sets):
-- **Change set 1 (committed, not pushed):** Bug fixes — commit `6cb7f6b`, 128 files, +2975/-866
-- **Change set 2 (not yet committed):** UX fixes — 3 files changed (Viewer.tsx, SignDeliver.tsx, ActivityLog.tsx) + UX_FIX_SESSION_REPORT.md
-
-#### What to do at office (in order):
-1. **Set up Git auth:** `brew install gh && gh auth login` (or use Personal Access Token)
-2. **Commit UX changes:** `cd` to repo, `git add -A && git commit -m "UX remediation: 6 refinements (confidence tooltip, no-anomalies copy, sign scroll gate, sign modal, Activity Log filters)"`
-3. **Push both commits:** `git push origin main`
-4. **Pull in Firebase Studio** and run `npm run build` — verify no TypeScript errors
-5. **Smoke-test at https://cw-e7c19.web.app:**
-   - Viewer: hover over AI confidence % → tooltip appears
-   - Viewer: empty findings → blue "no anomalies" message (not gray "no findings yet")
+#### ✅ What was uncommitted (resolved Mar 23):
+- ~~Change set 1 (bug fixes `6cb7f6b`)~~ — pushed Mar 23
+- ~~Change set 2 (UX fixes)~~ — committed and pushed Mar 23
+- Git auth configured via `gh auth login` on Mac
    - SignDeliver: Sign button disabled until report preview scrolled to bottom
    - SignDeliver: Sign button opens confirmation modal
    - ActivityLog: user dropdown + date range filters work
@@ -689,100 +688,159 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 
 ## WORK QUEUE (prioritized)
 
-### Priority 1: Ready Now
+### ═══════════════════════════════════════════════
+### 🔨 BUILDS — Remaining Implementation Work
+### ═══════════════════════════════════════════════
 
-#### 1A: Image Pipeline — ZoCW Frontend (BUILD_09)
-- [x] **Architecture decisions documented** — ✅ Done Mar 19. See ARCHITECTURAL DECISIONS section above.
-- [x] **Create `src/types/capsule-image.ts`** — ✅ Done Mar 19. `CapsuleImageDocument`, `AIAnalysisResult` interfaces, CEST string literal types (14 anatomical, 31 findings), `CEST_TO_ANATOMICAL_REGION` mapping, `cestToAnatomicalRegion()` helper. Exported from `src/types/index.ts`. Data model version bumped to 3.2.0.
-- [x] **Create `docs/IMAGE_PIPELINE_INTEGRATION.md`** — ✅ Done Mar 19. Full architecture doc: two-project model, data linkage via capsule serial, proxy Cloud Function pattern, CORS config, security/IAM requirements, comparison table vs. original Gemini spec. Supersedes old `.docx`.
-- [x] **Create `docs/build-packets/BUILD_09_Image_Pipeline_Integration.md`** — ✅ Done Mar 19. 5-step build: getCapsuleFrames callable, useCapsuleFrames hook, wire Viewer to real frames + AI findings, wire CapsuleUpload to confirmation flow. Includes prerequisites, acceptance criteria, testing checklist.
-- [ ] **Implement `getCapsuleFrames` callable** — Cloud Function in `cw-e7c19` that reads from pipeline project Firestore. Input: `{ capsuleSerial }`. Output: full frame list + AI analysis. Server-side cross-project auth via service account.
-- [ ] **Implement `useCapsuleFrames` hook** — Calls `getCapsuleFrames` on mount, caches result. Used by Viewer screen.
-- [ ] **Wire Viewer.tsx to real frames** — Replace `const frames: string[] = []` with data from `useCapsuleFrames`. Show AI analysis results in findings panel with provenance badge `AI_DETECTED`.
-- [ ] **Wire CapsuleUpload.tsx to real upload** — Replace simulated upload with actual upload to `podium-capsule-raw-images-test` bucket using capsule serial number as folder name.
+#### BUILD_09: Image Pipeline — ZoCW Frontend (THE LAST BUILD)
+**Planning docs:** `docs/OPUS_BUILD09_PLANNING_PROMPT.md` | **Prerequisite audit:** `docs/BUILD_09_PREREQUISITE_AUDIT.md`
+**Architecture:** `docs/IMAGE_PIPELINE_INTEGRATION.md` | **Build packet:** `docs/build-packets/BUILD_09_Image_Pipeline_Integration.md`
 
-#### ⚠️ BUGS TO FIX (from Session 2 testing)
-- [x] **Bug #6 — Post-login redirect drops destination** ✅ FIXED (Mar 23 work session, commit `51c8a1a`) — `router.tsx` ProtectedRoute passes `{ from: location.pathname }` via state when redirecting to login. `Login.tsx` reads `location.state.from` and redirects there after auth.
-- [x] **Bug #7 — Notification items have no navigation handler** ✅ FIXED (Mar 21 bug fix session) — `NotificationDrawer.tsx` now has `resolveNotificationRoute()` that routes based on `routeTo` field or type+entityId fallback. Click handler navigates and closes drawer.
-- [x] **Bug #8 — "Go to Report" button UX** ✅ FIXED (Mar 23 impl session) — Button now always visible; grayed out (`cursor-not-allowed opacity-60`) with tooltip "Complete pre-review checklist first" when `!reviewUnlocked`. Enabled and clickable when review is unlocked. Severity: LOW/UX.
-- [x] **Bug #3 — Mark all as read partial failure** ✅ FIXED (Mar 21 bug fix session) — `NotificationDrawer.tsx` now has "Mark all read" button with `CheckCheck` icon using `Promise.all` across all unread notifications.
-- [x] **Bug #4 — Add void procedure to seed-demo.ts** ✅ FIXED (Mar 21 bug fix session) — `seed-demo.ts` now seeds 17 procedures (16 original + 1 UX-04 zero-findings proc at index 16) including one `void crohns_monitor routine` at index 15 (Robert Brown). Unblocks CA-23 and void routing test.
-- [x] **Bug #5 — Fix seed data mismatch for William Taylor sb diagnostic** ✅ FIXED (Mar 21 bug fix session) — `seed-demo.ts` report seeding now sets `status: 'draft'` (no signedAt/signedBy) for draft/appended_draft procedures. Only completed/completed_appended/closed get signed reports.
-- [x] **BUG-51 — Notification click doesn't navigate** ✅ FIXED (Mar 23 Opus session) — Root cause: seed notifications had no `routeTo` or `entityId` fields, so `resolveNotificationRoute()` returned null. Fixed in `seed-demo.ts`: 4 of 5 notifications now include `routeTo`, `entityId`, `entityType` linking to actual seeded procedure IDs. Re-seed required to apply.
-- [x] **UX-04 test data — 0-findings ready_for_review procedure** ✅ ADDED (Mar 23 Opus session) — New procedure at index 16 (`ready_for_review`, `colon_eval`, `routine`) with zero findings. Enables live verification of the "AI analysis complete — no anomalies detected" empty state in Viewer.
-- [x] **BUG-52 — /admin/practice React crash** ✅ FIXED (Mar 23 Opus session) — React Error #310: useState/useEffect hooks called after conditional role-gate return in ManagePractice.tsx. Fix: moved all hooks above the conditional. Uncommitted — needs push + deploy.
-- [x] **BUG-53 — Activity Log sidebar link visible for non-admin roles** ✅ FIXED (Mar 23 Opus session) — Added `roles: [UserRole.ADMIN, UserRole.CLINICIAN_ADMIN]` to Activity Log nav item in Sidebar.tsx. Uncommitted — needs push + deploy.
+**Planning (Opus):**
+- [x] Architecture decisions documented — ✅ Mar 19
+- [x] Type definitions (`src/types/capsule-image.ts`) — ✅ Mar 19
+- [x] Architecture doc (`docs/IMAGE_PIPELINE_INTEGRATION.md`) — ✅ Mar 19
+- [x] Build packet (`docs/build-packets/BUILD_09_Image_Pipeline_Integration.md`) — ✅ Mar 19
+- [x] Prerequisite audit (`docs/BUILD_09_PREREQUISITE_AUDIT.md`) — ✅ Mar 24
+- [ ] **Gap analysis** — Step 2 of planning prompt. Review BUILD_09 steps against actual source.
+- [ ] **Risk assessment** — Step 3 of planning prompt. Cross-project access, 50K-frame scale, CORS, signed URLs.
+- [ ] **Implementation plan (`docs/BUILD_09_IMPLEMENTATION_PLAN.md`)** — Step 4. Sonnet-dispatchable phases A–E.
 
-#### ⚠️ ADMIN TESTING BLOCKER: Google OAuth popup
-- [x] **Created email/password admin test user** ✅ (Mar 22) — `admin@zocw.com` / `password` created in Firebase Auth.
-- [x] **Create Firestore user docs for new Auth users** ✅ (Mar 22) — All 3 new users have Firestore `users` docs with correct roles, practiceId, clinicIds. Created via Firestore REST API. Unblocks all role-specific test scenarios (AD-xx admin, CN-xx clinician_noauth, CS-xx clinical_staff).
+**Implementation (Sonnet, after planning complete):**
+- [ ] **Phase A:** `getCapsuleFrames` callable — `functions/src/callable/getCapsuleFrames.ts`
+- [ ] **Phase B:** `useCapsuleFrames` hook — addition to `src/lib/hooks.tsx`
+- [ ] **Phase C:** Viewer.tsx integration — wire hook, frame display, AI findings panel
+- [ ] **Phase D:** CapsuleUpload.tsx — confirmation flow, status transition
+- [ ] **Phase E:** End-to-end test with real pipeline data (requires Cameron + pipeline)
 
-#### ✅ COMPLETED: Gemini API billing
-- [x] **Link billing account to cw-e7c19** ✅ (Mar 22) — Blaze plan activated, CW Budget set at $20/month. Billing works (no more quota errors).
-- [x] **Set budget alert** ✅ (Mar 22) — CW Budget created at $20/month.
-- [x] **Fix deprecated Gemini model** ✅ (Mar 23) — `src/lib/gemini.ts` updated: `gemini-2.0-flash-lite` → `gemini-2.0-flash`. Verified no remaining references to old model in src/.
+#### BUILD_09: Image Pipeline — Backend (Cameron manual, pipeline GCP project)
+⚠️ **This work is in `podium-capsule-ingest`, NOT in the ZoCW repo. See `docs/BUILD_09_PREREQUISITE_AUDIT.md` for exact commands.**
 
-#### ✅ COMPLETED: Push bug fix commit to GitHub
-- [x] **Git push completed** ✅ (Mar 23) — All commits from `6cb7f6b` through `c56f6ee` pushed to GitHub. `gh auth login` configured on Mac. Firebase Studio pulled, built, and deployed successfully.
-- [x] **Build verified + deployed** ✅ (Mar 23) — `npm run build` clean. App live at https://cw-e7c19.web.app with all changes through BUG-51 fix.
+- [ ] **P0 — IAM grants** — Grant `cw-e7c19` service account `roles/datastore.user` + `roles/storage.objectViewer` on `podium-capsule-ingest`. **HARD BLOCKER for Phase A testing.**
+- [ ] **P0 — Composite index** — Create on `capsule_images`: `capsule_serial` asc + `filename` asc. **HARD BLOCKER for Phase A testing.**
+- [ ] **P1 — CORS** — Apply `cors.json` to `podium-capsule-raw-images-test` bucket. **Blocks Phase C** (browser image loading).
+- [ ] **P2 — Field rename** — Rename `procedure_id` → `capsule_serial` in `log-capsule-image` + `analyze-capsule-image`. Redeploy. Migrate test data. Workaround exists (compatibility shim).
+- [ ] **P2 — Test data linkage** — Verify a ZoCW procedure `capsuleSerialNumber` matches a folder in pipeline bucket.
 
-#### ✅ BUGS FROM PHASE 2 TESTING — FIXED (Mar 23–24)
-- [x] **BUG-52 (Sev 2) — Practice Settings crash** ✅ FIXED & VERIFIED (Mar 24) — React hooks moved above role gate in ManagePractice.tsx. Deployed, verified live (8/8 PASS).
-- [x] **BUG-53 (Sev 4) — Activity Log sidebar link visible for non-admin roles** ✅ FIXED & VERIFIED (Mar 24) — Added roles filter to Sidebar.tsx nav item. Verified across 3 roles.
+#### Other Remaining Features
+- [ ] **Google sign-in** — Works after Firebase Hosting deploy. Blocked by unauthorized-domain in dev environment. (Priority 2)
 
-#### ✅ DUPLICATES CLOSED (Mar 24, Phase 0 housekeeping)
-- [x] **BUG-01** — DUPLICATE of BUG-03 (notification "Clear All"). Closed.
-- [x] **BUG-49** — DUPLICATE of BUG-09 (Activity Log role gate). Closed.
-- [x] **BUG-36** — Reclassified from "DUPLICATE of BUG-11" to FEATURE-BUILD (quality metric auto-calc). See `docs/PRE_PIPELINE_BUILD_PLAN.md`.
+#### Infrastructure (deferred)
+- [ ] **Node.js 20 → 22 upgrade** — Target mid-April 2026. Blocked until Google/Firebase adds Node 22 support. (Priority 3)
+- [ ] **Firebase Studio sunset migration** — Plan before March 2027. (Priority 3)
 
-#### 📋 PRE-PIPELINE BUILD PLAN (Mar 24)
-**See `docs/PRE_PIPELINE_BUILD_PLAN.md` for full plan.** 14 bugs across 6 phases, targeting 12 feature builds + 2 duplicate closures. Phases 2–6 are Sonnet execution tasks. Cloud Functions deploy (Phase 1) is a Cameron manual step in Firebase Studio.
+### ═══════════════════════════════════════════════
+### 📦 GIT / DEPLOY — Pending Commits & Pushes
+### ═══════════════════════════════════════════════
 
-**Bug status after Phase 0:**
-- Total unique bugs: 52 (54 - 2 duplicates)
-- Resolved: 31 (27 Session 1 + BUG-52 + BUG-53 + BUG-01 dup + BUG-49 dup)
-- Pre-pipeline build (Phases 2–6): 14
-- Deferred to image pipeline: 11
-- **Sonnet test prompt:** `docs/SONNET_PHASE3_TEST_PROMPT.md` (425 scenarios across 14 screens, all 5 roles)
+#### Uncommitted Changes (this session — Mar 24 late night)
+3 files changed. Cameron must commit and push from Mac Terminal:
+- `HANDOFF.md` — restructured work queue (Builds / Tests / Git / Completed)
+- `docs/OPUS_BUILD09_PLANNING_PROMPT.md` — added Step 1 complete status + prerequisite audit to reading list
+- `docs/BUILD_09_PREREQUISITE_AUDIT.md` — **NEW** — Step 1 prerequisite audit output
 
-#### 1B: Image Pipeline — Backend (separate Cowork session / pipeline project)
-⚠️ **This work is in the pipeline GCP project (`podium-capsule-ingest`), NOT in the ZoCW repo.**
-- [ ] **Rename `procedure_id` → `capsule_serial`** in `log-capsule-image` Cloud Function. Update the field name in the Firestore doc it creates. Redeploy function.
-- [ ] **Rename `procedure_id` → `capsule_serial`** in `analyze-capsule-image` Cloud Function if it reads that field. Redeploy.
-- [ ] **Reprocess existing test data** if any — existing `capsule_images` docs have `procedure_id` field, need migration to `capsule_serial`.
-- [ ] **CORS configuration** — Apply `cors.json` to `podium-capsule-raw-images-test` bucket. Origins: `http://localhost:3000`, `https://cw-e7c19.web.app`, Firebase Studio preview domain.
-- [ ] **Cross-project service account** — Grant the `cw-e7c19` Cloud Functions service account `roles/datastore.user` on `podium-capsule-ingest` project so `getCapsuleFrames` can read from pipeline Firestore.
-- [ ] **Composite index** — Ensure Firestore index on `capsule_images` collection: `capsule_serial` (asc) + `filename` (asc).
+```bash
+cd ~/path/to/zocw-firebase-repo
+git add HANDOFF.md docs/OPUS_BUILD09_PLANNING_PROMPT.md docs/BUILD_09_PREREQUISITE_AUDIT.md
+git commit -m "docs: BUILD_09 prerequisite audit + work queue reorg + planning prompt update"
+git push origin main
+```
 
-#### 1C: Other Priority 1
-- [x] **Deploy to Firebase Hosting** ✅ DONE (Mar 20, re-deployed Mar 23) — App live at https://cw-e7c19.web.app. Firebase CLI configured in Firebase Studio.
-- [x] **Build richer drill-down demo data** ✅ PARTIALLY DONE (Mar 23 impl session) — seed-demo.ts now has: full clinical report text (impression, recommendations, multi-numbered findings) for 2 completed procedures; rich showcase findings with frame numbers + confidence + anatomical regions for 3 ready_for_review procedures. Seed cleanup step added (delete before re-seed). Viewer video playback still blocked on BUILD_09 (no real capsule frames yet).
+#### Deploy Checklist
+- [ ] **Push uncommitted changes** — see command above
+- [ ] **Rebuild + redeploy after BUILD_09 code lands** — `npm run build && npx firebase-tools@latest deploy --only functions,hosting`
 
-### Priority 2: Feature Refinement
-- [x] **Wire Operations dashboard to real data** — ✅ Done Mar 19.
-- [x] **Wire Analytics screen to real data** — ✅ Done Mar 19.
-- [x] **Wire ActivityLog to Firestore audit log** — ✅ Done Mar 19.
-- [x] **Fix Viewer screen** — ✅ Done Mar 19. Pre-Review checklist functional, FrameViewer built.
-- [x] **Sidebar navigation** — ✅ Done Mar 19. Role-based, 5 sections, active state.
-- [x] **Replace all stub screens** — ✅ Done Mar 19. Procedures, ReportsHub, Summary.
-- [x] **Admin back buttons** — ✅ Done Mar 19. All 5 admin sub-screens.
-- [x] **Add Sidebar/Header to all screens** — ✅ Done Mar 19. 28 screens consistent.
-- [x] **Implement Sidebar collapse toggle** ✅ DONE (Mar 23 impl session) — Full rewrite with lucide icons, controlled+uncontrolled collapse, auto-collapse <md viewport, ChevronLeft/Right toggle, CSS transition.
-- [ ] **Google sign-in** — Works after Firebase Hosting deploy. Currently blocked by unauthorized-domain in dev environment.
+### ═══════════════════════════════════════════════
+### 🧪 TESTS — Remaining Test Work
+### ═══════════════════════════════════════════════
 
-### Priority 3: Infrastructure
-- [x] **Deploy Cloud Functions** — ✅ DONE (Mar 24, Opus session 3). 14 functions deployed to cw-e7c19. Deploy command: `npx firebase-tools@latest deploy --only functions` (bypasses Studio's bundled CLI).
-- [ ] **Upgrade Node.js runtime from 20 → 22** — Node.js 20 will be deprecated on **2026-04-30** and decommissioned on **2026-10-30**. Target: attempt upgrade in **mid-April 2026** (before deprecation date). Requires: (1) verify Firebase Cloud Functions officially supports Node 22, (2) update `engines.node` in `functions/package.json` from `"20"` to `"22"`, (3) test full deploy. As of Mar 24, Node 22 causes a hard deploy failure — wait for Google/Firebase to add support. Track via [Firebase runtime support page](https://cloud.google.com/functions/docs/runtime-support).
-- [ ] **Firebase Studio sunset migration** — Plan migration to Google AI Studio or Antigravity before March 2027.
-- [x] **Move Firebase_Studio_Build_Inputs/ to Archive/** — ✅ Done Mar 19. Moved to Archive/Firebase_Studio_Build_Inputs/.
-- [x] **Clean up root-level Manage*.tsx stubs** ✅ DONE (Mar 23, commit `51c8a1a`) — 5 root-level stub files replaced with simple re-exports pointing to the real `admin/` implementations.
+#### Test Statistics (825 total scenarios, as of Mar 24)
+| Category | Count | Notes |
+|----------|-------|-------|
+| **Clinician_auth — tested** | ~393 | Multiple passes (Session 5, regression, Phase 3, 3B) |
+| **Other roles — never tested** | 432 | admin (166), noauth (135), clinician_admin (74), clinical_staff (57) |
+| **Blocked by Cowork auth** | 33 | noauth, staff, clinadmin roles — needs manual pre-login workaround |
+| **Unit tests** | 0 | No test files exist. Prompt ready: `docs/SONNET_UNIT_TEST_PROMPT.md` |
+| Cumulative PASS | 368 | Across all sessions |
+| Cumulative FAIL | 498 | Many retested after bug fixes — actual remaining failures lower |
+| Cumulative BLOCKED | 175 | 33 are the persistent Cowork auth issue |
+| Total bugs found | 56 | 45 fixed, 11 deferred to BUILD_09 pipeline |
 
-### Priority 4: Polish
-- [x] **Error handling** ✅ DONE (Mar 23 impl session) — ErrorState wired into all 8 main screens (Dashboard, Worklist, Analytics, Procedures, ReportsHub, ActivityLog, Patients, PatientOverview) with retry buttons.
-- [x] **Loading states** ✅ DONE (Mar 23 impl session) — LoadingSkeleton wired into Dashboard (stat cards + rows), Worklist (rows), Patients (rows).
-- [x] **Build richer drill-down demo data** ✅ PARTIALLY DONE (Mar 23 impl session) — 2 reports now have full clinical text; 3 ready_for_review procs have rich showcase findings. Full playback still blocked pending capsule frame upload (BUILD_09). *(See also Priority 1C entry.)*
-- [x] **Mobile responsiveness** ✅ DONE (Mar 23 impl session) — Sidebar auto-collapse below md breakpoint with resize listener, Worklist `overflow-x-auto` table wrapper, Viewer `flex-col md:flex-row` stacking, findings panel `w-full md:w-96`.
-- [x] **Delete old seed data** ✅ DONE (Mar 23 impl session) — `seed-demo.ts` now has `deleteCollection()` and `deleteSubcollectionForDocs()` helpers that clean all seeded collections before re-seeding. No more duplicates on re-run.
+#### TEST-01: Unit Test Scaffolding (Sonnet)
+- [ ] **Dispatch `docs/SONNET_UNIT_TEST_PROMPT.md`** — vitest suite: RBAC hooks, ProtectedRoute, component smoke tests, screen render tests. No browser needed. Can run in any Cowork/Sonnet session.
+
+#### TEST-02: 33 Blocked Role Scenarios (Sonnet + Cameron pre-login)
+**Workaround:** Cameron manually logs into `noauth@zocw.com`, `staff@zocw.com`, `clinadmin@zocw.com` in Chrome, then starts Cowork session within 1-hour token window. See `docs/LESSONS_LEARNED.md` Lessons 12–13.
+- [ ] **Re-attempt 33 blocked scenarios** — Roles: clinician_noauth, clinical_staff, clinician_admin. Blocked since Phase 3 by Firebase Auth network restriction in Cowork sandbox.
+
+#### TEST-03: 432 Untested Role Scenarios (Sonnet)
+**Depends on:** TEST-02 workaround being viable. These roles have NEVER been tested:
+- [ ] **Admin role (166 scenarios)** — AD-xx scenario IDs
+- [ ] **Clinician_noauth role (135 scenarios)** — CN-xx scenario IDs
+- [ ] **Clinician_admin role (74 scenarios)** — CA-xx (admin subset) scenario IDs
+- [ ] **Clinical_staff role (57 scenarios)** — CS-xx scenario IDs
+- **Test prompt:** `docs/SONNET_PHASE3_TEST_PROMPT.md` (425 scenarios across 14 screens, all 5 roles)
+
+#### TEST-04: Regression Retest of Clinician_auth Failures
+- [ ] **Re-run remaining FAIL scenarios** from Phase 3 after any further bug fixes. Many of the 498 cumulative FAILs are from early sessions before the 27-bug fix batch — actual current failure count is lower but unquantified.
+
+#### TEST-05: BUILD_09 Integration Testing
+**Depends on:** BUILD_09 Phases A–E complete + pipeline backend prerequisites resolved.
+- [ ] **Happy path** — Viewer loads real capsule frames, playback works, AI findings visible
+- [ ] **No data** — Viewer shows "no frames" for procedure with no matching pipeline data
+- [ ] **Performance** — 50K-frame capsule responds within 10 seconds
+- [ ] **Auth** — `getCapsuleFrames` rejects unauthenticated calls
+- [ ] **CapsuleUpload flow** — Confirmation transitions procedure to `ready_for_review`
+- Full acceptance criteria in `docs/build-packets/BUILD_09_Image_Pipeline_Integration.md`
+
+### ═══════════════════════════════════════════════
+### ✅ COMPLETED (archived — collapsed for readability)
+### ═══════════════════════════════════════════════
+
+<details>
+<summary>Completed builds, bug fixes, and infrastructure (click to expand)</summary>
+
+#### BUILD_09 Planning Artifacts (completed)
+- [x] Architecture decisions — ✅ Mar 19
+- [x] `src/types/capsule-image.ts` — ✅ Mar 19
+- [x] `docs/IMAGE_PIPELINE_INTEGRATION.md` — ✅ Mar 19
+- [x] `docs/build-packets/BUILD_09_Image_Pipeline_Integration.md` — ✅ Mar 19
+- [x] `docs/BUILD_09_PREREQUISITE_AUDIT.md` — ✅ Mar 24
+
+#### All Bug Fixes (56 bugs total, 45 fixed)
+- [x] BUG-01 through BUG-55 — See session logs for individual details
+- [x] 27 bugs fixed in Session 1 autonomous batch (commit `6cb7f6b`)
+- [x] BUG-52, BUG-53 fixed Mar 23–24
+- [x] BUG-54, BUG-55 fixed Mar 24
+- [x] BUG-01, BUG-49 closed as duplicates
+- 11 bugs deferred to BUILD_09 (pipeline-dependent)
+
+#### Pre-Pipeline Build Plan
+- [x] `docs/PRE_PIPELINE_BUILD_PLAN.md` — 14 bugs, 6 phases. Phases 2–6 are Sonnet execution.
+
+#### Completed Feature Builds (Priority 2)
+- [x] Operations dashboard, Analytics, ActivityLog — ✅ Mar 19
+- [x] Viewer screen, Sidebar navigation, stub screens — ✅ Mar 19
+- [x] Admin back buttons, Sidebar/Header on all screens — ✅ Mar 19
+- [x] Sidebar collapse toggle — ✅ Mar 23
+
+#### Completed Infrastructure (Priority 3)
+- [x] Cloud Functions deployed (14 functions) — ✅ Mar 24
+- [x] Firebase Hosting deployed — ✅ Mar 20, redeployed Mar 23
+- [x] Firestore rules deployed — ✅ Mar 24
+- [x] Archive cleanup, Manage*.tsx stubs — ✅ Mar 19–23
+
+#### Completed Polish (Priority 4)
+- [x] Error handling (8 screens), Loading states, Mobile responsiveness — ✅ Mar 23
+- [x] Seed data cleanup, richer demo data — ✅ Mar 23
+
+#### Resolved Blockers
+- [x] Gemini API billing (Blaze plan) — ✅ Mar 22
+- [x] Git push to GitHub — ✅ Mar 23
+- [x] Admin test user + Firestore docs — ✅ Mar 22
+- [x] Firebase Auth custom claims — ✅ Mar 23
+
+</details>
 
 ---
 
