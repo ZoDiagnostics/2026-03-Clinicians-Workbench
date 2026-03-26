@@ -8,6 +8,16 @@
  * Each exported Cloud Function becomes a deployable Firebase function.
  */
 
+import * as admin from 'firebase-admin';
+
+// Initialize the default Firebase Admin app BEFORE any module-level
+// admin.firestore() / admin.auth() calls in imported modules.
+// Without this, modules like userManagement.ts that call admin.firestore()
+// at load time will crash with "The default Firebase app does not exist."
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
+
 // ============================================================================
 // CALLABLE FUNCTIONS (HTTPS onCall)
 // ============================================================================
