@@ -312,3 +312,78 @@ Steps 1–4 (Cameron) and 5–7 (code) can run **in parallel**. Steps 8–10 are
 ---
 
 *This document supersedes the field rename assumptions in IMAGE_PIPELINE_INTEGRATION.md §3.1 and BUILD_09_PREREQUISITE_AUDIT.md PB-1.*
+
+---
+
+## FINDING 11: Firestore Inspection — Three Document Generations (Mar 25 Chrome Session)
+
+Direct inspection of the `capsule_images` collection in `podium-capsule-ingest` via Google Cloud Console revealed **three generations of documents** coexisting in the collection, reflecting pipeline evolution:
+
+### Generation 1 — Pre-folder upload (oldest)
+**Example:** `ShUXcWhYLD2t4oUesfkg` (auto-generated ID)
+```
+bucket: "podium-capsule-raw-images-test"
+filename: "images_copy_7.jpeg"
+status: "unprocessed"
+url: "gs://podium-capsule-raw-images-test/images_copy_7.jpeg"
+```
+- **No** `capsule_id`, `batch_id`, `procedure_id`, `created_at`, or `analysis`
+- Flat GCS path (no folders)
+- Some Gen 1 docs (e.g., `2sTkxlYygJ4SmJUFwsoX`) DO have `analysis` with `status: "processed"` — the AI ran but the folder parser didn't exist yet
+
+### Generation 2 — Pre-rename, 2-tier upload
+**Example:** `PROC-999_2026-03-24_00008430.bmp` (composite ID)
+```
+analysis: { anatomical_location: "Indeterminate", anomaly_detected: true,
+            primary_finding: "Hematin", confidence_score: 0.9, ... }
+bucket: "podium-capsule-raw-images-test"
+created_at: March 25, 2026
+filename: "00008430.bmp"
+procedure_id: "PROC-999_2026-03-24"    ← OLD field name (pre-rename)
+status: "processed"
+url: "gs://podium-capsule-raw-images-test/PROC-999_2026-03-24/000084..."
+```
+- Has `procedure_id` but **NO** `capsule_id` or `batch_id`
+- 2-tier GCS path (folder/file)
+- Full AI analysis present and matches `AIAnalysisResult` interface
+
+### Generation 3 — Current v7.0.0, 3-tier upload (TARGET)
+**Example:** `TEST-BATCH-01_TEST-CAPSULE-99_00030000.bmp` (composite ID)
+```
+analysis: { anatomical_location: "Uncertain", anomaly_detected: true,
+            primary_finding: "Hematin", confidence_score: 0.7,
+            secondary_findings: ["Chyme / Turbid Fluid"], ... }
+batch_id: "TEST-BATCH-01"
+bucket: "podium-capsule-raw-images-test"
+capsule_id: "TEST-CAPSULE-99"          ← CURRENT field name (post-rename)
+created_at: March 25, 2026
+filename: "00030000.bmp"
+status: "processed"
+url: "gs://podium-capsule-raw-images-test/TEST-BATCH-01/TEST-CAPSUL..."
+```
+- Has `batch_id` AND `capsule_id` — **NO** `procedure_id`
+- 3-tier GCS path (batch/capsule/file)
+- Full AI analysis present, includes `secondary_findings` array
+- **This is the only format `getCapsuleFrames` needs to support**
+
+### Impact on Implementation:
+- **No migration needed.** The `getCapsuleFrames` query (`WHERE capsule_id == X`) will only match Gen 3 documents. Gen 1 and Gen 2 docs are invisible to ZoCW — they're test data from pipeline development.
+- **`procedure_id` dropped from v7.0.0 schema.** The corrected `CapsuleImageDocument` type should mark `procedure_id` as optional (it only exists on Gen 2 docs).
+- **`AIAnalysisResult` interface confirmed.** All 8 fields match across Gen 2 and Gen 3 analyzed documents.
+- **Test data available:** `capsule_id: "TEST-CAPSULE-99"` has at least 2 processed frames with AI analysis. For end-to-end testing, seed a ZoCW procedure with `capsuleSerialNumber: "TEST-CAPSULE-99"`.
+
+### Corrected `CapsuleImageDocument` (final):
+```typescript
+export interface CapsuleImageDocument {
+  id?: string;
+  filename: string;
+  batch_id: string;             // Top-level folder grouping (YYYYMMDD or test name)
+  capsule_id: string;           // Capsule serial number (= folder name, ZoCW linkage key)
+  procedure_id?: string;        // Legacy field — only on Gen 2 docs, do NOT query
+  bucket: string;
+  url: string;
+  status: 'pending' | 'processed' | 'error';
+  created_at?: any;             // Firestore Timestamp
+  analysis?: AIAnalysisResult;
+}
+```

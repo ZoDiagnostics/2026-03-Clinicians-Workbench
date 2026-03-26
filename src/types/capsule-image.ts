@@ -7,11 +7,16 @@
  *
  * ZoCW accesses this data via the `getCapsuleFrames` proxy Cloud Function.
  *
- * Data linkage: procedure.capsuleSerialNumber (ZoCW) = folder name in Storage
- * bucket = capsule_serial field in capsule_images collection.
+ * Data linkage: procedure.capsuleSerialNumber (ZoCW) = capsule_id field
+ * in the pipeline's capsule_images collection = subfolder name in GCS bucket.
  *
- * @see docs/IMAGE_PIPELINE_INTEGRATION.md for full architecture
- * @see docs/build-packets/BUILD_09_Image_Pipeline_Integration.md for build instructions
+ * Pipeline Firestore schema (v7.0.0, 3-tier):
+ *   Document ID: {batch_id}_{capsule_id}_{filename}
+ *   Fields: batch_id, capsule_id, filename, bucket, url, status, created_at, analysis
+ *   GCS path: gs://{bucket}/{batch_id}/{capsule_id}/{filename}
+ *
+ * @see docs/BUILD_09_GAP_ANALYSIS.md for field mapping (Finding 11: 3 doc generations)
+ * @see docs/BUILD_09_IMPLEMENTATION_PLAN.md for build instructions
  */
 
 import { AnatomicalRegion } from './enums';
@@ -150,27 +155,35 @@ export interface AIAnalysisResult {
  * Created by `log-capsule-image` when frames are uploaded to Storage.
  * Updated by `analyze-capsule-image` when AI analysis completes.
  *
- * Field: `capsule_serial` = folder name in bucket = capsule serial number
- * scanned at check-in and stored as `procedure.capsuleSerialNumber` in ZoCW.
+ * v7.0.0 schema (3-tier):
+ *   Document ID: {batch_id}_{capsule_id}_{filename} (deterministic composite)
+ *   capsule_id = capsule serial number = ZoCW linkage key
+ *   batch_id = YYYYMMDD upload date grouping (irrelevant for ZoCW queries)
  *
- * NOTE: The deployed pipeline currently uses `procedure_id` as the field name.
- * This will be renamed to `capsule_serial` — see HANDOFF.md Priority 1B.
+ * Note: Older documents (Gen 1/Gen 2) may lack batch_id/capsule_id fields
+ * or use the legacy `procedure_id` field. The getCapsuleFrames query
+ * (`WHERE capsule_id == X`) only matches Gen 3 (v7.0.0) documents.
+ * See docs/BUILD_09_GAP_ANALYSIS.md Finding 11 for details.
  */
 export interface CapsuleImageDocument {
-  /** Firestore document ID (auto-generated) */
+  /** Firestore document ID (deterministic: {batch_id}_{capsule_id}_{filename}) */
   id?: string;
 
-  /** Original filename of the frame image (e.g., "frame_00001.jpg") */
+  /** Original filename of the frame image (e.g., "00008430.bmp") — used for ordering */
   filename: string;
 
+  /** Upload batch date grouping (YYYYMMDD or test name) — not used for ZoCW queries */
+  batch_id: string;
+
   /**
-   * Capsule serial number — the folder name from the Storage bucket.
-   * Links to procedure.capsuleSerialNumber in ZoCW.
-   *
-   * NOTE: Field is currently named `procedure_id` in the deployed pipeline.
-   * Will be renamed to `capsule_serial` — see HANDOFF.md Priority 1B.
+   * Capsule serial number — the primary linkage key between pipeline and ZoCW.
+   * Matches procedure.capsuleSerialNumber in ZoCW Firestore.
+   * Query: WHERE capsule_id == procedure.capsuleSerialNumber
    */
-  capsule_serial: string;
+  capsule_id: string;
+
+  /** Legacy field from pre-v7.0.0 pipeline. Only present on Gen 2 docs. Do NOT query on this. */
+  procedure_id?: string;
 
   /** Storage bucket name (e.g., "podium-capsule-raw-images-test") */
   bucket: string;
@@ -180,6 +193,9 @@ export interface CapsuleImageDocument {
 
   /** Processing status of this frame */
   status: 'pending' | 'processed' | 'error';
+
+  /** Pipeline creation timestamp */
+  created_at?: any;
 
   /** AI analysis result — present when status === 'processed' */
   analysis?: AIAnalysisResult;

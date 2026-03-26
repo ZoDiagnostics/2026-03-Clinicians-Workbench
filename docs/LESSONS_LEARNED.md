@@ -258,4 +258,80 @@
 
 ---
 
+## Lesson 14: OneDrive Corrupts Git Object Store — Requires Re-Clone
+
+**Date:** March 25, 2026
+**Category:** OneDrive/Git
+**Severity:** Critical
+**Environment:** Home laptop (CDP-MacBook-M1-Pro), OneDrive-synced repo folder
+
+**What happened:** Attempting `git commit` from the laptop failed with cascading errors:
+1. First: `error: invalid object 100644 9fa265... for 'functions/src/triggers/onProcedureWrite.ts'`
+2. After fixing that blob with `git hash-object -w`: next file failed (`firebase.json`)
+3. After bulk-rehashing all tracked blobs with `git ls-files | while read file; do git hash-object -w "$file"; done`: tree objects were still missing (`fatal: unable to read tree (1bddce...)`)
+4. `git fetch --all` did NOT restore the missing objects
+
+**Root cause:** OneDrive's on-demand file sync does not download `.git/objects/` pack files or loose objects unless they're explicitly accessed. When git tries to build a commit tree, it needs to read parent tree objects from the object store. These pack files were cloud-only placeholders, not real data. The corruption is at the tree/commit object level — not just blob level — so re-hashing file contents can't fix it.
+
+**What was tried (in order):**
+1. `git hash-object -w <file>` — fixed one blob, but revealed the next missing object
+2. `git fetch --all` — did not restore objects (they may never have been in remote packs in the right form)
+3. `git ls-files | while read file; do git hash-object -w "$file"; done` — rebuilt all blobs but tree objects still missing
+4. None of these approaches can fix missing tree objects
+
+**Fix procedure (for office session Mar 26):**
+
+```bash
+# === SAFE FIX: Re-clone alongside corrupt repo, migrate changes ===
+
+# 1. Back up uncommitted work
+cd ~/OneDrive/.../Claude\ Demo
+mkdir zocw-backup-20260325
+cp zocw-firebase-repo/HANDOFF.md zocw-backup-20260325/
+cp zocw-firebase-repo/docs/OPUS_BUILD09_PLANNING_PROMPT.md zocw-backup-20260325/
+cp zocw-firebase-repo/docs/BUILD_09_PREREQUISITE_AUDIT.md zocw-backup-20260325/
+cp zocw-firebase-repo/docs/BUILD_09_GAP_ANALYSIS.md zocw-backup-20260325/
+
+# 2. Rename the corrupt repo (don't delete yet)
+mv zocw-firebase-repo zocw-firebase-repo-CORRUPT
+
+# 3. Fresh clone into the original folder name
+git clone https://github.com/ZoDiagnostics/2026-03-Clinicians-Workbench.git zocw-firebase-repo
+
+# 4. Apply OneDrive-safe git config immediately
+cd zocw-firebase-repo
+git config core.fileMode false
+
+# 5. Copy backed-up files into fresh clone
+cp ../zocw-backup-20260325/HANDOFF.md .
+cp ../zocw-backup-20260325/OPUS_BUILD09_PLANNING_PROMPT.md docs/
+cp ../zocw-backup-20260325/BUILD_09_PREREQUISITE_AUDIT.md docs/
+cp ../zocw-backup-20260325/BUILD_09_GAP_ANALYSIS.md docs/
+
+# 6. Verify status looks right
+git status
+# Should show: 2 modified (HANDOFF.md, OPUS_BUILD09_PLANNING_PROMPT.md)
+#              2 untracked (BUILD_09_PREREQUISITE_AUDIT.md, BUILD_09_GAP_ANALYSIS.md)
+
+# 7. Commit and push
+git add HANDOFF.md docs/OPUS_BUILD09_PLANNING_PROMPT.md docs/BUILD_09_PREREQUISITE_AUDIT.md docs/BUILD_09_GAP_ANALYSIS.md
+git commit -m "docs: BUILD_09 gap analysis + prerequisite audit + work queue reorg"
+git push origin main
+
+# 8. Verify push succeeded
+git log --oneline -3
+
+# 9. Once confirmed, delete the corrupt copy
+rm -rf ../zocw-firebase-repo-CORRUPT
+rm -rf ../zocw-backup-20260325
+```
+
+**Prevention for future projects:**
+1. **Never host a git repo inside an OneDrive-synced folder.** OneDrive's on-demand sync is fundamentally incompatible with git's object store. `.git/objects/` contains thousands of binary files that git expects to be available instantly — OneDrive may serve cloud-only stubs instead.
+2. **If you must use OneDrive:** Add `.git` to OneDrive's "Always keep on this device" setting for the repo folder. On Mac: right-click the `.git` folder → "Always Keep on This Device." This forces all objects to be local.
+3. **Better alternative:** Keep the git repo outside OneDrive (e.g., `~/dev/zocw-firebase-repo`) and use OneDrive only for non-git project files (specs, test docs, UX inputs). Or use GitHub as the sole sync mechanism between machines.
+4. **The `preflight.sh` script** (Lesson 6) catches some OneDrive issues but cannot detect corrupted git tree objects — those only surface during `git commit`.
+
+---
+
 *Add new lessons as they arise. Review before starting new Firebase/React projects.*

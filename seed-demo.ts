@@ -324,16 +324,19 @@ async function seedDemo() {
   // 6. Procedures (15 procedures across all statuses)
   console.log('\n--- Seeding Procedures ---');
   const batch3 = db.batch();
+  // capsuleSerialNumber values link ZoCW procedures to pipeline Firestore data.
+  // 'TEST-CAPSULE-99' matches existing processed frames in podium-capsule-ingest.
+  // Procedures without capsuleSerialNumber will show "No Capsule Frames Loaded" in Viewer.
   const procedureConfigs = [
     { status: 'capsule_return_pending', studyType: 'sb_diagnostic', urgency: 'routine' },
     { status: 'capsule_return_pending', studyType: 'upper_gi', urgency: 'urgent' },
     { status: 'capsule_received', studyType: 'crohns_monitor', urgency: 'routine' },
     { status: 'capsule_received', studyType: 'sb_diagnostic', urgency: 'routine' },
-    { status: 'ready_for_review', studyType: 'sb_diagnostic', urgency: 'routine' },
-    { status: 'ready_for_review', studyType: 'colon_eval', urgency: 'urgent' },
-    { status: 'ready_for_review', studyType: 'upper_gi', urgency: 'routine' },
-    { status: 'draft', studyType: 'sb_diagnostic', urgency: 'routine' },
-    { status: 'draft', studyType: 'crohns_monitor', urgency: 'routine' },
+    { status: 'ready_for_review', studyType: 'sb_diagnostic', urgency: 'routine', capsuleSerialNumber: 'TEST-CAPSULE-99' },
+    { status: 'ready_for_review', studyType: 'colon_eval', urgency: 'urgent', capsuleSerialNumber: 'TEST-CAPSULE-99' },
+    { status: 'ready_for_review', studyType: 'upper_gi', urgency: 'routine', capsuleSerialNumber: 'TEST-CAPSULE-99' },
+    { status: 'draft', studyType: 'sb_diagnostic', urgency: 'routine', capsuleSerialNumber: 'TEST-CAPSULE-99' },
+    { status: 'draft', studyType: 'crohns_monitor', urgency: 'routine', capsuleSerialNumber: 'TEST-CAPSULE-99' },
     { status: 'appended_draft', studyType: 'sb_diagnostic', urgency: 'routine' },
     { status: 'completed', studyType: 'sb_diagnostic', urgency: 'routine' },
     { status: 'completed', studyType: 'upper_gi', urgency: 'routine' },
@@ -385,6 +388,9 @@ async function seedDemo() {
       ...(config.status === 'completed' || config.status === 'completed_appended' || config.status === 'closed' ? {
         signedAt: Timestamp.fromDate(new Date(Date.now() - (daysAgo - 1) * 86400000)),
         signedBy: clinicianUid,
+      } : {}),
+      ...('capsuleSerialNumber' in config && config.capsuleSerialNumber ? {
+        capsuleSerialNumber: config.capsuleSerialNumber,
       } : {}),
     });
   }

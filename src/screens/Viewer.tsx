@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Info } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useActiveProcedure, useFindings, usePatients, createFinding, deleteFinding, updateFinding } from '../lib/hooks';
+import { useActiveProcedure, useFindings, usePatients, useCapsuleFrames, createFinding, deleteFinding, updateFinding } from '../lib/hooks';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
 import { PreReviewBanner } from '../components/PreReviewBanner';
@@ -9,6 +9,7 @@ import { FrameViewer } from '../components/FrameViewer';
 import { WorkflowStepper } from '../components/WorkflowStepper';
 import { AnatomicalRegion, FindingProvenance, FindingReviewStatus, ProcedureStatus } from '../types/enums';
 import { Finding } from '../types/finding';
+import { cestToAnatomicalRegion } from '../types/capsule-image';
 
 // SCR-10: Viewer — Capsule endoscopy review screen
 // UX Flow:
@@ -38,8 +39,20 @@ export const Viewer: React.FC = () => {
   // Review is unlocked once pre-review checklist is completed (status moves past ready_for_review)
   const reviewUnlocked = !isPreReview;
 
-  // TODO: Load actual frames from Firebase Storage via useCapsuleFrames hook
-  const frames: string[] = [];
+  // BUILD_09: Fetch capsule frames + AI analysis from pipeline
+  const { data: capsuleData, loading: framesLoading, error: framesError } =
+    useCapsuleFrames(procedure?.capsuleSerialNumber);
+
+  // Extract frame URLs for FrameViewer (signed HTTPS URLs from getCapsuleFrames)
+  const frames = capsuleData?.frames.map(f => f.url) ?? [];
+
+  // Extract AI-detected anomaly frames for finding seeding
+  const aiFrames = capsuleData?.frames.filter(f =>
+    f.analysis?.anomaly_detected && f.status === 'processed'
+  ) ?? [];
+
+  // Ref to prevent duplicate AI finding seeding across re-renders
+  const aiSeedingDone = useRef(false);
 
   const handleAddFinding = async () => {
     if (!procedureId || !newFindingClass || !reviewUnlocked) return;
@@ -89,6 +102,61 @@ export const Viewer: React.FC = () => {
     });
   };
 
+  // BUILD_09 §4D: One-time AI finding seed — create Finding documents from pipeline anomalies
+  useEffect(() => {
+    if (!capsuleData || !procedureId || !reviewUnlocked || aiSeedingDone.current) return;
+
+    // Check if AI findings already exist for this procedure
+    const hasAiFindings = findings.some(f => f.provenance === FindingProvenance.AI_DETECTED);
+    if (hasAiFindings) {
+      aiSeedingDone.current = true;
+      return;
+    }
+
+    // No anomaly frames → nothing to seed
+    if (aiFrames.length === 0) {
+      aiSeedingDone.current = true;
+      return;
+    }
+
+    // Mark as done immediately to prevent re-entry from state updates
+    aiSeedingDone.current = true;
+
+    // Seed each anomaly as a Finding document
+    const seedFindings = async () => {
+      for (const frame of aiFrames) {
+        const analysis = frame.analysis!;
+        try {
+          await createFinding(procedureId, {
+            procedureId,
+            classification: analysis.primary_finding || 'Unknown anomaly',
+            provenance: FindingProvenance.AI_DETECTED,
+            reviewStatus: FindingReviewStatus.PENDING,
+            isIncidental: false,
+            anatomicalRegion: cestToAnatomicalRegion(analysis.anatomical_location),
+            primaryFrameNumber: parseInt(frame.filename.replace(/\D/g, '')) || 0,
+            primaryFrameTimestamp: 0,
+            additionalFrames: [],
+            modificationHistory: [],
+            annotations: [],
+            aiConfidence: Math.round((analysis.confidence_score || 0) * 100),
+          });
+        } catch (err) {
+          console.error('[Viewer] Failed to seed AI finding:', err);
+        }
+      }
+    };
+
+    seedFindings();
+  }, [capsuleData, procedureId, reviewUnlocked, findings, aiFrames]);
+
+  // BUILD_09 §4E: Frame-finding linking — click a finding to jump to its frame
+  const handleFindingClick = (finding: Finding) => {
+    if (finding.primaryFrameNumber !== undefined) {
+      setCurrentFrame(finding.primaryFrameNumber);
+    }
+  };
+
   if (!procedure) {
     return (
       <div className="flex h-screen bg-gray-800">
@@ -121,6 +189,19 @@ export const Viewer: React.FC = () => {
             {patient?.mrn && <span className="text-xs text-gray-400">MRN: {patient.mrn}</span>}
             <span className="text-xs text-gray-400">|</span>
             <span className="text-xs text-gray-400">{procedure.studyType?.replace(/_/g, ' ')}</span>
+            {/* BUILD_09 §4C: Capsule metadata in info bar */}
+            {capsuleData && (
+              <>
+                <span className="text-xs text-gray-400">|</span>
+                <span className="text-xs text-gray-400">
+                  Capsule: {capsuleData.capsuleSerial}
+                </span>
+                <span className="text-xs text-gray-400">
+                  {capsuleData.totalFrames.toLocaleString()} frames
+                  ({capsuleData.anomalyFrames} anomalies)
+                </span>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <span className={`px-2 py-0.5 rounded text-xs font-medium ${
@@ -169,12 +250,36 @@ export const Viewer: React.FC = () => {
         <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
           {/* Main Content: Frame Viewer */}
           <div className="flex-1 flex flex-col min-h-0">
-            <FrameViewer
-              frames={frames}
-              currentFrame={currentFrame}
-              onFrameChange={setCurrentFrame}
-              fps={4}
-            />
+            {/* BUILD_09 §4B: Loading state while fetching pipeline frames */}
+            {framesLoading && (
+              <div className="flex-1 flex items-center justify-center bg-gray-900 text-gray-400">
+                <div className="text-center">
+                  <div className="animate-spin h-8 w-8 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto mb-3" />
+                  <p>Loading capsule frames...</p>
+                  <p className="text-xs mt-1 text-gray-600">
+                    {procedure?.capsuleSerialNumber}
+                  </p>
+                </div>
+              </div>
+            )}
+            {/* BUILD_09 §4B: Error state if pipeline fetch fails */}
+            {framesError && !framesLoading && (
+              <div className="flex-1 flex items-center justify-center bg-gray-900 text-red-400">
+                <div className="text-center">
+                  <p>Failed to load capsule frames</p>
+                  <p className="text-xs mt-1 text-gray-600">{framesError.message}</p>
+                </div>
+              </div>
+            )}
+            {/* Normal FrameViewer — shown when not loading and no error */}
+            {!framesLoading && !framesError && (
+              <FrameViewer
+                frames={frames}
+                currentFrame={currentFrame}
+                onFrameChange={setCurrentFrame}
+                fps={4}
+              />
+            )}
           </div>
 
           {/* Findings Panel: full-width on mobile, fixed w-96 sidebar on md+ */}
@@ -193,7 +298,12 @@ export const Viewer: React.FC = () => {
               {findings.map((finding) => {
                 const isDismissed = finding.reviewStatus === FindingReviewStatus.REJECTED;
                 return (
-                  <div key={finding.id} className={`bg-gray-800 p-3 rounded-lg ${isDismissed ? 'opacity-50' : ''}`}>
+                  <div
+                    key={finding.id}
+                    className={`bg-gray-800 p-3 rounded-lg cursor-pointer hover:bg-gray-750 transition-colors ${isDismissed ? 'opacity-50' : ''}`}
+                    onClick={() => handleFindingClick(finding)}
+                    title={`Jump to frame ${finding.primaryFrameNumber || finding.frameNumber || 0}`}
+                  >
                     <div className="flex justify-between items-start">
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm">{finding.classification || finding.type || 'Unnamed finding'}</p>
@@ -208,7 +318,7 @@ export const Viewer: React.FC = () => {
                           </span>
                           {/* BUG-33: Clickable review status badge toggles dismissed state */}
                           <button
-                            onClick={() => reviewUnlocked && !isCompleted && handleToggleDismiss(finding)}
+                            onClick={(e) => { e.stopPropagation(); reviewUnlocked && !isCompleted && handleToggleDismiss(finding); }}
                             className={`text-xs px-1.5 py-0.5 rounded cursor-pointer transition-opacity ${
                               finding.reviewStatus === 'confirmed' ? 'bg-green-900 text-green-300' :
                               finding.reviewStatus === 'rejected' ? 'bg-red-900 text-red-300 line-through' :
@@ -238,7 +348,7 @@ export const Viewer: React.FC = () => {
                       {/* BUG-11: Delete triggers confirmation dialog */}
                       {reviewUnlocked && !isCompleted && (
                         <button
-                          onClick={() => handleRequestDelete(finding.id)}
+                          onClick={(e) => { e.stopPropagation(); handleRequestDelete(finding.id); }}
                           className="text-red-500 hover:text-red-400 text-xs ml-2 flex-shrink-0"
                           title="Delete finding"
                         >

@@ -118,6 +118,16 @@ export const auditLoggerInputSchema = z.object({
 });
 
 /**
+ * Validate Get Capsule Frames input
+ * capsuleSerial is the capsule_id from the pipeline — matches procedure.capsuleSerialNumber
+ */
+export const getCapsuleFramesInputSchema = z.object({
+  capsuleSerial: z.string().min(1, 'Capsule serial is required').max(100, 'Capsule serial too long'),
+});
+
+export type GetCapsuleFramesInput = z.infer<typeof getCapsuleFramesInputSchema>;
+
+/**
  * Notification dispatcher input validation
  */
 export const notificationDispatcherInputSchema = z.object({

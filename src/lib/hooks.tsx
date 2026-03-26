@@ -344,6 +344,63 @@ export const updateProcedure = async (procedureId: string, updates: Partial<Proc
   });
 };
 
+// --- Capsule Image Pipeline Hooks ---
+
+import { GetCapsuleFramesResponse } from '../types/capsule-image';
+
+/**
+ * Fetch all capsule frames + AI analysis for a procedure's capsule serial number.
+ * Calls the getCapsuleFrames Cloud Function which proxies reads from the
+ * pipeline project (podium-capsule-ingest) and returns signed URLs.
+ *
+ * One-time fetch on mount (not real-time) — capsule data is static at read time.
+ * Skips fetch when capsuleSerial is undefined (no pipeline data for this procedure).
+ *
+ * @param capsuleSerial - The capsuleSerialNumber from the ZoCW procedure document
+ * @returns { data, loading, error }
+ */
+export function useCapsuleFrames(capsuleSerial: string | undefined) {
+  const [data, setData] = useState<GetCapsuleFramesResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!capsuleSerial) {
+      setData(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    const getCapsuleFrames = httpsCallable(functions, 'getCapsuleFrames');
+    getCapsuleFrames({ capsuleSerial })
+      .then((result) => {
+        if (!cancelled) {
+          setData(result.data as GetCapsuleFramesResponse);
+        }
+      })
+      .catch((err: Error) => {
+        if (!cancelled) {
+          console.error('[useCapsuleFrames] Error fetching capsule frames:', err);
+          setError(err);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => { cancelled = true; };
+  }, [capsuleSerial]);
+
+  return { data, loading, error };
+}
+
 // --- Report Hooks ---
 
 export function useReport(procedureId: string | undefined) {

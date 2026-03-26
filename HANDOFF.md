@@ -1,6 +1,6 @@
 # ZoCW Session Handoff & Work Queue
 **Purpose:** Initialization context for a new Claude Cowork session + prioritized work queue.
-**Last Updated:** March 24, 2026 (late night) — Opus session: completed BUILD_09 prerequisite audit (`docs/BUILD_09_PREREQUISITE_AUDIT.md`), rewrote WORK QUEUE with clear Build vs Test groupings, updated Opus morning prompt for BUILD_09 planning continuation (Steps 2–6).
+**Last Updated:** March 25, 2026 (late evening) — Opus session continued: completed BUILD_09 Phases 1–4 (all code work). Phase 4 (Viewer integration) wires capsule frames + AI findings into the Viewer screen. TypeScript builds clean (no new errors). Remaining: Phase 0 (infra, Cameron), Phase 5 (deploy + E2E test at office), Phase 6 (perf optimization if needed).
 
 ## MANDATORY SESSION RULES
 1. **At session start:** Read this file to understand current state and work queue.
@@ -14,6 +14,92 @@
 ---
 
 ## SESSION LOG
+
+### March 25, 2026 (session 7) — BUILD_09 Gap Analysis + Implementation Plan + Firestore Inspection + Phases 1–4 Code (Opus 4.6, Cowork)
+- **Scope:** Complete BUILD_09 planning (Steps 2–6), Git diagnostics, pipeline Firestore data inspection, BUILD_09 Phases 1–4 implementation (all code work).
+- **Location:** Home (Irvine, laptop). No git — changes sync to office via OneDrive.
+
+**BUILD_09 Gap Analysis completed** — `docs/BUILD_09_GAP_ANALYSIS.md` (11 findings):
+  - Analyzed PODIUM v7.0.0 pipeline spec (pasted by Cameron after OneDrive file lock prevented VM read) against ZoCW integration docs
+  - Key corrections: query `capsule_id` not `procedure_id`, 3-tier folder structure (not 2-tier), cancel field rename task PB-1
+  - Cameron clarified: `batch_id` = YYYYMMDD date stamp (operational), `capsule_id` = capsule serial number (linkage key), fields already renamed in database
+  - Finding 11 (added during Firestore inspection): three document generations coexist — Gen 1 (flat, no folders), Gen 2 (pre-rename, `procedure_id`), Gen 3 (current v7.0.0, `batch_id` + `capsule_id`)
+  - No migration needed: `WHERE capsule_id == X` query only matches Gen 3 docs; older test data invisible to ZoCW
+
+**BUILD_09 Implementation Plan completed** — `docs/BUILD_09_IMPLEMENTATION_PLAN.md`:
+  - 6 phases: Phase 0 (infra prerequisites, Cameron), Phase 1 (types+seed), Phase 2 (getCapsuleFrames callable), Phase 3 (useCapsuleFrames hook), Phase 4 (Viewer integration), Phase 5 (E2E testing), Phase 6 (perf optimization)
+  - 7 files total (1 new: getCapsuleFrames.ts, 6 modified)
+  - Model routing: Cameron for Phase 0, Sonnet for Phases 1-3+5, Sonnet+Opus review for Phase 4, Opus for Phase 6
+  - Phase 0 and Phases 1-2 can run in parallel
+
+**OneDrive Git Corruption diagnosed + documented:**
+  - `git commit` failed: missing blob objects for `onProcedureWrite.ts` and `firebase.json`
+  - Bulk blob rehash (`git hash-object -w`) fixed all blobs, but tree objects also missing (`fatal: unable to read tree 1bddce...`)
+  - Tree objects cannot be rebuilt from file contents — only fix is re-clone
+  - Documented as Lesson 14 in `docs/LESSONS_LEARNED.md` with step-by-step recovery procedure
+  - **Deferred to office session (Mar 26):** Back up 4 changed files → rename corrupt repo → fresh clone → copy files → commit + push
+
+**Pipeline Firestore inspection via Chrome automation:**
+  - Connected to Google Cloud Console Firestore Studio for `podium-capsule-ingest` (Firebase Console redirected to "Get started" page since Firebase isn't enabled on the GCP project — used `console.cloud.google.com/firestore` URL instead)
+  - Examined 4 documents in `capsule_images` collection:
+    - `2sTkxlYygJ4SmJUFwsoX` — Gen 1: `analysis` present (Angioectasia, 0.95), but NO folder fields
+    - `ShUXcWhYLD2t4oUesfkg` — Gen 1: `status: "unprocessed"`, only `bucket/filename/status/url`
+    - `PROC-999_2026-03-24_00008430.bmp` — Gen 2: has `procedure_id` (pre-rename), full AI analysis (Hematin, 0.9)
+    - `TEST-BATCH-01_TEST-CAPSULE-99_00030000.bmp` — **Gen 3 (target):** has `batch_id: "TEST-BATCH-01"`, `capsule_id: "TEST-CAPSULE-99"`, full AI analysis (Hematin, 0.7, secondary_findings: ["Chyme / Turbid Fluid"]), `status: "processed"`
+  - **Confirmed:** `AIAnalysisResult` interface matches actual data. Gen 3 docs do NOT have `procedure_id`. v7.0.0 pipeline dropped that legacy field.
+  - **Test data available:** `capsule_id: "TEST-CAPSULE-99"` has ≥2 processed frames. Seed ZoCW procedure with `capsuleSerialNumber: "TEST-CAPSULE-99"` for E2E testing.
+
+**Firebase/GCP Console access confirmed:**
+  - Chrome browser automation CAN navigate Google Cloud Console and read Firestore data
+  - Firebase Console requires Firebase to be enabled on the project — pipeline project uses GCP Console Firestore Studio instead
+  - Both ZoCW Firebase Console and pipeline GCP Console tabs accessible in same Chrome session
+
+**BUILD_09 Phase 1 completed (types + seed data):**
+  - `src/types/capsule-image.ts` — Replaced `capsule_serial` field with `batch_id` + `capsule_id` + `procedure_id?` + `created_at?` to match actual v7.0.0 pipeline schema. Updated file header doc comments with 3-tier schema reference.
+  - `seed-demo.ts` — Added `capsuleSerialNumber: 'TEST-CAPSULE-99'` to 5 procedures (3 ready_for_review + 2 draft). Added spread pattern to write field only when present. This links to existing processed frames in the pipeline Firestore.
+
+**BUILD_09 Phase 2 completed (getCapsuleFrames callable):**
+  - `functions/src/callable/getCapsuleFrames.ts` — **NEW.** Cross-project proxy callable. Auth+role check, Zod validation, pipeline Firestore singleton (`getPipelineApp`), query `capsule_images WHERE capsule_id == X ORDER BY filename`, batched signed URL generation (50 per batch), 4-hour expiry, 60K frame safety limit. Returns `GetCapsuleFramesResponse` shape.
+  - `functions/src/index.ts` — **Rewritten.** Now properly exports all 13 callables (including new getCapsuleFrames) + 2 triggers + type exports. Previously only exported types — this was fragile (Firebase CLI auto-discovery, not explicit exports).
+  - `functions/src/utils/validators.ts` — Added `getCapsuleFramesInputSchema` (capsuleSerial: string, 1-100 chars) + `GetCapsuleFramesInput` type.
+
+**BUILD_09 Phase 3 completed (useCapsuleFrames hook):**
+  - `src/lib/hooks.tsx` — Added `useCapsuleFrames(capsuleSerial)` hook. One-time callable fetch (not real-time), cancellation-safe, returns `{ data: GetCapsuleFramesResponse, loading, error }`. Skips fetch when capsuleSerial is undefined. Uses existing `functions` instance from line 29.
+
+**BUILD_09 Phase 4 completed (Viewer integration):**
+  - `src/screens/Viewer.tsx` — Full pipeline integration into Viewer screen:
+    - §4A: Replaced `const frames: string[] = []` placeholder with `useCapsuleFrames(procedure?.capsuleSerialNumber)` hook call. Extracts frame URLs and AI anomaly frames.
+    - §4B: Added loading spinner while frames fetch, error state if fetch fails. FrameViewer only renders when not loading and no error.
+    - §4C: Capsule metadata (serial number, frame count, anomaly count) displayed in patient info bar when pipeline data available.
+    - §4D: One-time AI finding seeding via `useEffect` — creates Finding documents with `provenance: 'ai_detected'` from pipeline anomalies on first Viewer load. Uses `useRef` guard to prevent duplicate seeding. Maps `analysis.primary_finding` → classification, `analysis.anatomical_location` → anatomicalRegion via `cestToAnatomicalRegion()`, `analysis.confidence_score` → aiConfidence (0-100).
+    - §4E: Frame-finding linking — clicking any finding card jumps FrameViewer to that finding's `primaryFrameNumber`. Added `stopPropagation` on dismiss badge and delete button to prevent conflicting click handlers.
+  - TypeScript type-check: **PASS** (no new errors; only pre-existing missing declaration file warnings for firebase, lucide-react, heroicons).
+
+**New files created:**
+  - `docs/BUILD_09_GAP_ANALYSIS.md` — 11 findings comparing PODIUM v7.0.0 spec to ZoCW integration docs
+  - `docs/BUILD_09_IMPLEMENTATION_PLAN.md` — 6-phase build plan with model routing
+
+**Files modified:**
+  - `docs/LESSONS_LEARNED.md` — Added Lesson 14 (OneDrive Corrupts Git Object Store)
+  - `HANDOFF.md` — This session log + work queue updates
+
+**Uncommitted files (11 total — Phases 1–4 code + docs):**
+  - `HANDOFF.md`
+  - `src/types/capsule-image.ts` (Phase 1 — updated CapsuleImageDocument interface)
+  - `seed-demo.ts` (Phase 1 — added capsuleSerialNumber to 5 procedures)
+  - `functions/src/callable/getCapsuleFrames.ts` (Phase 2 — NEW cross-project proxy callable)
+  - `functions/src/index.ts` (Phase 2 — rewritten to export all callables + triggers)
+  - `functions/src/utils/validators.ts` (Phase 2 — added getCapsuleFramesInputSchema)
+  - `src/lib/hooks.tsx` (Phase 3 — added useCapsuleFrames hook)
+  - `src/screens/Viewer.tsx` (Phase 4 — full pipeline + AI findings integration)
+  - `docs/BUILD_09_GAP_ANALYSIS.md` (NEW)
+  - `docs/BUILD_09_IMPLEMENTATION_PLAN.md` (NEW)
+  - `docs/LESSONS_LEARNED.md`
+  - `docs/OPUS_BUILD09_PLANNING_PROMPT.md` (from Mar 24, still uncommitted)
+  - `docs/BUILD_09_PREREQUISITE_AUDIT.md` (from Mar 24, still uncommitted)
+
+**⚠️ Git is corrupted (OneDrive tree object loss). Cannot commit until re-clone at office.**
+See Lesson 14 for recovery steps. After re-clone, commit all 6 files above.
 
 ### March 24, 2026 (session 6) — BUILD_09 Prerequisite Audit + Work Queue Reorg (Opus 4.6, Cowork)
 - **Scope:** BUILD_09 planning Step 1, HANDOFF.md restructuring, Opus morning prompt update.
@@ -696,31 +782,32 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 **Planning docs:** `docs/OPUS_BUILD09_PLANNING_PROMPT.md` | **Prerequisite audit:** `docs/BUILD_09_PREREQUISITE_AUDIT.md`
 **Architecture:** `docs/IMAGE_PIPELINE_INTEGRATION.md` | **Build packet:** `docs/build-packets/BUILD_09_Image_Pipeline_Integration.md`
 
-**Planning (Opus):**
+**Planning (Opus) — ✅ COMPLETE:**
 - [x] Architecture decisions documented — ✅ Mar 19
 - [x] Type definitions (`src/types/capsule-image.ts`) — ✅ Mar 19
 - [x] Architecture doc (`docs/IMAGE_PIPELINE_INTEGRATION.md`) — ✅ Mar 19
 - [x] Build packet (`docs/build-packets/BUILD_09_Image_Pipeline_Integration.md`) — ✅ Mar 19
 - [x] Prerequisite audit (`docs/BUILD_09_PREREQUISITE_AUDIT.md`) — ✅ Mar 24
-- [ ] **Gap analysis** — Step 2 of planning prompt. Review BUILD_09 steps against actual source.
-- [ ] **Risk assessment** — Step 3 of planning prompt. Cross-project access, 50K-frame scale, CORS, signed URLs.
-- [ ] **Implementation plan (`docs/BUILD_09_IMPLEMENTATION_PLAN.md`)** — Step 4. Sonnet-dispatchable phases A–E.
+- [x] Gap analysis (`docs/BUILD_09_GAP_ANALYSIS.md`) — ✅ Mar 25 (11 findings, supersedes IMAGE_PIPELINE_INTEGRATION.md §3.1)
+- [x] Firestore data inspection — ✅ Mar 25 (3 doc generations confirmed, `AIAnalysisResult` shape verified)
+- [x] Implementation plan (`docs/BUILD_09_IMPLEMENTATION_PLAN.md`) — ✅ Mar 25 (6 phases, model-routed)
 
-**Implementation (Sonnet, after planning complete):**
-- [ ] **Phase A:** `getCapsuleFrames` callable — `functions/src/callable/getCapsuleFrames.ts`
-- [ ] **Phase B:** `useCapsuleFrames` hook — addition to `src/lib/hooks.tsx`
-- [ ] **Phase C:** Viewer.tsx integration — wire hook, frame display, AI findings panel
-- [ ] **Phase D:** CapsuleUpload.tsx — confirmation flow, status transition
-- [ ] **Phase E:** End-to-end test with real pipeline data (requires Cameron + pipeline)
+**Implementation — ✅ Phases 1–4 COMPLETE (Mar 25 evening):**
+- [x] **Phase 1:** Type corrections + seed data — `capsule-image.ts` updated to v7.0.0 schema, `seed-demo.ts` links 5 procedures to `TEST-CAPSULE-99`
+- [x] **Phase 2:** `getCapsuleFrames` callable — `functions/src/callable/getCapsuleFrames.ts` (NEW), `functions/src/index.ts` (rewritten), validators updated
+- [x] **Phase 3:** `useCapsuleFrames` hook — added to `src/lib/hooks.tsx`
+- [x] **Phase 4:** Viewer.tsx integration — hook wiring, loading/error states, capsule metadata, AI finding seeding, frame-finding linking
+- [ ] **Phase 5:** E2E testing — deploy, re-seed, happy path + edge cases (requires Phase 0 infra + office git)
+- [ ] **Phase 6:** Performance optimization (only if Phase 5 reveals issues with large frame sets)
 
 #### BUILD_09: Image Pipeline — Backend (Cameron manual, pipeline GCP project)
-⚠️ **This work is in `podium-capsule-ingest`, NOT in the ZoCW repo. See `docs/BUILD_09_PREREQUISITE_AUDIT.md` for exact commands.**
+⚠️ **This work is in `podium-capsule-ingest`, NOT in the ZoCW repo. See `docs/BUILD_09_PREREQUISITE_AUDIT.md` + `docs/BUILD_09_GAP_ANALYSIS.md` for exact commands.**
 
-- [ ] **P0 — IAM grants** — Grant `cw-e7c19` service account `roles/datastore.user` + `roles/storage.objectViewer` on `podium-capsule-ingest`. **HARD BLOCKER for Phase A testing.**
-- [ ] **P0 — Composite index** — Create on `capsule_images`: `capsule_serial` asc + `filename` asc. **HARD BLOCKER for Phase A testing.**
-- [ ] **P1 — CORS** — Apply `cors.json` to `podium-capsule-raw-images-test` bucket. **Blocks Phase C** (browser image loading).
-- [ ] **P2 — Field rename** — Rename `procedure_id` → `capsule_serial` in `log-capsule-image` + `analyze-capsule-image`. Redeploy. Migrate test data. Workaround exists (compatibility shim).
-- [ ] **P2 — Test data linkage** — Verify a ZoCW procedure `capsuleSerialNumber` matches a folder in pipeline bucket.
+- [ ] **P0 — IAM grants** — Grant `cw-e7c19` service account `roles/datastore.user` + `roles/storage.objectViewer` on `podium-capsule-ingest`. **HARD BLOCKER for Phase 2 testing.**
+- [ ] **P0 — Composite index** — Create on `capsule_images`: `capsule_id` asc + `filename` asc. **HARD BLOCKER for Phase 2 testing.** *(Corrected: index on `capsule_id`, not `capsule_serial` — see Gap Analysis Finding 5)*
+- [ ] **P1 — CORS** — Apply `cors.json` to `podium-capsule-raw-images-test` bucket. **Blocks Phase 4** (browser image loading).
+- [x] ~~**P2 — Field rename**~~ — **CANCELLED.** Fields already renamed in database. v7.0.0 pipeline writes `capsule_id` + `batch_id`. See Gap Analysis Finding 3.
+- [ ] **P2 — Test data linkage** — Seed ZoCW procedure with `capsuleSerialNumber: "TEST-CAPSULE-99"` to link to existing pipeline test data. *(Confirmed via Firestore inspection: ≥2 processed frames with AI analysis available)*
 
 #### Other Remaining Features
 - [ ] **Google sign-in** — Works after Firebase Hosting deploy. Blocked by unauthorized-domain in dev environment. (Priority 2)
@@ -733,16 +820,35 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 ### 📦 GIT / DEPLOY — Pending Commits & Pushes
 ### ═══════════════════════════════════════════════
 
-#### Uncommitted Changes (this session — Mar 24 late night)
-3 files changed. Cameron must commit and push from Mac Terminal:
-- `HANDOFF.md` — restructured work queue (Builds / Tests / Git / Completed)
-- `docs/OPUS_BUILD09_PLANNING_PROMPT.md` — added Step 1 complete status + prerequisite audit to reading list
-- `docs/BUILD_09_PREREQUISITE_AUDIT.md` — **NEW** — Step 1 prerequisite audit output
+#### Uncommitted Changes (accumulated Mar 24–25)
+⚠️ **Git repo is CORRUPTED** (OneDrive tree object loss). Must re-clone at office first. See `docs/LESSONS_LEARNED.md` Lesson 14.
+
+**Recovery procedure (at office, Mar 26):**
+1. Back up these 13 files to Desktop
+2. Rename corrupt repo folder → `zocw-firebase-repo-corrupt`
+3. Fresh clone: `git clone https://github.com/ZoDiagnostics/zocw-firebase-repo.git`
+4. Copy 13 files into fresh clone (preserve directory structure)
+5. Commit + push (see git commands below)
+
+**13 files to commit (docs + BUILD_09 Phases 1–4 code):**
+- `HANDOFF.md` — work queue updates + Mar 24 + Mar 25 session logs
+- `docs/OPUS_BUILD09_PLANNING_PROMPT.md` — Step 1 complete status (from Mar 24)
+- `docs/BUILD_09_PREREQUISITE_AUDIT.md` — **NEW** — Step 1 prerequisite audit (from Mar 24)
+- `docs/BUILD_09_GAP_ANALYSIS.md` — **NEW** — 11 findings, pipeline spec vs ZoCW integration docs (Mar 25)
+- `docs/BUILD_09_IMPLEMENTATION_PLAN.md` — **NEW** — 6-phase build plan with model routing (Mar 25)
+- `docs/LESSONS_LEARNED.md` — Added Lesson 14 (OneDrive git corruption)
+- `src/types/capsule-image.ts` — Phase 1: updated to v7.0.0 pipeline schema
+- `seed-demo.ts` — Phase 1: added capsuleSerialNumber to 5 procedures
+- `functions/src/callable/getCapsuleFrames.ts` — **NEW** Phase 2: cross-project proxy callable
+- `functions/src/index.ts` — Phase 2: rewritten to export all callables + triggers
+- `functions/src/utils/validators.ts` — Phase 2: added getCapsuleFramesInputSchema
+- `src/lib/hooks.tsx` — Phase 3: added useCapsuleFrames hook
+- `src/screens/Viewer.tsx` — Phase 4: full pipeline + AI findings Viewer integration
 
 ```bash
-cd ~/path/to/zocw-firebase-repo
-git add HANDOFF.md docs/OPUS_BUILD09_PLANNING_PROMPT.md docs/BUILD_09_PREREQUISITE_AUDIT.md
-git commit -m "docs: BUILD_09 prerequisite audit + work queue reorg + planning prompt update"
+# After re-clone is complete:
+git add HANDOFF.md docs/OPUS_BUILD09_PLANNING_PROMPT.md docs/BUILD_09_PREREQUISITE_AUDIT.md docs/BUILD_09_GAP_ANALYSIS.md docs/BUILD_09_IMPLEMENTATION_PLAN.md docs/LESSONS_LEARNED.md src/types/capsule-image.ts seed-demo.ts functions/src/callable/getCapsuleFrames.ts functions/src/index.ts functions/src/utils/validators.ts src/lib/hooks.tsx src/screens/Viewer.tsx
+git commit -m "feat: BUILD_09 Phases 1-4 — image pipeline integration (types, callable, hook, Viewer)"
 git push origin main
 ```
 
@@ -800,12 +906,15 @@ git push origin main
 <details>
 <summary>Completed builds, bug fixes, and infrastructure (click to expand)</summary>
 
-#### BUILD_09 Planning Artifacts (completed)
+#### BUILD_09 Planning Artifacts (completed — all 8 deliverables)
 - [x] Architecture decisions — ✅ Mar 19
 - [x] `src/types/capsule-image.ts` — ✅ Mar 19
 - [x] `docs/IMAGE_PIPELINE_INTEGRATION.md` — ✅ Mar 19
 - [x] `docs/build-packets/BUILD_09_Image_Pipeline_Integration.md` — ✅ Mar 19
 - [x] `docs/BUILD_09_PREREQUISITE_AUDIT.md` — ✅ Mar 24
+- [x] `docs/BUILD_09_GAP_ANALYSIS.md` — ✅ Mar 25 (11 findings incl. Firestore inspection)
+- [x] `docs/BUILD_09_IMPLEMENTATION_PLAN.md` — ✅ Mar 25 (6 phases, model-routed)
+- [x] Pipeline Firestore data shape verification — ✅ Mar 25 (Chrome automation)
 
 #### All Bug Fixes (56 bugs total, 45 fixed)
 - [x] BUG-01 through BUG-55 — See session logs for individual details
@@ -864,7 +973,21 @@ git push origin main
 - **Cloud Functions:** `log-capsule-image` (Storage trigger), `analyze-capsule-image` (Firestore trigger)
 - **AI Model:** Gemini 2.5 Flash (us-central1, temperature 0.0)
 - **Status:** ✅ Deployed and tested successfully with ~50K frames
-- **Folder convention:** Capsule serial number (e.g., `SN-48291-A/`) — see ARCHITECTURAL DECISIONS above
+- **Folder convention:** 3-tier: `{batch_id}/{capsule_id}/{filename}` — see `docs/BUILD_09_GAP_ANALYSIS.md`
+
+### Console URLs (for Cowork Chrome automation)
+
+**ZoCW (`cw-e7c19`):**
+- ✅ Firebase Firestore: `https://console.firebase.google.com/u/0/project/cw-e7c19/firestore/databases/-default-/data`
+- ✅ Firebase Auth: `https://console.firebase.google.com/u/0/project/cw-e7c19/authentication/users`
+- ✅ Live app: `https://cw-e7c19.web.app`
+- ✅ Netlify: `https://app.netlify.com/projects/aquamarine-hummingbird-9d3ef6/overview`
+
+**Pipeline (`podium-capsule-ingest`):**
+- ⚠️ Firebase Console does NOT work — Firebase not enabled on this GCP project, redirects to "Get started" page
+- ✅ GCP Firestore Studio: `https://console.cloud.google.com/firestore/databases/-default-/data/panel/capsule_images?project=podium-capsule-ingest`
+- ✅ GCP Storage Browser: `https://console.cloud.google.com/storage/browser/podium-capsule-raw-images-test?project=podium-capsule-ingest`
+- ✅ GCP Cloud Functions: `https://console.cloud.google.com/functions/list?project=podium-capsule-ingest`
 
 ### Key File Locations
 - **Local repo (Mac):** /Users/cameronplummer/Library/CloudStorage/OneDrive-SharedLibraries-ZoDiagnostics/SW - Software Dev and AI-ML - General/40-Clinician-Workbench/10-Human-Read-Review/90-Demos-Pitches/Claude Demo/zocw-firebase-repo
@@ -876,7 +999,9 @@ git push origin main
 - **Model selection guide:** /Claude Demo/zocw-firebase-repo/docs/ZoCW_Model_Selection_Guide.md (MANDATORY — read at session start)
 - **Test validation (repo):** /Claude Demo/zocw-firebase-repo/docs/TEST_VALIDATION.md (v3.2.0 — persona-based test scenarios)
 - **Functional test scenarios (xlsx):** /Claude Demo/Zo_Workbench_Functional_Test_Scenarios_v2_4.xlsx (825 scenarios, 20 flows)
-- **Gemini pipeline specs (source material):** /Claude Demo/image pipeline from gemini/ (two RTF files, identical content — PODIUM spec v4.0.0)
+- **Gemini pipeline specs (source material):** /Claude Demo/image pipeline from gemini/ (includes PODIUM spec v7.0.0 — `2026-0325 Gemini Description of Image Pipeline Tech Setup.md`)
+- **BUILD_09 gap analysis:** /Claude Demo/zocw-firebase-repo/docs/BUILD_09_GAP_ANALYSIS.md (11 findings, supersedes IMAGE_PIPELINE_INTEGRATION.md §3.1)
+- **BUILD_09 implementation plan:** /Claude Demo/zocw-firebase-repo/docs/BUILD_09_IMPLEMENTATION_PLAN.md (6 phases, model-routed)
 
 ### Git Workflow
 1. Claude edits files in local repo
