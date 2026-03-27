@@ -1,15 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Info } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useActiveProcedure, useFindings, usePatients, useCapsuleFrames, createFinding, deleteFinding, updateFinding } from '../lib/hooks';
 import { Sidebar } from '../components/Sidebar';
-import { Header } from '../components/Header';
+import { ViewerHeader } from '../components/ViewerHeader';
 import { PreReviewBanner } from '../components/PreReviewBanner';
 import { FrameViewer } from '../components/FrameViewer';
-import { WorkflowStepper } from '../components/WorkflowStepper';
 import { AnatomicalRegion, FindingProvenance, FindingReviewStatus, ProcedureStatus } from '../types/enums';
 import { Finding } from '../types/finding';
-import { cestToAnatomicalRegion } from '../types/capsule-image';
+import { cestToAnatomicalRegion, isImageQualityFinding } from '../types/capsule-image';
 
 // SCR-10: Viewer — Capsule endoscopy review screen
 // UX Flow:
@@ -25,6 +24,8 @@ export const Viewer: React.FC = () => {
   const allPatients = usePatients();
 
   const [currentFrame, setCurrentFrame] = useState(0);
+  const [selectedFindingId, setSelectedFindingId] = useState<string | null>(null);
+  const [imageQualityExpanded, setImageQualityExpanded] = useState(false);
   const [newFindingClass, setNewFindingClass] = useState('');
   const [selectedRegion, setSelectedRegion] = useState<string>(AnatomicalRegion.COLON);
   // BUG-11: Confirmation dialog state for finding deletion
@@ -45,6 +46,13 @@ export const Viewer: React.FC = () => {
 
   // Extract frame URLs for FrameViewer (signed HTTPS URLs from getCapsuleFrames)
   const frames = capsuleData?.frames.map(f => f.url) ?? [];
+
+  // Clear finding selection when frame changes via playback or timeline scrub
+  // (i.e., any navigation that isn't a finding click)
+  const handleFrameChange = useCallback((frameIndex: number) => {
+    setCurrentFrame(frameIndex);
+    setSelectedFindingId(null);
+  }, []);
 
   // Extract AI-detected anomaly frames for finding seeding
   const aiFrames = capsuleData?.frames.filter(f =>
@@ -103,8 +111,10 @@ export const Viewer: React.FC = () => {
   };
 
   // BUILD_09 §4D: One-time AI finding seed — create Finding documents from pipeline anomalies
+  // Seeds on capsule data arrival regardless of review status so clinician can preview
+  // AI findings (read-only) during pre-review configuration.
   useEffect(() => {
-    if (!capsuleData || !procedureId || !reviewUnlocked || aiSeedingDone.current) return;
+    if (!capsuleData || !procedureId || aiSeedingDone.current) return;
 
     // Check if AI findings already exist for this procedure
     const hasAiFindings = findings.some(f => f.provenance === FindingProvenance.AI_DETECTED);
@@ -123,6 +133,9 @@ export const Viewer: React.FC = () => {
     aiSeedingDone.current = true;
 
     // Seed each anomaly as a Finding document
+    // primaryFrameNumber stores the DEVICE frame number (e.g., 30019 from 00030019.bmp)
+    // — this is clinically meaningful (position in full ~50K frame capsule transit).
+    // Navigation mapping (device frame → array index) is handled in handleFindingClick.
     const seedFindings = async () => {
       for (const frame of aiFrames) {
         const analysis = frame.analysis!;
@@ -148,12 +161,27 @@ export const Viewer: React.FC = () => {
     };
 
     seedFindings();
-  }, [capsuleData, procedureId, reviewUnlocked, findings, aiFrames]);
+  }, [capsuleData, procedureId, findings, aiFrames]);
 
   // BUILD_09 §4E: Frame-finding linking — click a finding to jump to its frame
+  // primaryFrameNumber is the device frame number (e.g., 30019), NOT an array index.
+  // Build a lookup from device frame number → array index for navigation.
+  const frameNumberToIndex = useMemo(() => {
+    if (!capsuleData?.frames) return new Map<number, number>();
+    const map = new Map<number, number>();
+    capsuleData.frames.forEach((f, idx) => {
+      const deviceNum = parseInt(f.filename.replace(/\D/g, '')) || 0;
+      map.set(deviceNum, idx);
+    });
+    return map;
+  }, [capsuleData?.frames]);
+
   const handleFindingClick = (finding: Finding) => {
-    if (finding.primaryFrameNumber !== undefined) {
-      setCurrentFrame(finding.primaryFrameNumber);
+    setSelectedFindingId(finding.id);
+    const deviceFrame = finding.primaryFrameNumber ?? finding.frameNumber ?? 0;
+    const arrayIndex = frameNumberToIndex.get(deviceFrame);
+    if (arrayIndex !== undefined) {
+      setCurrentFrame(arrayIndex);
     }
   };
 
@@ -162,7 +190,7 @@ export const Viewer: React.FC = () => {
       <div className="flex h-screen bg-gray-800">
         <Sidebar />
         <div className="flex-1 flex flex-col">
-          <Header />
+          <ViewerHeader currentStep={3} />
           <main className="flex-1 flex items-center justify-center text-white">
             <p>Loading procedure...</p>
           </main>
@@ -175,10 +203,7 @@ export const Viewer: React.FC = () => {
     <div className="flex h-screen bg-gray-800 text-white">
       <Sidebar />
       <div className="flex-1 flex flex-col">
-        <Header />
-
-        {/* BUG-31: Workflow stepper — Viewer is step 3 */}
-        <WorkflowStepper currentStep={3} />
+        <ViewerHeader currentStep={3} />
 
         {/* Patient info bar */}
         <div className="bg-gray-900 border-b border-gray-700 px-4 py-2 flex items-center justify-between">
@@ -237,15 +262,6 @@ export const Viewer: React.FC = () => {
           />
         )}
 
-        {/* Workflow guidance banner */}
-        {isPreReview && (
-          <div className="bg-yellow-900/50 border-b border-yellow-700 px-4 py-3 text-center">
-            <p className="text-yellow-200 text-sm">
-              Complete the Pre-Review Checklist above to unlock the review tools and findings panel.
-            </p>
-          </div>
-        )}
-
         {/* flex-col on mobile (frame stacked above findings), flex-row on md+ */}
         <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
           {/* Main Content: Frame Viewer */}
@@ -276,7 +292,7 @@ export const Viewer: React.FC = () => {
               <FrameViewer
                 frames={frames}
                 currentFrame={currentFrame}
-                onFrameChange={setCurrentFrame}
+                onFrameChange={handleFrameChange}
                 fps={4}
               />
             )}
@@ -286,21 +302,26 @@ export const Viewer: React.FC = () => {
           <div className={`w-full md:w-96 bg-gray-900 border-t border-gray-700 md:border-t-0 md:border-l flex flex-col transition-opacity ${
             reviewUnlocked ? 'opacity-100' : 'opacity-40 pointer-events-none'
           }`}>
-            <div className="p-4 border-b border-gray-700 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Findings ({findings.length})</h2>
-              {!reviewUnlocked && (
-                <span className="text-xs text-yellow-400 bg-yellow-900/50 px-2 py-0.5 rounded">Locked</span>
-              )}
-            </div>
+            {(() => {
+              // Split findings into clinical vs image quality, both sorted by frame number
+              const sortByFrame = (a: Finding, b: Finding) =>
+                (a.primaryFrameNumber ?? a.frameNumber ?? 0) - (b.primaryFrameNumber ?? b.frameNumber ?? 0);
+              const clinicalFindings = [...findings].filter(f => !isImageQualityFinding(f.classification || '')).sort(sortByFrame);
+              const imageQualityFindings = [...findings].filter(f => isImageQualityFinding(f.classification || '')).sort(sortByFrame);
 
-            {/* Findings list */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {findings.map((finding) => {
+              // Reusable finding card renderer
+              const renderFindingCard = (finding: Finding) => {
                 const isDismissed = finding.reviewStatus === FindingReviewStatus.REJECTED;
+                const isSelected = finding.id === selectedFindingId;
                 return (
                   <div
                     key={finding.id}
-                    className={`bg-gray-800 p-3 rounded-lg cursor-pointer hover:bg-gray-750 transition-colors ${isDismissed ? 'opacity-50' : ''}`}
+                    ref={isSelected ? (el: HTMLDivElement | null) => el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) : undefined}
+                    className={`p-3 rounded-lg cursor-pointer transition-all border-2 ${
+                      isSelected
+                        ? 'bg-indigo-900/60 border-indigo-400 ring-1 ring-indigo-400/50'
+                        : 'bg-gray-800 border-transparent hover:bg-gray-750 hover:border-gray-600'
+                    } ${isDismissed ? 'opacity-50' : ''}`}
                     onClick={() => handleFindingClick(finding)}
                     title={`Jump to frame ${finding.primaryFrameNumber || finding.frameNumber || 0}`}
                   >
@@ -316,7 +337,6 @@ export const Viewer: React.FC = () => {
                           }`}>
                             {finding.provenance === 'ai_detected' ? 'AI' : 'Manual'}
                           </span>
-                          {/* BUG-33: Clickable review status badge toggles dismissed state */}
                           <button
                             onClick={(e) => { e.stopPropagation(); reviewUnlocked && !isCompleted && handleToggleDismiss(finding); }}
                             className={`text-xs px-1.5 py-0.5 rounded cursor-pointer transition-opacity ${
@@ -329,23 +349,15 @@ export const Viewer: React.FC = () => {
                           >
                             {finding.reviewStatus || 'pending'}
                           </button>
-                          {/* UX-03: AI confidence tooltip with Info icon */}
                           {(finding.aiConfidence || finding.confidence) && (
-                            <span
-                              className="flex items-center gap-0.5 text-xs text-gray-500 cursor-help"
-                              title="AI Confidence reflects model certainty from image analysis. High (≥85%): strong pattern match. Medium (50-84%): review recommended. Low (<50%): uncertain — manual review essential."
-                            >
+                            <span className="flex items-center gap-0.5 text-xs text-gray-500 cursor-help"
+                              title="AI Confidence reflects model certainty from image analysis. High (≥85%): strong pattern match. Medium (50-84%): review recommended. Low (<50%): uncertain — manual review essential.">
                               {finding.aiConfidence || finding.confidence}%
-                              <Info
-                                size={14}
-                                className="text-gray-400 hover:text-gray-300"
-                                aria-hidden="true"
-                              />
+                              <Info size={14} className="text-gray-400 hover:text-gray-300" aria-hidden="true" />
                             </span>
                           )}
                         </div>
                       </div>
-                      {/* BUG-11: Delete triggers confirmation dialog */}
                       {reviewUnlocked && !isCompleted && (
                         <button
                           onClick={(e) => { e.stopPropagation(); handleRequestDelete(finding.id); }}
@@ -358,23 +370,78 @@ export const Viewer: React.FC = () => {
                     </div>
                   </div>
                 );
-              })}
-              {/* UX-04: Context-aware empty state — distinguish "AI found nothing" from "hasn't started" */}
-              {findings.length === 0 && (
-                reviewUnlocked ? (
-                  <div className="text-center py-8">
-                    <Info size={20} className="text-blue-400 mx-auto mb-2" aria-hidden="true" />
-                    <p className="text-blue-400 text-sm font-medium">AI analysis complete — no anomalies detected.</p>
-                    <p className="text-xs text-blue-300/70 mt-1">Independent clinician review is still required.</p>
+              };
+
+              return (
+                <>
+                  {/* Header */}
+                  <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+                    <h2 className="text-lg font-semibold">Findings ({findings.length})</h2>
+                    {!reviewUnlocked && (
+                      <span className="text-xs text-yellow-400 bg-yellow-900/50 px-2 py-0.5 rounded">Locked</span>
+                    )}
                   </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <p>No findings yet</p>
-                    <p className="text-xs mt-1">Complete the checklist to begin</p>
+
+                  <div className="flex-1 overflow-y-auto">
+                    {/* Clinical Findings — expanded by default */}
+                    <div className="border-b border-gray-700">
+                      <div className="px-4 py-2 bg-gray-800/50 flex items-center justify-between">
+                        <span className="text-sm font-semibold text-red-300">Clinical Findings</span>
+                        <span className="text-xs bg-red-900/50 text-red-300 px-2 py-0.5 rounded-full font-medium">{clinicalFindings.length}</span>
+                      </div>
+                      <div className="px-4 py-2 space-y-2">
+                        {clinicalFindings.map(renderFindingCard)}
+                        {clinicalFindings.length === 0 && (
+                          <p className="text-xs text-gray-500 text-center py-3">No clinical findings detected</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Image Quality — collapsed by default */}
+                    <div>
+                      <div
+                        className="px-4 py-2 bg-gray-800/50 flex items-center justify-between cursor-pointer hover:bg-gray-800/70"
+                        onClick={() => setImageQualityExpanded(prev => !prev)}
+                      >
+                        <span className="text-sm font-semibold text-gray-400">Image Quality</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs bg-gray-700 text-gray-400 px-2 py-0.5 rounded-full font-medium">{imageQualityFindings.length}</span>
+                          <span className="text-gray-500 text-xs">{imageQualityExpanded ? '▲' : '▼'}</span>
+                        </div>
+                      </div>
+                      {imageQualityExpanded && (
+                        <div className="px-4 py-2 space-y-2">
+                          {imageQualityFindings.map(renderFindingCard)}
+                          {imageQualityFindings.length === 0 && (
+                            <p className="text-xs text-gray-500 text-center py-3">No image quality issues</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Empty state when no findings at all */}
+                    {findings.length === 0 && (
+                      <div className="px-4 py-6 text-center text-gray-500">
+                        {capsuleData && capsuleData.anomalyFrames > 0 ? (
+                          <>
+                            <div className="w-10 h-10 rounded-full bg-indigo-900/50 flex items-center justify-center mx-auto mb-2">
+                              <span className="text-sm font-bold text-indigo-300">{capsuleData.anomalyFrames}</span>
+                            </div>
+                            <p className="text-indigo-300 text-sm font-medium">AI-detected anomalies ready for review</p>
+                            <p className="text-xs mt-1 text-gray-500">Complete the checklist to unlock findings</p>
+                          </>
+                        ) : (
+                          <>
+                            <p>No findings yet</p>
+                            <p className="text-xs mt-1">Complete the checklist to begin</p>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
-                )
-              )}
-            </div>
+                </>
+              );
+            })()}
 
             {/* Add finding form — only when review is active (not completed) */}
             {reviewUnlocked && !isCompleted && (

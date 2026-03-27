@@ -1,6 +1,6 @@
 # ZoCW Session Handoff & Work Queue
 **Purpose:** Initialization context for a new Claude Cowork session + prioritized work queue.
-**Last Updated:** March 27, 2026 (evening) — BUILD_09 Phase 5 E2E **COMPLETE.** Pipeline integration fully working: 53 frames render with signed HTTPS URLs, playback controls functional, AI anomaly metadata displays. IAM signing fix applied (session 10). Error handling improved in both Cloud Function and FrameViewer. Deployed hosting + functions. Phase 6 (perf optimization) not needed — 53 frames load quickly.
+**Last Updated:** March 27, 2026 (late evening) — BUILD_10 Viewer UX overhaul **DEPLOYED** (session 10 continued). Image-first layout (slim ViewerHeader, collapsed PreReviewBanner), findings panel split (Clinical Findings vs Image Quality), finding selection with frame navigation, image scaling fix. ⚠️ "Failed to load capsule frames" error appeared after final hard refresh — likely signed URL expiry or Cloud Function error. Debug this first in next session.
 
 ## MANDATORY SESSION RULES
 1. **At session start:** Read this file to understand current state and work queue.
@@ -14,6 +14,56 @@
 ---
 
 ## SESSION LOG
+
+### March 27, 2026 (session 10 continued) — BUILD_10 Viewer UX Overhaul (Opus 4.6, Cowork, Mac Studio office)
+- **Scope:** Image-first Viewer layout, findings panel split (clinical vs image quality), finding selection + frame navigation, image scaling fix.
+- **Location:** Office (Mac Studio, CDP-Mac-Studio-10). OneDrive-synced repo.
+
+**Image-First Layout — ✅ COMPLETE:**
+  - NEW `src/components/ViewerHeader.tsx` — Slim ~32px dark header replacing full Header + WorkflowStepper on Viewer screen. Contains ZoCW logo, compact stepper dots, user avatar with sign-out dropdown. Recovers ~120px vertical space.
+  - `src/components/PreReviewBanner.tsx` — Changed default expanded state from `true` to `false` (image-first UX). Checklist loads collapsed showing compact summary bar. Recovers ~190px vertical space.
+  - `src/screens/Viewer.tsx` — Replaced `Header` + `WorkflowStepper` with `ViewerHeader`. Removed yellow guidance banner.
+  - Net result: ~310px additional vertical space for the frame image.
+
+**Image Scaling Fix — ✅ COMPLETE:**
+  - `src/components/FrameViewer.tsx` — Added `image-rendering: smooth` CSS for bicubic upscaling of small medical images (capsule frames are typically small resolution). Added `width: 100%`, `height: 100%` inline style with `max-w-full max-h-full object-contain` class so images fill available space without overflowing. Added `min-h-0 overflow-hidden` on flex container to prevent flex children from pushing playback controls off-screen.
+
+**Findings Panel Split — ✅ COMPLETE (Option A — hardcoded):**
+  - `src/types/capsule-image.ts` — Added `IMAGE_QUALITY_CLASSIFICATIONS` ReadonlySet and `isImageQualityFinding()` helper function. Classifies 6 findings as image quality indicators (Normal Clean Mucosa, Chyme/Turbid Fluid, Bile, Mucus, Food Residue/Fecal Loading, Bubble Interference).
+  - `src/screens/Viewer.tsx` — Right panel now split into two collapsible sections:
+    - **Clinical Findings** (red accent, expanded by default) — actionable pathological findings
+    - **Image Quality** (gray accent, collapsed by default) — viewing condition indicators
+  - Both sections show count in header and are sorted by primaryFrameNumber ascending.
+  - Option B (pipeline schema `finding_category` field) added to backlog — see P3 item in Backend work queue.
+
+**Finding Selection + Frame Navigation — ✅ COMPLETE:**
+  - `src/screens/Viewer.tsx` — Added `selectedFindingId` state. Clicking a finding highlights it (indigo selection ring) and navigates FrameViewer to that frame.
+  - Built `frameNumberToIndex` useMemo lookup to translate device frame numbers (e.g., 30019) to array indices (0-52) for navigation. Device frame numbers preserved in Firestore — they represent actual position in ~50K frame capsule transit and are clinically meaningful.
+  - `handleFrameChange` callback clears `selectedFindingId` when user plays/scrubs to a different frame, so selection doesn't persist misleadingly.
+  - Auto-scroll selected finding into view via `scrollIntoView({ behavior: 'smooth', block: 'nearest' })`.
+
+**AI Finding Seeding Fix — ✅ COMPLETE:**
+  - Removed `!reviewUnlocked` gate from AI seeding useEffect — findings now seed immediately when capsuleData arrives, regardless of pre-review checklist status. Previously showed "Findings (0)" despite 47 anomalies.
+
+**Build + Deploy — ✅ COMPLETE:**
+  - Cameron ran `npm run build && npx firebase-tools deploy --only hosting` on Mac Studio.
+  - Hosting deployed successfully. All UX changes live.
+
+**⚠️ POST-DEPLOY ISSUE — "Failed to load capsule frames":**
+  - After final hard refresh, Viewer shows "Failed to load capsule frames" error with "internal" message.
+  - Findings panel IS rendering correctly (Clinical Findings + Image Quality split visible), confirming the split code works.
+  - Likely cause: signed URL 4-hour TTL expiry OR Cloud Function transient error.
+  - **FIRST TASK FOR NEXT SESSION:** Check Cloud Function logs in Firebase Console, verify signed URLs, re-test.
+
+**Files Modified This Session (BUILD_10):**
+  - `src/components/ViewerHeader.tsx` — **NEW FILE** (slim Viewer header)
+  - `src/components/PreReviewBanner.tsx` — Default collapsed
+  - `src/components/FrameViewer.tsx` — Image scaling, error handling, min-h-0 fix
+  - `src/screens/Viewer.tsx` — ViewerHeader, findings split, selection, seeding fix, frame nav
+  - `src/types/capsule-image.ts` — IMAGE_QUALITY_CLASSIFICATIONS + isImageQualityFinding()
+  - `HANDOFF.md` — This session log
+
+---
 
 ### March 27, 2026 (session 10) — BUILD_09 Phase 5 COMPLETE — Image Signing Fix + Error Handling (Opus 4.6, Cowork, Mac Studio office)
 - **Scope:** Fix frame image rendering (IAM signing), improve error handling in Cloud Function + FrameViewer, deploy, verify E2E.
@@ -972,6 +1022,8 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 - [x] **P1 — CORS** — ✅ Mar 26. Applied via gsutil.
 - [x] ~~**P2 — Field rename**~~ — **CANCELLED.** Fields already renamed in database.
 - [x] **P2 — Test data linkage** — ✅ Mar 26. Added `capsuleSerialNumber: "TEST-CAPSULE-99"` to procedure `b1026583-9a73-48cb-8a0a-cc4e54b929a7` via Firebase Console. Note: other seeded procedures may still be missing this field — re-seed or manually add as needed.
+- [x] **P0 — IAM serviceAccountTokenCreator** — ✅ Mar 27 (session 10). Granted `roles/iam.serviceAccountTokenCreator` on `cw-e7c19` project to `cw-e7c19@appspot.gserviceaccount.com`. Required for `getSignedUrl()` to work.
+- [ ] **P3 — Add `finding_category` field to AIAnalysisResult schema** — Pipeline AI model should classify each finding as `'clinical' | 'image_quality'` at analysis time. This replaces the hardcoded `IMAGE_QUALITY_CLASSIFICATIONS` set in `src/types/capsule-image.ts` (Option A → Option B migration). When this field exists in pipeline Firestore, update `isImageQualityFinding()` to read it instead of the hardcoded set. The hardcoded set becomes the fallback for older documents without the field.
 
 #### Other Remaining Features
 - [ ] **Google sign-in** — Works after Firebase Hosting deploy. Blocked by unauthorized-domain in dev environment. (Priority 2)
@@ -984,20 +1036,23 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 ### 📦 GIT / DEPLOY — Pending Commits & Pushes
 ### ═══════════════════════════════════════════════
 
-#### Uncommitted Changes (Mar 26)
-Git repo is healthy. BUILD_09 code committed and pushed Mar 26.
+#### Uncommitted Changes (Mar 27 late evening)
+Git repo is healthy. BUILD_09 IAM fix committed as `e6d982e` on Mar 27.
 
-**Remaining uncommitted:** `HANDOFF.md` only (this session log update). Commit with:
-```bash
-git add HANDOFF.md && git commit -m "docs: HANDOFF session 8 — Phase 0 complete, hosting deploy pending" && git push origin main
-```
+**Remaining uncommitted (BUILD_10 UX overhaul):**
+  - `src/components/ViewerHeader.tsx` (NEW)
+  - `src/components/PreReviewBanner.tsx`
+  - `src/components/FrameViewer.tsx`
+  - `src/screens/Viewer.tsx`
+  - `src/types/capsule-image.ts`
+  - `HANDOFF.md`
 
 #### Deploy Checklist
 - [x] **Push BUILD_09 code** — ✅ Mar 26
 - [x] **Deploy Cloud Functions** — ✅ Mar 26 (14/16 succeeded; `suggestCodes` + `setInitialUserClaims` failed — pre-existing Cloud Build permissions issue)
 - [x] **Frontend build** — ✅ Mar 26 (`npm run build` succeeded, bundle `index--9GVZv7r.js`)
 - [x] **Deploy hosting** — ✅ Mar 27. Bundle `index-D-CQSBmi.js` with correct `.env` values deployed. App loads, pipeline metadata displays.
-- [ ] **Fix signed URL generation** — Grant `roles/iam.serviceAccountTokenCreator` to `cw-e7c19@appspot.gserviceaccount.com` on project `cw-e7c19`. **THIS IS THE ONE REMAINING STEP for frame images to render.** See session 9 log for exact gcloud command. No code changes needed.
+- [x] **Fix signed URL generation** — ✅ Mar 27 (session 10). Granted `roles/iam.serviceAccountTokenCreator`. Frame images render via signed HTTPS URLs.
 
 ### ═══════════════════════════════════════════════
 ### 🧪 TESTS — Remaining Test Work

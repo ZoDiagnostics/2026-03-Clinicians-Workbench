@@ -38,9 +38,9 @@ export const PreReviewBanner: React.FC<PreReviewBannerProps> = ({ procedureId, s
   const [expanded, setExpanded] = useState<boolean>(() => {
     try {
       const stored = sessionStorage.getItem(collapseKey);
-      return stored === null ? true : stored !== 'true'; // default expanded; 'true' = collapsed
+      return stored === null ? false : stored !== 'true'; // default collapsed; image-first UX
     } catch {
-      return true;
+      return false;
     }
   });
 

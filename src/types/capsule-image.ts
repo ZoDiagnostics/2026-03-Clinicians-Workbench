@@ -108,6 +108,30 @@ export const CEST_FINDING_CLASSIFICATIONS = [
 
 export type CestFindingClassification = typeof CEST_FINDING_CLASSIFICATIONS[number];
 
+/**
+ * IMAGE QUALITY classifications — findings that describe viewing conditions
+ * rather than clinical pathology. Used to split the Findings panel into
+ * "Clinical Findings" (actionable) vs "Image Quality" (informational).
+ *
+ * TEMPORARY (Option A): Hardcoded from the CEST taxonomy above.
+ * TARGET (Option B): Replace with `finding_category: 'clinical' | 'image_quality'`
+ * field in the pipeline AIAnalysisResult schema, so the AI model assigns
+ * the category at analysis time. See HANDOFF.md backlog item.
+ */
+export const IMAGE_QUALITY_CLASSIFICATIONS: ReadonlySet<string> = new Set([
+  'Normal Clean Mucosa',
+  'Chyme / Turbid Fluid',
+  'Bile',
+  'Mucus',
+  'Food Residue / Fecal Loading',
+  'Bubble Interference',
+]);
+
+/** Returns true if a finding classification is an image quality indicator, not clinical pathology */
+export function isImageQualityFinding(classification: string): boolean {
+  return IMAGE_QUALITY_CLASSIFICATIONS.has(classification);
+}
+
 // ============================================================================
 // AI ANALYSIS RESULT
 // ============================================================================

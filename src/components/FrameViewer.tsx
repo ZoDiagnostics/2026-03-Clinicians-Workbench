@@ -106,7 +106,7 @@ export const FrameViewer: React.FC<FrameViewerProps> = ({
     const isGsUrl = frameUrl?.startsWith('gs://');
 
     return (
-      <div className="flex-1 relative bg-black flex items-center justify-center">
+      <div className="flex-1 relative bg-black flex items-center justify-center min-h-0 overflow-hidden">
         {isSignError ? (
           <div className="flex flex-col items-center text-red-400 px-8 text-center">
             <svg className="w-12 h-12 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -135,7 +135,8 @@ export const FrameViewer: React.FC<FrameViewerProps> = ({
           <img
             src={frameUrl}
             alt={`Frame ${currentIndex + 1}`}
-            className="max-h-full max-w-full object-contain"
+            className="max-w-full max-h-full object-contain"
+            style={{ imageRendering: 'smooth', width: '100%', height: '100%' } as React.CSSProperties}
             onError={() => setImageError(`Failed to load frame ${currentIndex + 1}`)}
           />
         )}
