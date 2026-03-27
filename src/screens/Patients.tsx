@@ -41,6 +41,9 @@ export function Patients() {
   const [form, setForm] = useState<NewPatientForm>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // BUG-57: Sortable column headers
+  const [sortField, setSortField] = useState<'name' | 'mrn' | 'dob' | 'sex'>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   const fetchPatients = async () => {
     if (!practiceId) return;
@@ -63,15 +66,40 @@ export function Patients() {
 
   useEffect(() => { fetchPatients(); }, [practiceId]);
 
+  // BUG-57: Filter and sort patients
   useEffect(() => {
     const term = searchTerm.toLowerCase();
-    const filtered = patients.filter(p =>
+    let filtered = patients.filter(p =>
       p.firstName?.toLowerCase().includes(term) ||
       p.lastName?.toLowerCase().includes(term) ||
       p.mrn?.toLowerCase().includes(term)
     );
+
+    // Sort
+    filtered.sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case 'name':
+          cmp = `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`);
+          break;
+        case 'mrn':
+          cmp = (a.mrn || '').localeCompare(b.mrn || '');
+          break;
+        case 'dob': {
+          const aTime = a.dateOfBirth?.toDate?.()?.getTime() || 0;
+          const bTime = b.dateOfBirth?.toDate?.()?.getTime() || 0;
+          cmp = aTime - bTime;
+          break;
+        }
+        case 'sex':
+          cmp = (a.sex || '').localeCompare(b.sex || '');
+          break;
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+
     setFilteredPatients(filtered);
-  }, [searchTerm, patients]);
+  }, [searchTerm, patients, sortField, sortDir]);
 
   const handleAddPatient = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -183,13 +211,26 @@ export function Patients() {
 
           <div className="overflow-x-auto bg-white rounded-lg shadow">
             <table className="min-w-full divide-y divide-gray-200">
+              {/* BUG-57: Sortable column headers */}
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">MRN</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date of Birth</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sex</th>
-                  <th className="relative px-6 py-3"><span className="sr-only">View</span></th>
+                  {([['name', 'Name'], ['mrn', 'MRN'], ['dob', 'Date of Birth'], ['sex', 'Sex']] as const).map(([field, label]) => (
+                    <th
+                      key={field}
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+                      onClick={() => {
+                        if (sortField === field) {
+                          setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortField(field);
+                          setSortDir('asc');
+                        }
+                      }}
+                    >
+                      {label} {sortField === field ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                    </th>
+                  ))}
+                  <th className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -199,8 +240,10 @@ export function Patients() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{patient.mrn}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{patient.dateOfBirth?.toDate?.() ? patient.dateOfBirth.toDate().toLocaleDateString() : '-'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{patient.sex}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
                       <Link to={`/patient/${patient.id}`} className="text-indigo-600 hover:text-indigo-900">View</Link>
+                      {/* BUG-56: Add New Procedure action on patient rows */}
+                      <Link to={`/procedures?patientId=${patient.id}`} className="text-green-600 hover:text-green-900">New Procedure</Link>
                     </td>
                   </tr>
                 ))}

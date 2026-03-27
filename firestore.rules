@@ -142,6 +142,66 @@ service cloud.firestore {
         'clinician_noauth',
         'clinician_admin'
       ]);
+
+      /**
+       * Patient sub-collections (medicalHistory, medications, allergies):
+       * All clinical roles including clinician_noauth can read.
+       * Only clinical_staff, clinician_auth, and clinician_admin can write.
+       * BUG-55: clinician_noauth was denied read access to these sub-collections.
+       */
+      match /medicalHistory/{docId} {
+        allow read: if inPractice(
+          get(/databases/$(database)/documents/patients/$(patientId)).data.practiceId
+        ) && hasAnyRole([
+          'clinical_staff',
+          'clinician_auth',
+          'clinician_noauth',
+          'clinician_admin'
+        ]);
+        allow create, update, delete: if inPractice(
+          get(/databases/$(database)/documents/patients/$(patientId)).data.practiceId
+        ) && hasAnyRole([
+          'clinical_staff',
+          'clinician_auth',
+          'clinician_admin'
+        ]);
+      }
+
+      match /medications/{docId} {
+        allow read: if inPractice(
+          get(/databases/$(database)/documents/patients/$(patientId)).data.practiceId
+        ) && hasAnyRole([
+          'clinical_staff',
+          'clinician_auth',
+          'clinician_noauth',
+          'clinician_admin'
+        ]);
+        allow create, update, delete: if inPractice(
+          get(/databases/$(database)/documents/patients/$(patientId)).data.practiceId
+        ) && hasAnyRole([
+          'clinical_staff',
+          'clinician_auth',
+          'clinician_admin'
+        ]);
+      }
+
+      match /allergies/{docId} {
+        allow read: if inPractice(
+          get(/databases/$(database)/documents/patients/$(patientId)).data.practiceId
+        ) && hasAnyRole([
+          'clinical_staff',
+          'clinician_auth',
+          'clinician_noauth',
+          'clinician_admin'
+        ]);
+        allow create, update, delete: if inPractice(
+          get(/databases/$(database)/documents/patients/$(patientId)).data.practiceId
+        ) && hasAnyRole([
+          'clinical_staff',
+          'clinician_auth',
+          'clinician_admin'
+        ]);
+      }
     }
 
     // ============================================================================
@@ -163,14 +223,18 @@ service cloud.firestore {
 
       allow create: if isClinicalStaff();
 
+      // BUG-61: Allow any clinician in the practice to update procedures
+      // (previously only assignedClinician or clinician_admin could update,
+      // which blocked clinician_noauth from completing pre-review checklist).
       allow update: if inPractice(resource.data.practiceId) && (
-        isAssignedClinician(resource.data) ||
+        isClinician() ||
         hasRole('clinician_admin')
       );
 
       /**
-       * Findings (sub-collection): Assigned clinician has full CRUD;
+       * Findings (sub-collection): All clinician roles have full CRUD for annotations;
        * clinical staff has read-only access.
+       * BUG-61: clinician_noauth needs write access for annotation during review.
        */
       match /findings/{findingId} {
         allow read: if inPractice(
@@ -184,10 +248,7 @@ service cloud.firestore {
 
         allow create, update, delete: if inPractice(
           get(/databases/$(database)/documents/procedures/$(procedureId)).data.practiceId
-        ) && (
-          isAssignedClinician(get(/databases/$(database)/documents/procedures/$(procedureId)).data) ||
-          hasRole('clinician_admin')
-        );
+        ) && isClinician();
       }
     }
 

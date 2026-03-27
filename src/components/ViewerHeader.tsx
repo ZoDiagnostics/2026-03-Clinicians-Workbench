@@ -14,7 +14,8 @@ import { USER_ROLE_LABELS, UserRole } from '../types/enums';
 
 const STEPS = ['Check-in', 'Capsule Upload', 'Viewer', 'Summary', 'Report', 'Sign & Deliver'];
 
-export const ViewerHeader: React.FC<{ currentStep?: number }> = ({ currentStep = 3 }) => {
+// BUG-53: Added procedureId prop for stepper dot navigation
+export const ViewerHeader: React.FC<{ currentStep?: number; procedureId?: string }> = ({ currentStep = 3, procedureId }) => {
   const { user, role } = useAuth();
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
@@ -44,12 +45,21 @@ export const ViewerHeader: React.FC<{ currentStep?: number }> = ({ currentStep =
       <div className="flex items-center gap-3">
         <span className="text-sm font-bold text-white tracking-tight">ZoCW</span>
         <span className="text-gray-600 text-xs">|</span>
-        {/* Compact stepper dots */}
+        {/* Compact stepper dots — BUG-53: completed dots are clickable */}
         <div className="flex items-center gap-1">
           {STEPS.map((step, i) => {
             const stepNum = i + 1;
             const isActive = stepNum === currentStep;
             const isCompleted = stepNum < currentStep;
+            // BUG-53: Route mapping for completed step navigation
+            const stepRoutes: Record<number, string> = procedureId ? {
+              1: `/checkin/${procedureId}`,
+              2: `/capsule-upload/${procedureId}`,
+              3: `/viewer/${procedureId}`,
+              4: `/summary/${procedureId}`,
+              5: `/report/${procedureId}`,
+              6: `/sign-deliver/${procedureId}`,
+            } : {};
             return (
               <div key={step} className="flex items-center gap-1">
                 <div
@@ -57,10 +67,11 @@ export const ViewerHeader: React.FC<{ currentStep?: number }> = ({ currentStep =
                     isActive
                       ? 'w-2 h-2 bg-indigo-400'
                       : isCompleted
-                        ? 'w-1.5 h-1.5 bg-indigo-600'
+                        ? 'w-1.5 h-1.5 bg-indigo-600 cursor-pointer hover:bg-indigo-400'
                         : 'w-1.5 h-1.5 bg-gray-600'
                   }`}
                   title={step}
+                  onClick={isCompleted && stepRoutes[stepNum] ? () => navigate(stepRoutes[stepNum]) : undefined}
                 />
                 {i < STEPS.length - 1 && (
                   <div className={`w-3 h-px ${isCompleted ? 'bg-indigo-600' : 'bg-gray-700'}`} />

@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Info } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useActiveProcedure, useFindings, usePatients, useCapsuleFrames, createFinding, deleteFinding, updateFinding } from '../lib/hooks';
+import { useAuth, useActiveProcedure, useFindings, usePatients, useCapsuleFrames, createFinding, deleteFinding, updateFinding } from '../lib/hooks';
 import { Sidebar } from '../components/Sidebar';
 import { ViewerHeader } from '../components/ViewerHeader';
 import { PreReviewBanner } from '../components/PreReviewBanner';
 import { FrameViewer } from '../components/FrameViewer';
-import { AnatomicalRegion, FindingProvenance, FindingReviewStatus, ProcedureStatus } from '../types/enums';
+import { AnatomicalRegion, FindingProvenance, FindingReviewStatus, ProcedureStatus, UserRole } from '../types/enums';
 import { Finding } from '../types/finding';
 import { cestToAnatomicalRegion, isImageQualityFinding } from '../types/capsule-image';
 
@@ -19,9 +19,12 @@ import { cestToAnatomicalRegion, isImageQualityFinding } from '../types/capsule-
 export const Viewer: React.FC = () => {
   const { procedureId } = useParams<{ procedureId: string }>();
   const navigate = useNavigate();
+  const { role } = useAuth();
   const procedure = useActiveProcedure(procedureId);
   const findings = useFindings(procedureId);
   const allPatients = usePatients();
+  // BUG-61: clinician_noauth can review/annotate but cannot sign
+  const canSign = role === UserRole.CLINICIAN_AUTH || role === UserRole.CLINICIAN_ADMIN;
 
   const [currentFrame, setCurrentFrame] = useState(0);
   const [selectedFindingId, setSelectedFindingId] = useState<string | null>(null);
@@ -190,7 +193,7 @@ export const Viewer: React.FC = () => {
       <div className="flex h-screen bg-gray-800">
         <Sidebar />
         <div className="flex-1 flex flex-col">
-          <ViewerHeader currentStep={3} />
+          <ViewerHeader currentStep={3} procedureId={procedureId} />
           <main className="flex-1 flex items-center justify-center text-white">
             <p>Loading procedure...</p>
           </main>
@@ -237,19 +240,19 @@ export const Viewer: React.FC = () => {
             }`}>
               {isPreReview ? 'Pre-Review Required' : procedure.status.replace(/_/g, ' ')}
             </span>
-            {/* BUG-08: Always visible; disabled (not hidden) during pre-review so the user
-                knows the button exists and sees why it's locked. */}
+            {/* BUG-08: Always visible; disabled during pre-review or for noauth role.
+                BUG-61: noauth sees a role message instead of generic lock. */}
             <button
-              onClick={reviewUnlocked ? () => navigate(`/report/${procedureId}`) : undefined}
-              disabled={!reviewUnlocked}
-              title={!reviewUnlocked ? 'Complete pre-review checklist first' : undefined}
+              onClick={reviewUnlocked && canSign ? () => navigate(`/report/${procedureId}`) : undefined}
+              disabled={!reviewUnlocked || !canSign}
+              title={!reviewUnlocked ? 'Complete pre-review checklist first' : !canSign ? 'Only authorized clinicians can sign reports' : undefined}
               className={`text-xs px-3 py-1 rounded transition-colors ${
-                reviewUnlocked
+                reviewUnlocked && canSign
                   ? 'bg-indigo-600 hover:bg-indigo-700 cursor-pointer'
                   : 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-60'
               }`}
             >
-              Go to Report →
+              {!canSign && reviewUnlocked ? 'Sign Restricted' : 'Go to Report →'}
             </button>
           </div>
         </div>

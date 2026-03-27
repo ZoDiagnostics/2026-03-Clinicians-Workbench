@@ -17,11 +17,16 @@ export const CapsuleUpload: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fileReady, setFileReady] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
+  // BUG-63: Support multi-file selection
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
+  // BUG-60: Replace blocking alert() with non-blocking redirect.
+  // alert() froze the browser tab when clicking "Confirm Upload & Start Pre-Review".
   useEffect(() => {
     if (procedure && procedure.status !== ProcedureStatus.CAPSULE_RECEIVED) {
-      alert(`This procedure is not ready for upload (current status: ${procedure.status.replace(/_/g, ' ')}). Redirecting...`);
-      navigate(routeByStatus(procedure.status, procedure.id));
+      setRedirecting(true);
+      navigate(routeByStatus(procedure.status, procedure.id), { replace: true });
     }
   }, [procedure, navigate]);
 
@@ -65,14 +70,14 @@ export const CapsuleUpload: React.FC = () => {
     }
   };
   
-  if (!procedure) {
+  if (!procedure || redirecting) {
     return (
         <div className="flex h-screen bg-gray-50">
             <Sidebar />
             <div className="flex-1 flex flex-col">
                 <Header />
                 <main className="flex-1 flex items-center justify-center">
-                    <p className="text-gray-500">Loading procedure details...</p>
+                    <p className="text-gray-500">{redirecting ? 'Redirecting to current step...' : 'Loading procedure details...'}</p>
                 </main>
             </div>
         </div>
@@ -119,6 +124,7 @@ export const CapsuleUpload: React.FC = () => {
                   <h3 className="mt-2 text-lg leading-6 font-medium text-gray-900">Upload Capsule Data</h3>
                   <p className="mt-1 text-sm text-gray-500">This is a placeholder for the real data uploader. Clicking the button below will simulate the upload process.</p>
                   <div className="mt-6">
+                    {/* BUG-63: Multi-file selection support */}
                     <div className="border-2 border-gray-300 border-dashed rounded-lg px-6 py-10">
                       {!fileReady ? (
                         <div className="text-center">
@@ -129,12 +135,37 @@ export const CapsuleUpload: React.FC = () => {
                         </div>
                       ) : (
                         <div className="text-center">
-                           {/* Heroicon name: solid/shield-check */}
                           <svg className="mx-auto h-12 w-12 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                           </svg>
                           <p className="mt-2 text-green-600 font-semibold">Data file ready for import.</p>
                           <p className="text-sm text-gray-500">capsule-data-XYZ123.zip (2.4 GB)</p>
+                          {selectedFiles.length > 0 && (
+                            <div className="mt-2">
+                              {selectedFiles.map((f, i) => (
+                                <p key={i} className="text-sm text-gray-500">{f.name} ({(f.size / (1024 * 1024)).toFixed(1)} MB)</p>
+                              ))}
+                            </div>
+                          )}
+                          <div className="mt-4">
+                            <label className="inline-flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-800 cursor-pointer">
+                              <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                              </svg>
+                              Add more files
+                              <input
+                                type="file"
+                                multiple
+                                accept=".zip,.raw,.bmp,.dcm"
+                                className="hidden"
+                                onChange={(e) => {
+                                  if (e.target.files) {
+                                    setSelectedFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
                         </div>
                       )}
                     </div>

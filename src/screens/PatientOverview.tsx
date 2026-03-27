@@ -43,7 +43,8 @@ export function PatientOverview() {
   const [allergies, setAllergies] = useState<any[]>([]);
   const [medHistoryForm, setMedHistoryForm] = useState({ name: '', notes: '' });
   const [medicationsForm, setMedicationsForm] = useState({ name: '', notes: '' });
-  const [allergiesForm, setAllergiesForm] = useState({ name: '', notes: '' });
+  // BUG-59: Added type and severity fields
+  const [allergiesForm, setAllergiesForm] = useState({ name: '', notes: '', type: '', severity: '' });
   const [loadingMedHistory, setLoadingMedHistory] = useState(false);
   const [loadingMedications, setLoadingMedications] = useState(false);
   const [loadingAllergies, setLoadingAllergies] = useState(false);
@@ -55,6 +56,10 @@ export function PatientOverview() {
   // BUG-48: Activity Log
   const [activityLog, setActivityLog] = useState<any[]>([]);
   const [loadingActivity, setLoadingActivity] = useState(false);
+
+  // BUG-62: Education Materials
+  const [educationMaterials, setEducationMaterials] = useState<any[]>([]);
+  const [loadingEducation, setLoadingEducation] = useState(false);
 
   // Filter and sort procedures for this patient
   const patientProcedures = useMemo(() => {
@@ -135,6 +140,13 @@ export function PatientOverview() {
       fetchActivityLog();
     }
   }, [activeTab, id]);
+
+  // BUG-62: Fetch education materials when tab changes
+  useEffect(() => {
+    if (activeTab === 'education' && practiceId) {
+      fetchEducationMaterials();
+    }
+  }, [activeTab, practiceId]);
 
   // BUG-45: Medical History CRUD
   const fetchMedicalHistory = async () => {
@@ -241,7 +253,7 @@ export function PatientOverview() {
         ...allergiesForm,
         createdAt: serverTimestamp(),
       });
-      setAllergiesForm({ name: '', notes: '' });
+      setAllergiesForm({ name: '', notes: '', type: '', severity: '' });
       await fetchAllergies();
     } catch (err) {
       console.error('Error adding allergy:', err);
@@ -309,6 +321,22 @@ export function PatientOverview() {
     }
   };
 
+  // BUG-62: Education Materials
+  const fetchEducationMaterials = async () => {
+    if (!practiceId) return;
+    try {
+      setLoadingEducation(true);
+      const eduRef = collection(db, 'educationMaterials');
+      const eduQuery = query(eduRef, where('practiceId', '==', practiceId));
+      const snapshot = await getDocs(eduQuery);
+      setEducationMaterials(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (err) {
+      console.error('Error fetching education materials:', err);
+    } finally {
+      setLoadingEducation(false);
+    }
+  };
+
   // BUG-44: Save demographics
   const saveDemographics = async () => {
     if (!id) return;
@@ -369,7 +397,31 @@ export function PatientOverview() {
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <button onClick={() => navigate('/patients')} className="text-sm text-indigo-600 hover:text-indigo-800 mb-4 flex items-center gap-1">&larr; Back to Patients</button>
 
-            <h1 className="text-3xl font-bold text-gray-900 mb-6">Patient Overview</h1>
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-3xl font-bold text-gray-900">Patient Overview</h1>
+              {/* BUG-58: Archive patient action */}
+              {!patient.isArchived ? (
+                <button
+                  onClick={async () => {
+                    if (!id || !window.confirm('Are you sure you want to archive this patient? This can be undone.')) return;
+                    try {
+                      const patientRef = doc(db, COLLECTIONS.PATIENTS, id);
+                      await updateDoc(patientRef, { isArchived: true, updatedAt: serverTimestamp() });
+                      setPatient(prev => prev ? { ...prev, isArchived: true } : null);
+                    } catch (err) {
+                      console.error('Error archiving patient:', err);
+                    }
+                  }}
+                  className="text-sm border border-red-300 text-red-600 px-3 py-1.5 rounded hover:bg-red-50"
+                >
+                  Archive Patient
+                </button>
+              ) : (
+                <span className="text-sm bg-yellow-100 text-yellow-800 px-3 py-1.5 rounded font-medium">
+                  Archived
+                </span>
+              )}
+            </div>
 
             {/* Demographics Card — BRD ZCW-BRD-0011, BUG-44 */}
             <div className="bg-white shadow sm:rounded-lg mb-6">
@@ -511,6 +563,16 @@ export function PatientOverview() {
                   }`}
                 >
                   Reports
+                </button>
+                <button
+                  onClick={() => setActiveTab('education')}
+                  className={`border-b-2 pb-4 px-1 text-sm font-medium ${
+                    activeTab === 'education'
+                      ? 'border-indigo-500 text-indigo-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Education
                 </button>
                 <button
                   onClick={() => setActiveTab('activity')}
@@ -745,29 +807,56 @@ export function PatientOverview() {
                   <p className="mt-2 text-sm text-gray-600">Maintain patient allergy records.</p>
                 </div>
                 <div className="border-t border-gray-200">
-                  {/* Add form */}
+                  {/* Add form — BUG-59: Added Type and Severity fields */}
                   <div className="bg-gray-50 px-4 py-4 sm:px-6">
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <input
-                        type="text"
-                        placeholder="Allergy name"
-                        value={allergiesForm.name}
-                        onChange={e => setAllergiesForm(prev => ({ ...prev, name: e.target.value }))}
-                        className="flex-1 border border-gray-300 rounded-md px-2 py-1.5 text-sm"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Reaction/Notes (optional)"
-                        value={allergiesForm.notes}
-                        onChange={e => setAllergiesForm(prev => ({ ...prev, notes: e.target.value }))}
-                        className="flex-1 border border-gray-300 rounded-md px-2 py-1.5 text-sm"
-                      />
-                      <button
-                        onClick={addAllergy}
-                        className="bg-indigo-600 text-white px-3 py-1.5 rounded text-sm hover:bg-indigo-700 whitespace-nowrap"
-                      >
-                        Add
-                      </button>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="text"
+                          placeholder="Allergy name"
+                          value={allergiesForm.name}
+                          onChange={e => setAllergiesForm(prev => ({ ...prev, name: e.target.value }))}
+                          className="flex-1 border border-gray-300 rounded-md px-2 py-1.5 text-sm"
+                        />
+                        <select
+                          value={allergiesForm.type}
+                          onChange={e => setAllergiesForm(prev => ({ ...prev, type: e.target.value }))}
+                          className="border border-gray-300 rounded-md px-2 py-1.5 text-sm"
+                        >
+                          <option value="">Type</option>
+                          <option value="drug">Drug</option>
+                          <option value="food">Food</option>
+                          <option value="environmental">Environmental</option>
+                          <option value="latex">Latex</option>
+                          <option value="other">Other</option>
+                        </select>
+                        <select
+                          value={allergiesForm.severity}
+                          onChange={e => setAllergiesForm(prev => ({ ...prev, severity: e.target.value }))}
+                          className="border border-gray-300 rounded-md px-2 py-1.5 text-sm"
+                        >
+                          <option value="">Severity</option>
+                          <option value="mild">Mild</option>
+                          <option value="moderate">Moderate</option>
+                          <option value="severe">Severe</option>
+                          <option value="life_threatening">Life-Threatening</option>
+                        </select>
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="text"
+                          placeholder="Reaction/Notes (optional)"
+                          value={allergiesForm.notes}
+                          onChange={e => setAllergiesForm(prev => ({ ...prev, notes: e.target.value }))}
+                          className="flex-1 border border-gray-300 rounded-md px-2 py-1.5 text-sm"
+                        />
+                        <button
+                          onClick={addAllergy}
+                          className="bg-indigo-600 text-white px-3 py-1.5 rounded text-sm hover:bg-indigo-700 whitespace-nowrap"
+                        >
+                          Add
+                        </button>
+                      </div>
                     </div>
                   </div>
                   {/* List */}
@@ -780,7 +869,20 @@ export function PatientOverview() {
                           <li key={item.id} className="px-4 py-3 sm:px-6 flex items-center justify-between hover:bg-gray-50">
                             <div>
                               <p className="text-sm font-medium text-gray-900">{item.name}</p>
-                              {item.notes && <p className="text-xs text-gray-500">{item.notes}</p>}
+                              <div className="flex gap-2 mt-0.5">
+                                {item.type && (
+                                  <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">{item.type}</span>
+                                )}
+                                {item.severity && (
+                                  <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                    item.severity === 'life_threatening' ? 'bg-red-100 text-red-800' :
+                                    item.severity === 'severe' ? 'bg-orange-100 text-orange-800' :
+                                    item.severity === 'moderate' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>{item.severity?.replace(/_/g, '-')}</span>
+                                )}
+                              </div>
+                              {item.notes && <p className="text-xs text-gray-500 mt-0.5">{item.notes}</p>}
                             </div>
                             <button
                               onClick={() => deleteAllergy(item.id)}
@@ -838,6 +940,63 @@ export function PatientOverview() {
                   ) : (
                     <div className="px-6 py-8 text-center text-gray-500">
                       No signed reports for this patient.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Education Tab — BUG-62 */}
+            {activeTab === 'education' && (
+              <div className="bg-white shadow sm:rounded-lg">
+                <div className="px-4 py-5 sm:px-6">
+                  <h3 className="text-lg font-medium text-gray-900">Education Materials</h3>
+                  <p className="mt-2 text-sm text-gray-600">Browse and assign education materials for this patient.</p>
+                </div>
+                <div className="border-t border-gray-200">
+                  {loadingEducation ? (
+                    <div className="px-6 py-8 text-center text-gray-500">Loading...</div>
+                  ) : educationMaterials.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
+                      {educationMaterials.map(material => (
+                        <div key={material.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{material.title || 'Untitled Material'}</p>
+                              {material.category && (
+                                <span className="inline-block mt-1 px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs font-medium">
+                                  {material.category}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {material.description && (
+                            <p className="text-xs text-gray-500 mt-1 line-clamp-2">{material.description}</p>
+                          )}
+                          <div className="mt-3 flex gap-2">
+                            <button
+                              className="text-xs bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700"
+                              onClick={() => {/* TODO: Assign material to patient */}}
+                            >
+                              Assign to Patient
+                            </button>
+                            {material.url && (
+                              <a
+                                href={material.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-indigo-600 hover:text-indigo-900 px-3 py-1 border border-indigo-200 rounded"
+                              >
+                                Preview
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="px-6 py-8 text-center text-gray-500">
+                      No education materials available. Add materials from the Education Library.
                     </div>
                   )}
                 </div>

@@ -19,11 +19,14 @@ export const CheckIn: React.FC = () => {
   const [consentGiven, setConsentGiven] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [redirecting, setRedirecting] = useState(false);
 
+  // BUG-60: Replace blocking alert() with non-blocking redirect.
+  // alert() froze the browser tab when navigating directly to /checkin/{id}.
   useEffect(() => {
     if (procedure && procedure.status !== ProcedureStatus.CAPSULE_RETURN_PENDING) {
-      alert(`This procedure is already past the check-in step (current status: ${procedure.status.replace(/_/g, ' ')}). Redirecting...`);
-      navigate(routeByStatus(procedure.status, procedure.id));
+      setRedirecting(true);
+      navigate(routeByStatus(procedure.status, procedure.id), { replace: true });
     }
   }, [procedure, navigate]);
 
@@ -64,14 +67,14 @@ export const CheckIn: React.FC = () => {
     }
   };
 
-  if (!procedure) {
+  if (!procedure || redirecting) {
     return (
         <div className="flex h-screen bg-gray-50">
             <Sidebar />
             <div className="flex-1 flex flex-col">
                 <Header />
                 <main className="flex-1 flex items-center justify-center">
-                    <p className="text-gray-500">Loading procedure details...</p>
+                    <p className="text-gray-500">{redirecting ? 'Redirecting to current step...' : 'Loading procedure details...'}</p>
                 </main>
             </div>
         </div>
