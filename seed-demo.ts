@@ -110,22 +110,25 @@ async function seedDemo() {
   await auth.setCustomUserClaims(clinicianUid, { role: 'clinician_auth', practiceId: PRACTICE_ID });
   console.log(`  Claims set: clinician_auth`);
 
-  // Set custom claims on all other test users (staff, admin, noauth)
-  // These must exist in Firebase Auth before running seed.
-  const claimsToSet: Array<{ email: string; role: string }> = [
-    { email: 'admin@zocw.com', role: 'admin' },
-    { email: 'staff@zocw.com', role: 'clinical_staff' },
-    { email: 'noauth@zocw.com', role: 'clinician_noauth' },
-    { email: 'clinadmin@zocw.com', role: 'clinician_admin' },
+  // Get or create all other test users (staff, admin, noauth, clinadmin)
+  // Creates accounts if they don't exist, then sets custom claims.
+  const testAccounts: Array<{ email: string; role: string; displayName: string }> = [
+    { email: 'admin@zocw.com', role: 'admin', displayName: 'Practice Admin' },
+    { email: 'staff@zocw.com', role: 'clinical_staff', displayName: 'Clinical Staff' },
+    { email: 'noauth@zocw.com', role: 'clinician_noauth', displayName: 'Dr. Review Only' },
+    { email: 'clinadmin@zocw.com', role: 'clinician_admin', displayName: 'Clinician Admin' },
   ];
-  for (const { email, role } of claimsToSet) {
+  for (const { email, role, displayName } of testAccounts) {
     try {
-      const u = await auth.getUserByEmail(email);
-      await auth.setCustomUserClaims(u.uid, { role, practiceId: PRACTICE_ID });
-      console.log(`  Claims set for ${email}: ${role}`);
+      await auth.getUserByEmail(email);
+      console.log(`  ${email} already exists`);
     } catch {
-      console.log(`  Skipped ${email} (not in Firebase Auth)`);
+      await auth.createUser({ email, password: 'password', displayName });
+      console.log(`  Created ${email}`);
     }
+    const u = await auth.getUserByEmail(email);
+    await auth.setCustomUserClaims(u.uid, { role, practiceId: PRACTICE_ID });
+    console.log(`  Claims set for ${email}: ${role}`);
   }
 
   // Get Cameron's UID if exists

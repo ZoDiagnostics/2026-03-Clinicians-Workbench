@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { collection, addDoc, Timestamp, query, where, getDocs, limit, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth, useProcedures, usePatients } from '../lib/hooks';
+import { UserRole } from '../types/enums';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
 import { ErrorState } from '../components/ErrorState';
@@ -33,7 +34,8 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
 export const Procedures: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user, practiceId } = useAuth();
+  const { user, role, practiceId } = useAuth();
+  const isReadOnly = role === UserRole.ADMIN;
   const procedures = useProcedures();
   const allPatients = usePatients();
 
@@ -215,12 +217,14 @@ export const Procedures: React.FC = () => {
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-3xl font-bold text-gray-900">All Procedures</h1>
-              <button
-                onClick={() => setShowModal(true)}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-md shadow-sm hover:bg-indigo-700 text-sm"
-              >
-                + New Procedure
-              </button>
+              {!isReadOnly && (
+                <button
+                  onClick={() => setShowModal(true)}
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-md shadow-sm hover:bg-indigo-700 text-sm"
+                >
+                  + New Procedure
+                </button>
+              )}
             </div>
 
             <div className="bg-white shadow overflow-hidden sm:rounded-md">
@@ -308,7 +312,7 @@ export const Procedures: React.FC = () => {
                                 Cancel
                               </button>
                             </div>
-                          ) : canEdit ? (
+                          ) : canEdit && !isReadOnly ? (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();

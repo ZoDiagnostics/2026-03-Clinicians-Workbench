@@ -1,6 +1,6 @@
 # ZoCW Session Handoff & Work Queue
 **Purpose:** Initialization context for a new Claude Cowork session + prioritized work queue.
-**Last Updated:** March 27, 2026 (night) — BUILD_12 complete (Opus 4.6, Cowork). All 3 remaining bugs fixed: BUG-53 refix (procedureId prop), BUG-62 refix (tab order), BUG-64 (React modal). tsc clean. Ready for commit, deploy, and Session 8 retest. Bug numbering at BUG-64.
+**Last Updated:** March 27, 2026 (late night) — BUILD_13 complete (Opus 4.6, Cowork). Fixed BUG-65/66/67/68 from Session 8 admin testing. tsc clean. Ready for commit, seed, and deploy. Bug numbering at BUG-68.
 
 ## MANDATORY SESSION RULES
 1. **At session start:** Read this file to understand current state and work queue.
@@ -88,6 +88,84 @@
 **Next session needs:**
 1. ~~Opus fix session (BUILD_12): Fix BUG-53, BUG-62, BUG-64~~ ✅ DONE (session 14 below)
 2. After BUILD_12 deploy: Session 8 testing — quick retest of BUG-53/62/64, then Administrator role (admin@zocw.com, ~129 scenarios).
+
+---
+
+### March 27, 2026 (session 8 / session 15) — Session 8 Testing: BUILD_12 Retest + Admin Role (Sonnet 4.6, Cowork)
+- **Scope:** Part A: quick retest BUG-53/62/64 as clinician@zocw.com. Part B: admin role testing B1–B9 as admin@zocw.com. Part C: clinician_admin (BLOCKED).
+- **Note:** Service worker cache issue at session start — had to programmatically clear SW registrations + caches to force load of correct BUILD_12 bundle (index-CNyvf6lZ.js). Hard refresh alone was insufficient.
+
+**Part A — BUILD_12 Quick Retest (clinician@zocw.com):**
+- **BUG-53 refix:** ✅ PASS — Both completed stepper dots now have functional onClick handlers. Check-in dot navigates to /checkin/{id}, Capsule Upload dot navigates to /capsule-upload/{id}.
+- **BUG-62 refix:** ✅ PASS — Education tab now correctly positioned before Reports. Tab order: Overview | Medical History | Medications | Allergies | Education | Reports | Activity.
+- **BUG-64:** ✅ PASS — Archive Patient shows inline React modal with Cancel/Archive buttons. No native window.confirm(). Cancel preserves patient, Archive confirms archival.
+
+**Part B — Admin Role Testing (admin@zocw.com):**
+- **B1 Dashboard:** ❌ FAIL — BUG-65: 3 Firestore permission-denied errors on load; dashboard metrics blank.
+- **B2 Sidebar:** ✅ PASS — ADMINISTRATION section with Admin & Settings present; all links functional.
+- **B3 Manage Practice:** ✅ PASS — Form loads with practice data.
+- **B4 Manage Staff:** ✅ PASS — Staff list loads, Add Staff button present.
+- **B5 Manage Clinics:** ✅ PASS — 2 clinics listed, Add Clinic present.
+- **B6 Subscription:** ✅ PASS — Spark (Free) plan shown.
+- **B7 RBAC Enforcement:** ❌ FAIL — BUG-66: No route-level role guards. Admin reaches /viewer, /checkin, /capsule-upload (all hang on "Loading..." due to Firestore permission-denied, no error state). /sign-deliver renders but shows "admin does not have signing authority" — partial enforcement only.
+- **B8 Patients:** ❌ FAIL — BUG-67: "Couldn't load patients" (Firestore permission-denied). Generic error, no role-aware message.
+- **B9 Procedures:** ❌ FAIL — BUG-67: "Couldn't load procedures" (same Firestore denial).
+
+**Part C — Clinician Admin (clinician_admin@zocw.com):** ⛔ BLOCKED — BUG-68: Account does not exist in Firebase Auth ("Invalid email or password").
+
+**New bugs: BUG-65, BUG-66, BUG-67, BUG-68**
+
+**Results: 8 PASS / 6 FAIL / 1 PARTIAL / 1 BLOCKED. Full details: `TEST_RESULTS_SESSION_8.md` in Claude Demo/.**
+
+**Next session needs:**
+1. ~~Create `clinician_admin@zocw.com` Firebase Auth account (BUG-68)~~ ✅ DONE (BUILD_13 — seed-demo.ts now creates all test accounts)
+2. ~~Fix BUG-66: Add role-aware `RoleProtectedRoute` wrapper in router.tsx~~ ✅ DONE (BUILD_13 — ClinicalRoute wrapper)
+3. ~~Fix BUG-65: Firestore rules for admin dashboard read access~~ ✅ DONE (BUILD_13 — admin added to patients + procedures read rules)
+4. ~~Fix BUG-67: Role-appropriate error messages (or Firestore rules update) for /patients and /procedures~~ ✅ DONE (BUILD_13 — Firestore fix + read-only UI)
+5. Update `Zo_Workbench_Functional_Test_Scenarios_v2_4.xlsx` with Session 8 results (pending — spreadsheet update not completed this session)
+
+---
+
+### March 27, 2026 (session 16) — BUILD_13 Bug Fix Session: Session 8 Admin Bugs (Opus 4.6, Cowork)
+- **Scope:** Fix 4 bugs from Session 8 admin role testing: BUG-65, BUG-66, BUG-67, BUG-68.
+- **Location:** Cowork VM (code changes only, no deploy).
+
+**BATCH 1 — BUG-65 + BUG-67 (Firestore rules) — ✅ FIXED:**
+- **Root cause:** `firestore.rules` `patients` and `procedures` collections did not include `'admin'` in their `allow read` role arrays. Admin's Firestore listeners immediately got `permission-denied`, blanking Dashboard metrics and showing generic errors on /patients and /procedures.
+- **Fix:** Added `'admin'` to the `allow read` `hasAnyRole` arrays for both `match /patients/{patientId}` and `match /procedures/{procedureId}`. Admin intentionally excluded from `allow update` — read-only access.
+
+**BATCH 2 — BUG-66 (Route RBAC) — ✅ FIXED:**
+- **Root cause:** `router.tsx` only had `ProtectedRoute` which checks `user != null`. No role check. Admin could navigate to clinical workflow routes (`/viewer/:id`, `/checkin/:id`, etc.) and get stuck on "Loading..." with Firestore permission errors.
+- **Fix:** Added `ClinicalRoute` component that checks both authentication AND that the user's role is in `CLINICAL_ROLES` (clinician_auth, clinician_noauth, clinician_admin, clinical_staff). Non-clinical roles (admin) are redirected to `/dashboard`. Applied `ClinicalRoute` to all 6 clinical workflow routes: `/checkin`, `/capsule-upload`, `/viewer`, `/summary`, `/report`, `/sign-deliver`. All other routes remain on `ProtectedRoute`.
+
+**BATCH 3 — BUG-67 (Admin read-only UI) — ✅ FIXED:**
+- **Root cause:** After Batch 1 Firestore fix, admin can read patients/procedures lists. But action buttons (Register Patient, New Procedure, Edit) should be hidden for admin who has read-only access.
+- **Fix:** Added `isReadOnly = role === UserRole.ADMIN` check to both `Patients.tsx` and `Procedures.tsx`. Conditionally hides: "+ Register Patient" button, "New Procedure" row links, "+ New Procedure" button, and inline "Edit" buttons when `isReadOnly` is true.
+
+**BATCH 4 — BUG-68 (clinadmin account) — ✅ FIXED:**
+- **Root cause:** Session 8 tested with `clinician_admin@zocw.com` but the correct email is `clinadmin@zocw.com`. The account didn't exist in Firebase Auth — `seed-demo.ts` only set claims on existing accounts, it didn't create them.
+- **Fix:** Updated `seed-demo.ts` to create ALL test accounts (admin, staff, noauth, clinadmin) if they don't exist, using the same get-or-create pattern as the clinician account. Updated `docs/BROWSER_AUTH_AUTOMATION.md` to reflect that `seed-demo.ts` now manages all account creation.
+
+**Build Verification:**
+- `tsc --noEmit` exits 0 (zero TypeScript errors)
+
+**Files Modified (6 files):**
+| File | Change |
+|------|--------|
+| `firestore.rules` | BUG-65/67: Added `'admin'` to patients + procedures `allow read` arrays. |
+| `src/lib/router.tsx` | BUG-66: Added `ClinicalRoute` wrapper with role check. Applied to 6 clinical routes. |
+| `src/screens/Patients.tsx` | BUG-67: `isReadOnly` hides Register Patient button and New Procedure links for admin. |
+| `src/screens/Procedures.tsx` | BUG-67: `isReadOnly` hides New Procedure button and Edit actions for admin. |
+| `seed-demo.ts` | BUG-68: Auto-create all test accounts (admin, staff, noauth, clinadmin) if missing. |
+| `docs/BROWSER_AUTH_AUTOMATION.md` | BUG-68: Updated prerequisites and clinadmin UID note. |
+
+**All fixes: 4/4 completed. tsc clean. Ready for commit + deploy.**
+
+**Cameron post-fix steps:**
+1. Run `npx tsx seed-demo.ts` from repo root on Mac to create the `clinadmin@zocw.com` account in Firebase Auth
+2. Commit BUILD_13 changes
+3. Deploy with `npm run build && npx firebase deploy --only hosting,firestore:rules` (note: `firestore:rules` needed for Batch 1 changes)
+4. Session 9: Quick retest of BUG-65/66/67, then Part C clinician_admin testing as `clinadmin@zocw.com`
 
 ---
 

@@ -133,7 +133,8 @@ service cloud.firestore {
         'clinical_staff',
         'clinician_auth',
         'clinician_noauth',
-        'clinician_admin'
+        'clinician_admin',
+        'admin'
       ]);
       allow create: if isAuthenticated() && isClinicalStaff();
       allow update: if inPractice(resource.data.practiceId) && hasAnyRole([
@@ -218,7 +219,8 @@ service cloud.firestore {
         'clinical_staff',
         'clinician_auth',
         'clinician_noauth',
-        'clinician_admin'
+        'clinician_admin',
+        'admin'
       ]);
 
       allow create: if isClinicalStaff();

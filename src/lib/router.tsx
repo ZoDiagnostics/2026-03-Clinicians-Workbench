@@ -30,6 +30,7 @@ import SignDeliver from '../screens/SignDeliver';
 import { PatientOverview } from '../screens/PatientOverview';
 import LoginScreen from '../screens/Login';
 import { useAuth } from './hooks';
+import { UserRole } from '../types/enums';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -42,6 +43,32 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   if (!user) {
     // BUG-6: Pass the intended destination so Login can redirect back after auth
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+
+  return children;
+};
+
+const CLINICAL_ROLES: UserRole[] = [
+  UserRole.CLINICIAN_AUTH,
+  UserRole.CLINICIAN_NOAUTH,
+  UserRole.CLINICIAN_ADMIN,
+  UserRole.CLINICAL_STAFF,
+];
+
+const ClinicalRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, role, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+
+  if (role && !CLINICAL_ROLES.includes(role)) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
@@ -188,49 +215,49 @@ export const router = createBrowserRouter([
   {
     path: '/checkin/:procedureId',
     element: (
-      <ProtectedRoute>
+      <ClinicalRoute>
         <CheckIn />
-      </ProtectedRoute>
+      </ClinicalRoute>
     ),
   },
   {
     path: '/capsule-upload/:procedureId',
     element: (
-      <ProtectedRoute>
+      <ClinicalRoute>
         <CapsuleUpload />
-      </ProtectedRoute>
+      </ClinicalRoute>
     ),
   },
   {
     path: '/viewer/:procedureId',
     element: (
-      <ProtectedRoute>
+      <ClinicalRoute>
         <Viewer />
-      </ProtectedRoute>
+      </ClinicalRoute>
     ),
   },
   {
     path: '/summary/:procedureId',
     element: (
-      <ProtectedRoute>
+      <ClinicalRoute>
         <Summary />
-      </ProtectedRoute>
+      </ClinicalRoute>
     ),
   },
   {
     path: '/report/:procedureId',
     element: (
-      <ProtectedRoute>
+      <ClinicalRoute>
         <Report />
-      </ProtectedRoute>
+      </ClinicalRoute>
     ),
   },
   {
     path: '/sign-deliver/:procedureId',
     element: (
-      <ProtectedRoute>
+      <ClinicalRoute>
         <SignDeliver />
-      </ProtectedRoute>
+      </ClinicalRoute>
     ),
   },
   {

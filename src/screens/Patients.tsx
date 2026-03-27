@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/hooks';
+import { UserRole } from '../types/enums';
 import { Patient } from '../types/patient';
 import { COLLECTIONS } from '../types/firestore-paths';
 import { Link } from 'react-router-dom';
@@ -31,7 +32,8 @@ const EMPTY_FORM: NewPatientForm = {
 };
 
 export function Patients() {
-  const { practiceId, user, loading: authLoading } = useAuth();
+  const { practiceId, user, role, loading: authLoading } = useAuth();
+  const isReadOnly = role === UserRole.ADMIN;
   const [patients, setPatients] = useState<Patient[]>([]);
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -192,12 +194,14 @@ export function Patients() {
         <main className="flex-1 overflow-y-auto p-6">
           <div className="flex justify-between items-center mb-4">
             <h1 className="text-2xl font-bold">Patients</h1>
-            <button
-              onClick={() => setShowModal(true)}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-md shadow-sm hover:bg-indigo-700 text-sm"
-            >
-              + Register Patient
-            </button>
+            {!isReadOnly && (
+              <button
+                onClick={() => setShowModal(true)}
+                className="bg-indigo-600 text-white px-4 py-2 rounded-md shadow-sm hover:bg-indigo-700 text-sm"
+              >
+                + Register Patient
+              </button>
+            )}
           </div>
 
           <div className="mb-4">
@@ -243,7 +247,9 @@ export function Patients() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
                       <Link to={`/patient/${patient.id}`} className="text-indigo-600 hover:text-indigo-900">View</Link>
                       {/* BUG-56: Add New Procedure action on patient rows */}
-                      <Link to={`/procedures?patientId=${patient.id}`} className="text-green-600 hover:text-green-900">New Procedure</Link>
+                      {!isReadOnly && (
+                        <Link to={`/procedures?patientId=${patient.id}`} className="text-green-600 hover:text-green-900">New Procedure</Link>
+                      )}
                     </td>
                   </tr>
                 ))}

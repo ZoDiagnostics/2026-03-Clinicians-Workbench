@@ -6,7 +6,7 @@ This document provides reusable JavaScript snippets for automated browser testin
 
 ## Prerequisites
 
-Custom claims MUST be set on all test users via `fix-claims.ts` (run once from Firebase Studio). Without claims, login succeeds but the app redirects back to `/login` after ~15 seconds.
+All test accounts are created and claims set by `seed-demo.ts` (`npx tsx seed-demo.ts`). If accounts already exist, claims are refreshed. Without claims, login succeeds but the app redirects back to `/login` after ~15 seconds.
 
 ## Test Credentials
 
@@ -16,7 +16,7 @@ Custom claims MUST be set on all test users via `fix-claims.ts` (run once from F
 | admin@zocw.com | password | admin | VtPqYvrpwCZhTFqCpzkP7FR3aZt2 |
 | staff@zocw.com | password | clinical_staff | cf9f1YBWFhNAB9KLbk1qVdoE1tE2 |
 | noauth@zocw.com | password | clinician_noauth | 0ZhIsvTsClV37xic0KQDYSMeEM33 |
-| clinadmin@zocw.com | password | clinician_admin | (created by fix-claims.ts) |
+| clinadmin@zocw.com | password | clinician_admin | V8JkXjzMe5aVqZCVCsQEpMEBSHr1 |
 
 ## Login Automation Snippet
 
