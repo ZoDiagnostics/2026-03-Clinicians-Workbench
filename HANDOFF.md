@@ -1,6 +1,6 @@
 # ZoCW Session Handoff & Work Queue
 **Purpose:** Initialization context for a new Claude Cowork session + prioritized work queue.
-**Last Updated:** March 27, 2026 (late night) — BUILD_13 complete (Opus 4.6, Cowork). Fixed BUG-65/66/67/68 from Session 8 admin testing. tsc clean. Ready for commit, seed, and deploy. Bug numbering at BUG-68.
+**Last Updated:** March 27, 2026 (late night) — BUILD_13 deployed. Lessons 15–16 added. All test accounts have claims set. Bug numbering at BUG-68.
 
 ## MANDATORY SESSION RULES
 1. **At session start:** Read this file to understand current state and work queue.
@@ -10,6 +10,11 @@
 5. **Doc audit scope:** When auditing docs for currency, ALWAYS include: MASTER_RUNBOOK.md, ZOCW_REFERENCE.md, IMPORT_MAP.md, NAMING_CONTRACT.md, docs/TEST_VALIDATION.md, and `Zo_Workbench_Functional_Test_Scenarios_v2_4.xlsx` (in Claude Demo/ root). Test artifacts must stay in sync with actual routes, screens, and features.
 6. **Model selection:** Follow `docs/ZoCW_Model_Selection_Guide.md` for all tasks. For multi-step work, produce a Model-Routed Task Plan table before executing. Default to Sonnet; escalate to Opus only when the task is more judgment than execution. See guide for ZoCW-specific escalation triggers.
 7. **OneDrive "Resource deadlock avoided" errors:** If the Cowork VM cannot read a file, it is likely locked by OneDrive sync. Do NOT assume the file is missing or empty. Wait and retry, or read other accessible files first. See Lesson 6 and Lesson 8.
+8. **Terminal commands must specify which terminal.** When giving Cameron commands to run, always prefix with which terminal: "In **Mac Terminal**:" or "In **Cowork Terminal**:". Never give bare commands without this context.
+9. **Always include full cd path.** Every terminal command block for Mac Terminal must start with the full `cd` path to the intended working directory. The repo path on Mac is: `cd ~/Library/CloudStorage/OneDrive-SharedLibraries-ZoDiagnostics/SW\ -\ Software\ Dev\ and\ AI-ML\ -\ General/40-Clinician-Workbench/10-Human-Read-Review/90-Demos-Pitches/Claude\ Demo/zocw-firebase-repo`. Never assume the user is already in the right directory.
+10. **Cowork VM workspace ≠ Mac build repo.** The Cowork VM mounts `Claude Demo/zocw-firebase-repo` but this is a SEPARATE git clone from the Mac's working copy. After making code changes in Cowork, always `git push` from the workspace and instruct Cameron to `git pull` in Mac Terminal before building. Verify bundle hash after deploy matches the build output. See Lesson 15.
+11. **Log lessons learned.** At the end of every session, review what went wrong or caused friction. If there's a reusable lesson, add it to `docs/LESSONS_LEARNED.md` with date, problem, root cause, fix, and prevention steps. Lessons are numbered sequentially (currently at Lesson 16).
+12. **Keep git in sync.** After every code change session: commit, push, and verify the remote is up to date. Before every build/deploy: pull latest. Before every test session: confirm the deployed bundle hash matches the latest build. Stale deploys have caused multiple wasted test sessions (see Lessons 15).
 
 ---
 

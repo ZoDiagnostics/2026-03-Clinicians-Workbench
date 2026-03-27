@@ -334,4 +334,42 @@ rm -rf ../zocw-backup-20260325
 
 ---
 
+## Lesson 15: Cowork VM Workspace Is NOT the Build Repo
+
+**Date:** March 27, 2026 (BUILD_11/12 deploy failure)
+
+**Problem:** Opus made all BUILD_11 code changes in the Cowork VM workspace (`Claude Demo/zocw-firebase-repo`) and committed them there. Cameron then ran `npm run build && firebase deploy` from his Mac's separate clone (`~/2026-03-Clinicians-Workbench`). The build succeeded, the deploy succeeded — but the live app had none of the fixes. Sonnet caught it during Session 7 retests.
+
+**Root cause:** The Cowork VM mounts the user's "Claude Demo" folder, which contains a full git clone of the repo. But Cameron's Mac also has a separate clone at a different path. The two are independent — commits in one don't appear in the other unless pushed to GitHub and pulled.
+
+**Fix applied:** `git pull origin main` in the Mac build repo picked up the pushed commits. Build + deploy from there produced the correct bundle.
+
+**Prevention:**
+1. **Always verify the build repo matches the workspace.** After Opus fixes, before deploy, confirm `git log --oneline -3` in the build terminal shows the expected commit hashes.
+2. **Ideally mount the actual build repo in Cowork** instead of a separate copy. Or always `git push` from the workspace and `git pull` in the build repo before building.
+3. **Verify bundle hash after deploy.** Compare the `index-XXXXX.js` filename from `npm run build` output against what the live site serves (check via browser DevTools or `document.querySelectorAll('script[src]')[0]?.src`). If they don't match, the deploy used stale files.
+
+---
+
+## Lesson 16: Firebase Admin SDK Requires Quota Project for Local ADC
+
+**Date:** March 27, 2026 (BUG-68 clinadmin claims)
+
+**Problem:** Running `npx tsx seed-demo.ts` or any Firebase Admin SDK script on Mac failed with "Could not load the default credentials" even after `gcloud auth application-default login` succeeded. The Auth API returned 403 "requires a quota project."
+
+**Root cause:** Google ADC (Application Default Credentials) from `gcloud auth` don't include a quota project by default. Firebase Auth (`identitytoolkit.googleapis.com`) requires one to authorize API calls.
+
+**Fix:** Two commands in Mac Terminal, in order:
+```bash
+gcloud auth application-default login          # authenticate
+gcloud auth application-default set-quota-project cw-e7c19   # set quota project
+```
+
+**Prevention:**
+1. **After any fresh `gcloud auth application-default login`, always follow with `set-quota-project`.** The credentials file at `~/.config/gcloud/application_default_credentials.json` persists across sessions, so this is a one-time setup per machine.
+2. **Alternative:** Use a service account key JSON file (`GOOGLE_APPLICATION_CREDENTIALS` env var) instead of user ADC. Service accounts don't need quota project setup. Store the key outside the repo (it's a secret).
+3. **Document per-machine setup.** The Mac Studio office machine is now configured. Home Mac still needs `gcloud auth application-default login` + `set-quota-project` before any Admin SDK scripts will work.
+
+---
+
 *Add new lessons as they arise. Review before starting new Firebase/React projects.*
