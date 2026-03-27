@@ -206,7 +206,7 @@ export const Viewer: React.FC = () => {
     <div className="flex h-screen bg-gray-800 text-white">
       <Sidebar />
       <div className="flex-1 flex flex-col">
-        <ViewerHeader currentStep={3} />
+        <ViewerHeader currentStep={3} procedureId={procedureId} />
 
         {/* Patient info bar */}
         <div className="bg-gray-900 border-b border-gray-700 px-4 py-2 flex items-center justify-between">

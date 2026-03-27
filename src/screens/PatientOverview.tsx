@@ -61,6 +61,9 @@ export function PatientOverview() {
   const [educationMaterials, setEducationMaterials] = useState<any[]>([]);
   const [loadingEducation, setLoadingEducation] = useState(false);
 
+  // BUG-64: React confirmation dialog for archive (replaces window.confirm)
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
+
   // Filter and sort procedures for this patient
   const patientProcedures = useMemo(() => {
     let procs = allProcedures.filter(p => p.patientId === id);
@@ -399,19 +402,10 @@ export function PatientOverview() {
 
             <div className="flex items-center justify-between mb-6">
               <h1 className="text-3xl font-bold text-gray-900">Patient Overview</h1>
-              {/* BUG-58: Archive patient action */}
+              {/* BUG-58: Archive patient action. BUG-64: React dialog instead of window.confirm */}
               {!patient.isArchived ? (
                 <button
-                  onClick={async () => {
-                    if (!id || !window.confirm('Are you sure you want to archive this patient? This can be undone.')) return;
-                    try {
-                      const patientRef = doc(db, COLLECTIONS.PATIENTS, id);
-                      await updateDoc(patientRef, { isArchived: true, updatedAt: serverTimestamp() });
-                      setPatient(prev => prev ? { ...prev, isArchived: true } : null);
-                    } catch (err) {
-                      console.error('Error archiving patient:', err);
-                    }
-                  }}
+                  onClick={() => setArchiveConfirmOpen(true)}
                   className="text-sm border border-red-300 text-red-600 px-3 py-1.5 rounded hover:bg-red-50"
                 >
                   Archive Patient
@@ -555,16 +549,6 @@ export function PatientOverview() {
                   Allergies
                 </button>
                 <button
-                  onClick={() => setActiveTab('reports')}
-                  className={`border-b-2 pb-4 px-1 text-sm font-medium ${
-                    activeTab === 'reports'
-                      ? 'border-indigo-500 text-indigo-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  Reports
-                </button>
-                <button
                   onClick={() => setActiveTab('education')}
                   className={`border-b-2 pb-4 px-1 text-sm font-medium ${
                     activeTab === 'education'
@@ -573,6 +557,16 @@ export function PatientOverview() {
                   }`}
                 >
                   Education
+                </button>
+                <button
+                  onClick={() => setActiveTab('reports')}
+                  className={`border-b-2 pb-4 px-1 text-sm font-medium ${
+                    activeTab === 'reports'
+                      ? 'border-indigo-500 text-indigo-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Reports
                 </button>
                 <button
                   onClick={() => setActiveTab('activity')}
@@ -1053,6 +1047,43 @@ export function PatientOverview() {
           </div>
         </main>
       </div>
+
+      {/* BUG-64: React confirmation dialog for Archive Patient (replaces window.confirm) */}
+      {archiveConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setArchiveConfirmOpen(false)} />
+          <div className="relative bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Archive Patient</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Are you sure you want to archive <span className="font-semibold">{patient.firstName} {patient.lastName}</span>? This can be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setArchiveConfirmOpen(false)}
+                className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (!id) return;
+                  try {
+                    const patientRef = doc(db, COLLECTIONS.PATIENTS, id);
+                    await updateDoc(patientRef, { isArchived: true, updatedAt: serverTimestamp() });
+                    setPatient(prev => prev ? { ...prev, isArchived: true } : null);
+                  } catch (err) {
+                    console.error('Error archiving patient:', err);
+                  }
+                  setArchiveConfirmOpen(false);
+                }}
+                className="px-4 py-2 text-sm text-white bg-red-600 rounded-md hover:bg-red-700"
+              >
+                Archive
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

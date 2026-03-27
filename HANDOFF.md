@@ -1,6 +1,6 @@
 # ZoCW Session Handoff & Work Queue
 **Purpose:** Initialization context for a new Claude Cowork session + prioritized work queue.
-**Last Updated:** March 27, 2026 (late evening) — BUILD_11 Bug Fix Session complete (Opus 4.6, Cowork). All 10 Session 6 bugs fixed: BUG-53 (stepper clickable), BUG-55 (Firestore noauth permissions), BUG-56 (New Procedure on rows), BUG-57 (sortable columns), BUG-58 (Archive patient), BUG-59 (allergy fields), BUG-60 (URL hang), BUG-61 (Viewer noauth), BUG-62 (Education tab), BUG-63 (multi-file upload). tsc clean. Needs deploy.
+**Last Updated:** March 27, 2026 (night) — BUILD_12 complete (Opus 4.6, Cowork). All 3 remaining bugs fixed: BUG-53 refix (procedureId prop), BUG-62 refix (tab order), BUG-64 (React modal). tsc clean. Ready for commit, deploy, and Session 8 retest. Bug numbering at BUG-64.
 
 ## MANDATORY SESSION RULES
 1. **At session start:** Read this file to understand current state and work queue.
@@ -59,6 +59,70 @@
 
 ---
 
+### March 27, 2026 (session 13) — Session 7 Retests: BUILD_11 Verification (Sonnet 4.6, Cowork)
+- **Scope:** Retest all 10 BUILD_11 bug fixes. Two roles: clinician@zocw.com (Part A) and noauth@zocw.com (Part B).
+- **BUILD_11 deploy confirmed:** Live app at https://cw-e7c19.web.app shows v3.1.0 with all BUILD_11 UI changes visible.
+
+**Part B (noauth@zocw.com) — completed first (no login switch needed):**
+- **BUG-55 (Firestore noauth permissions):** PASS — All 6 patient sub-collection tabs (Medical History, Medications, Allergies, Reports, Education, Activity) load without Firestore permission errors.
+- **BUG-61 (Viewer interactive for noauth):** PASS — Viewer at draft status is fully interactive: findings navigable (clicking finding navigates to correct frame), add-finding form active, Sign Restricted button visible with correct tooltip.
+- **BUG-60 noauth (stale URL redirect):** PASS — /checkin/{id} redirects to /report/{id} cleanly.
+
+**Part A (clinician@zocw.com) — after Cameron's login switch:**
+- **BUG-60 clinician (stale URL redirect):** PASS — Both /checkin/{id} and /capsule-upload/{id} redirect to /report/{id}. No hang, no alert.
+- **BUG-56 (New Procedure button):** PASS — All 10 patient rows show "New Procedure" action link.
+- **BUG-57 (Sortable columns):** PASS — NAME column shows ↑ sort indicator, list is alphabetically ordered.
+- **BUG-58 (Archive Patient):** PASS — Archive Patient button visible, confirm dialog appears, cancel preserves patient.
+- **BUG-59 (Allergy type/severity):** PASS — Type (drug/food/environmental/latex/other) and Severity (mild/moderate/severe/life-threatening) dropdowns present; colored badges shown after save.
+- **BUG-63 (Multi-file upload):** PASS — "+ Add more files" link visible; file input has `multiple=true`; selected files appear in list.
+- **BUG-53 (Stepper dots): FAIL** — Dots styled with `cursor: pointer` but `onClick={undefined}`. Root cause: Viewer.tsx main render at line 209 calls `<ViewerHeader currentStep={3} />` without `procedureId` prop. Without procedureId, stepRoutes is `{}` and all onClick handlers are undefined. The loading-state render at line 196 correctly passes procedureId, but the full render does not. Fix: add `procedureId={procedureId}` to line 209 in Viewer.tsx.
+- **BUG-62 (Education tab): FAIL** — Tab exists and content loads, but tab ORDER is wrong. Actual: Allergies|Reports|**Education**|Activity. Expected: Allergies|**Education**|Reports|Activity.
+
+**New bug:**
+- **BUG-64 (Archive Patient window.confirm):** Archive Patient uses native `window.confirm()` — a blocking dialog that freezes browser automation (same pattern as original BUG-60 alert). File: `src/screens/PatientOverview.tsx` line 406. Recommend: React confirmation modal.
+
+**Results: 8 PASS / 2 FAIL (BUG-53, BUG-62) / 1 NEW BUG (BUG-64)**
+
+**Spreadsheet:** 26 rows updated in Scenario Matrix (cols O/P/Q/R). File: `TEST_RESULTS_SESSION_7.md` in Claude Demo/.
+
+**Next session needs:**
+1. ~~Opus fix session (BUILD_12): Fix BUG-53, BUG-62, BUG-64~~ ✅ DONE (session 14 below)
+2. After BUILD_12 deploy: Session 8 testing — quick retest of BUG-53/62/64, then Administrator role (admin@zocw.com, ~129 scenarios).
+
+---
+
+### March 27, 2026 (session 14) — BUILD_12 Bug Fix Session: Session 7 Retest Failures (Opus 4.6, Cowork)
+- **Scope:** Fix 3 issues from Session 7 retests: BUG-53 refix, BUG-62 refix, BUG-64 new bug.
+- **Location:** Cowork VM (code changes only, no deploy).
+
+**BUG-53 refix (Stepper dots non-functional) — ✅ FIXED:**
+- **Root cause:** In `Viewer.tsx`, the main render path (line ~209) called `<ViewerHeader currentStep={3} />` without passing `procedureId`. The loading-state render (line ~196) correctly passed it. Without `procedureId`, `stepRoutes` is `{}` and all `onClick` handlers are `undefined`.
+- **Fix:** Added `procedureId={procedureId}` to the main render `<ViewerHeader>` in `src/screens/Viewer.tsx`.
+
+**BUG-62 refix (Education tab wrong position) — ✅ FIXED:**
+- **Root cause:** Education tab button was inserted after Reports in the tab navigation bar. Spec requires: Overview | Medical History | Medications | Allergies | **Education** | Reports | Activity.
+- **Fix:** Swapped the Education and Reports tab button positions in `src/screens/PatientOverview.tsx`.
+
+**BUG-64 (Archive Patient blocking dialog) — ✅ FIXED:**
+- **Root cause:** Archive Patient button used `window.confirm()` — a blocking native dialog that freezes browser automation (same anti-pattern as original BUG-60 `alert()`).
+- **Fix:** Replaced `window.confirm()` with React state-driven confirmation modal. Added `archiveConfirmOpen` state + inline modal with Cancel/Archive buttons styled consistently with app design.
+
+**Build Verification:**
+- `tsc --noEmit` exits 0 (zero TypeScript errors)
+
+**Files Modified (3 files):**
+| File | Change |
+|------|--------|
+| `src/screens/Viewer.tsx` | BUG-53: Added `procedureId={procedureId}` to main render ViewerHeader. |
+| `src/screens/PatientOverview.tsx` | BUG-62: Reordered Education tab before Reports. BUG-64: Replaced `window.confirm()` with React confirmation modal. |
+| `HANDOFF.md` | This session log. |
+
+**All fixes: 3/3 completed. tsc clean. Ready for commit + deploy.**
+
+**Next action:** Commit BUILD_12, deploy (`npm run build && firebase deploy --only hosting`), then Session 8 — quick retest of BUG-53/62/64 + admin role testing (~129 scenarios).
+
+---
+
 ### March 27, 2026 (session 11) — Functional Testing Session 6: Viewer Retests + Noauth Role (Sonnet 4.6, Cowork)
 - **Scope:** 25 SCR-10 Viewer retests (BUILD_10 regression) as clinician@zocw.com, then 81 new "Clinician Not Auth to Sign" scenarios as noauth@zocw.com across 16 screens.
 - **Location:** Cowork (remote session, no code changes — test-only).
@@ -88,12 +152,15 @@
 - `PROJECT_INSTRUCTIONS.md` (Claude Demo/) — Session 6 entry added, statistics updated (51% coverage, 420 tested, 81 total PASS)
 - `HANDOFF.md` (repo) — This entry
 
-**Priority fixes for next session (Opus recommended):**
-1. `firestore.rules` — grant clinician_noauth read access to patient sub-collections (BUG-55)
-2. `src/screens/CheckIn.tsx`, `src/screens/CapsuleUpload.tsx` — fix URL hang (BUG-60)
-3. `src/screens/Viewer.tsx` — enable pre-review checklist and findings for noauth role (BUG-61)
-4. `src/screens/PatientOverview.tsx` (or equivalent) — add Education tab (BUG-62)
-5. `src/components/ViewerHeader.tsx` — make completed stepper dots clickable (BUG-53 Part A)
+**Priority fixes — ✅ ALL COMPLETED in Session 12 (BUILD_11):**
+1. ~~`firestore.rules` — grant clinician_noauth read access to patient sub-collections (BUG-55)~~ ✅
+2. ~~`src/screens/CheckIn.tsx`, `src/screens/CapsuleUpload.tsx` — fix URL hang (BUG-60)~~ ✅
+3. ~~`src/screens/Viewer.tsx` — enable pre-review checklist and findings for noauth role (BUG-61)~~ ✅
+4. ~~`src/screens/PatientOverview.tsx` — add Education tab (BUG-62)~~ ✅
+5. ~~`src/components/ViewerHeader.tsx` — make completed stepper dots clickable (BUG-53 Part A)~~ ✅
+6. ~~BUG-56/57/58/59/63 — Patient management + upload features~~ ✅
+
+**Next action:** Session 7 retest — verify all 10 fixes with clinician_auth + noauth roles, then test admin + clinician_admin roles.
 
 ---
 
@@ -1119,15 +1186,9 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 ### ═══════════════════════════════════════════════
 
 #### Uncommitted Changes (Mar 27 late evening)
-Git repo is healthy. BUILD_09 IAM fix committed as `e6d982e` on Mar 27.
+Git repo is healthy. BUILD_11 bug fixes committed as `29d14c1` on Mar 27 and deployed.
 
-**Remaining uncommitted (BUILD_10 UX overhaul):**
-  - `src/components/ViewerHeader.tsx` (NEW)
-  - `src/components/PreReviewBanner.tsx`
-  - `src/components/FrameViewer.tsx`
-  - `src/screens/Viewer.tsx`
-  - `src/types/capsule-image.ts`
-  - `HANDOFF.md`
+**No uncommitted changes.** All BUILD_10 UX overhaul and BUILD_11 bug fix files have been committed and pushed.
 
 #### Deploy Checklist
 - [x] **Push BUILD_09 code** — ✅ Mar 26
@@ -1135,22 +1196,24 @@ Git repo is healthy. BUILD_09 IAM fix committed as `e6d982e` on Mar 27.
 - [x] **Frontend build** — ✅ Mar 26 (`npm run build` succeeded, bundle `index--9GVZv7r.js`)
 - [x] **Deploy hosting** — ✅ Mar 27. Bundle `index-D-CQSBmi.js` with correct `.env` values deployed. App loads, pipeline metadata displays.
 - [x] **Fix signed URL generation** — ✅ Mar 27 (session 10). Granted `roles/iam.serviceAccountTokenCreator`. Frame images render via signed HTTPS URLs.
+- [x] **BUILD_11 bug fixes** — ✅ Mar 27 (session 12). 10 bug fixes committed (`29d14c1`), pushed, hosting + Firestore rules deployed.
 
 ### ═══════════════════════════════════════════════
 ### 🧪 TESTS — Remaining Test Work
 ### ═══════════════════════════════════════════════
 
-#### Test Statistics (825 total scenarios, as of Mar 24)
+#### Test Statistics (825 total scenarios, as of Mar 27 late evening)
 | Category | Count | Notes |
 |----------|-------|-------|
-| **Clinician_auth — tested** | ~393 | Multiple passes (Session 5, regression, Phase 3, 3B) |
-| **Other roles — never tested** | 432 | admin (166), noauth (135), clinician_admin (74), clinical_staff (57) |
-| **Blocked by Cowork auth** | 33 | noauth, staff, clinadmin roles — needs manual pre-login workaround |
-| **Unit tests** | 0 | No test files exist. Prompt ready: `docs/SONNET_UNIT_TEST_PROMPT.md` |
-| Cumulative PASS | 368 | Across all sessions |
-| Cumulative FAIL | 498 | Many retested after bug fixes — actual remaining failures lower |
-| Cumulative BLOCKED | 175 | 33 are the persistent Cowork auth issue |
-| Total bugs found | 56 | 45 fixed, 11 deferred to BUILD_09 pipeline |
+| **Tested (Sessions 5+6)** | 420 | 51% of 825. clinician_auth + clinician_noauth |
+| **Untested** | 351 | admin (~129), clinician_admin (~25), clinical_staff, remaining noauth |
+| **Pre-blocked / out of scope** | 54 | 7% |
+| Cumulative PASS | 81 | 9.8% — many failures are from bugs now fixed in BUILD_11 |
+| Cumulative FAIL | 296 | 35.9% — expect significant improvement on retest |
+| Cumulative BLOCKED | 63 | 7.6% — 32 were blocked by BUG-60 (now fixed) |
+| Total bugs found | 63 | 37 fixed (27 prior + 10 in BUILD_11), 26 remaining |
+
+**Next test session:** Session 7 — Retest BUILD_11 fixes with clinician_auth + noauth, then admin + clinician_admin roles.
 
 #### TEST-01: Unit Test Scaffolding (Sonnet)
 - [ ] **Dispatch `docs/SONNET_UNIT_TEST_PROMPT.md`** — vitest suite: RBAC hooks, ProtectedRoute, component smoke tests, screen render tests. No browser needed. Can run in any Cowork/Sonnet session.
