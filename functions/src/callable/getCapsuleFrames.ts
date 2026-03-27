@@ -66,7 +66,9 @@ function getPipelineBucket() {
 
 /**
  * Convert a gs:// URL to a signed HTTPS URL for browser access.
- * Falls back to the original URL if signing fails (e.g., IAM not configured).
+ * Returns `ERROR:SIGN_FAILED:{gsUrl}` if signing fails (e.g., missing
+ * roles/iam.serviceAccountTokenCreator). This lets the Viewer detect
+ * and display a meaningful error instead of a broken image icon.
  */
 async function toSignedUrl(
   bucket: ReturnType<typeof getPipelineBucket>,
@@ -80,8 +82,8 @@ async function toSignedUrl(
     });
     return url;
   } catch (err) {
-    console.warn(`[getCapsuleFrames] Failed to sign URL: ${gsUrl}`, err);
-    return gsUrl; // Return original gs:// URL as fallback
+    console.error(`[getCapsuleFrames] FAILED to sign URL: ${gsUrl}`, err);
+    return `ERROR:SIGN_FAILED:${gsUrl}`;
   }
 }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 
 interface FrameViewerProps {
   /** Array of frame URLs (from Firebase Storage or local) */
@@ -26,6 +26,7 @@ export const FrameViewer: React.FC<FrameViewerProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [showControls, setShowControls] = useState(true);
+  const [imageError, setImageError] = useState<string | null>(null);
 
   const totalFrames = frames.length;
   const hasFrames = totalFrames > 0;
@@ -59,6 +60,7 @@ export const FrameViewer: React.FC<FrameViewerProps> = ({
   const goToFrame = useCallback((index: number) => {
     const clamped = Math.max(0, Math.min(index, totalFrames - 1));
     setCurrentIndex(clamped);
+    setImageError(null);
     onFrameChange?.(clamped);
   }, [totalFrames, onFrameChange]);
 
@@ -99,13 +101,44 @@ export const FrameViewer: React.FC<FrameViewerProps> = ({
       );
     }
 
+    const frameUrl = frames[currentIndex];
+    const isSignError = frameUrl?.startsWith('ERROR:SIGN_FAILED:');
+    const isGsUrl = frameUrl?.startsWith('gs://');
+
     return (
       <div className="flex-1 relative bg-black flex items-center justify-center">
-        <img
-          src={frames[currentIndex]}
-          alt={`Frame ${currentIndex + 1}`}
-          className="max-h-full max-w-full object-contain"
-        />
+        {isSignError ? (
+          <div className="flex flex-col items-center text-red-400 px-8 text-center">
+            <svg className="w-12 h-12 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-sm font-medium">Image URL signing failed</p>
+            <p className="text-xs text-gray-500 mt-1">The service account may lack the iam.serviceAccountTokenCreator role</p>
+          </div>
+        ) : isGsUrl ? (
+          <div className="flex flex-col items-center text-yellow-400 px-8 text-center">
+            <svg className="w-12 h-12 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-sm font-medium">Raw storage URL — cannot render in browser</p>
+            <p className="text-xs text-gray-500 mt-1">{frameUrl}</p>
+          </div>
+        ) : imageError ? (
+          <div className="flex flex-col items-center text-gray-400 px-8 text-center">
+            <svg className="w-12 h-12 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14" />
+            </svg>
+            <p className="text-sm font-medium">Frame failed to load</p>
+            <p className="text-xs text-gray-500 mt-1">{imageError}</p>
+          </div>
+        ) : (
+          <img
+            src={frameUrl}
+            alt={`Frame ${currentIndex + 1}`}
+            className="max-h-full max-w-full object-contain"
+            onError={() => setImageError(`Failed to load frame ${currentIndex + 1}`)}
+          />
+        )}
         {/* Frame counter overlay */}
         <div className="absolute top-3 right-3 bg-black/70 text-white px-3 py-1 rounded text-sm font-mono">
           {currentIndex + 1} / {totalFrames}

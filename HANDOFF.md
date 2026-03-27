@@ -1,6 +1,6 @@
 # ZoCW Session Handoff & Work Queue
 **Purpose:** Initialization context for a new Claude Cowork session + prioritized work queue.
-**Last Updated:** March 25, 2026 (late evening) — Opus session continued: completed BUILD_09 Phases 1–4 (all code work). Phase 4 (Viewer integration) wires capsule frames + AI findings into the Viewer screen. TypeScript builds clean (no new errors). Remaining: Phase 0 (infra, Cameron), Phase 5 (deploy + E2E test at office), Phase 6 (perf optimization if needed).
+**Last Updated:** March 27, 2026 (evening) — BUILD_09 Phase 5 E2E **COMPLETE.** Pipeline integration fully working: 53 frames render with signed HTTPS URLs, playback controls functional, AI anomaly metadata displays. IAM signing fix applied (session 10). Error handling improved in both Cloud Function and FrameViewer. Deployed hosting + functions. Phase 6 (perf optimization) not needed — 53 frames load quickly.
 
 ## MANDATORY SESSION RULES
 1. **At session start:** Read this file to understand current state and work queue.
@@ -14,6 +14,170 @@
 ---
 
 ## SESSION LOG
+
+### March 27, 2026 (session 10) — BUILD_09 Phase 5 COMPLETE — Image Signing Fix + Error Handling (Opus 4.6, Cowork, Mac Studio office)
+- **Scope:** Fix frame image rendering (IAM signing), improve error handling in Cloud Function + FrameViewer, deploy, verify E2E.
+- **Location:** Office (Mac Studio, CDP-Mac-Studio-10). OneDrive-synced repo.
+
+**IAM Signing Fix — ✅ COMPLETE:**
+  - Granted `roles/iam.serviceAccountTokenCreator` to `cw-e7c19@appspot.gserviceaccount.com` on project `cw-e7c19`.
+  - This was the missing piece: `getSignedUrl()` requires the ability to sign blobs, which needs this role on the service account itself (not just on the pipeline project).
+  - After granting, hard-refreshed Viewer — frame images render correctly. 53 BMP frames from `podium-capsule-raw-images-test` bucket display via signed HTTPS URLs.
+
+**Error Handling Improvements — ✅ COMPLETE:**
+  - `functions/src/callable/getCapsuleFrames.ts` — Changed silent fallback: `catch` block now returns `ERROR:SIGN_FAILED:{gsUrl}` instead of raw `gs://` URL. Changed `console.warn` to `console.error`. Updated JSDoc.
+  - `src/components/FrameViewer.tsx` — Added 3 error states to frame display:
+    1. `ERROR:SIGN_FAILED:` prefix → red error with IAM hint
+    2. `gs://` prefix → yellow warning explaining raw URLs can't render
+    3. `onError` handler on `<img>` → gray fallback for generic load failures
+  - `imageError` state resets on frame navigation via `goToFrame()`.
+
+**Build + Deploy — ✅ COMPLETE:**
+  - Cameron ran `npm run build && npx firebase-tools deploy --only hosting,functions:getCapsuleFrames` on Mac Studio.
+  - Both hosting and `getCapsuleFrames` function deployed successfully.
+
+**E2E Verification — ✅ ALL PASSING:**
+  - Frame images render (signed HTTPS URLs, 200 status)
+  - Metadata bar: "Capsule: TEST-CAPSULE-99 | 53 frames (47 anomalies)"
+  - Frame counter: "53 / 53" overlay
+  - Playback controls: Play/Pause, step forward/back, skip ±10, speed 0.5x/1x/2x/4x
+  - Timeline scrubber functional
+
+**Files Modified This Session:**
+  - `functions/src/callable/getCapsuleFrames.ts` — Error handling improvement (uncommitted)
+  - `src/components/FrameViewer.tsx` — Error state UI + onError handler (uncommitted)
+  - `HANDOFF.md` — This session log (uncommitted)
+
+**Uncommitted:** 3 files. Commit with:
+```bash
+git add functions/src/callable/getCapsuleFrames.ts src/components/FrameViewer.tsx HANDOFF.md && git commit -m "fix: image signing error handling + session 10 handoff (BUILD_09 Phase 5 complete)" && git push origin main
+```
+
+---
+
+### March 26, 2026 (session 8) — BUILD_09 Phase 0 Infra + Phase 5 Deploy + E2E Debug (Opus 4.6, Cowork, Mac Studio office)
+- **Scope:** Complete Phase 0 backend prerequisites, commit/push BUILD_09 code, deploy Cloud Functions + hosting, E2E test pipeline integration on Viewer screen.
+- **Location:** Office (Mac Studio, CDP-Mac-Studio-10). OneDrive-synced repo.
+
+**Git Corruption Resolved (different approach than Lesson 14):**
+  - Mac Studio had the repo via OneDrive sync. `git fsck --no-dangling` found 13 corrupt loose objects but none were in the reachable commit chain.
+  - Did NOT need re-clone — corrupt objects were orphaned from OneDrive sync, not affecting HEAD.
+  - Committed and pushed successfully: 14 files, 1546 insertions (BUILD_09 Phases 1–4 + docs).
+  - OneDrive lock files (`index.lock`, `HEAD.lock`) blocked git operations — fixed with `find .git -name "*.lock" -delete`.
+  - Push failed from Cowork VM (no GitHub credentials) — Cameron pushed from Mac Terminal.
+
+**Phase 0 Backend Prerequisites — ✅ ALL COMPLETE:**
+  - **IAM grants:** Granted `cw-e7c19@appspot.gserviceaccount.com` roles `roles/datastore.user` + `roles/storage.objectViewer` on `podium-capsule-ingest`. Done via gcloud CLI (GCP Console UI was unreliable — help panel kept interfering, `/` shortcut triggered search navigation).
+  - **Composite index:** Created on `capsule_images` collection: `capsule_id` ASC + `filename` ASC. Done via gcloud CLI (Console form_input didn't trigger proper change events).
+  - **CORS:** Applied `cors.json` (`origin: ["https://cw-e7c19.web.app"]`) to `podium-capsule-raw-images-test` bucket.
+  - All 3 done as combined one-liner with account switching: `gcloud config set account cameron.plummer@gmail.com && [commands] && gcloud config set account au-engineer-uploader@...`
+
+**Cloud Functions Deploy — ✅ 14/16 SUCCEEDED:**
+  - **Critical fix required:** `functions/src/index.ts` — added `admin.initializeApp()` guard BEFORE module imports. `userManagement.ts` line 6 (`const db = admin.firestore()`) runs at module load time and crashes if default app doesn't exist.
+  - `getCapsuleFrames` callable deployed successfully along with 13 other functions.
+  - **2 functions FAILED:** `suggestCodes` and `setInitialUserClaims` — Cloud Build permissions issue on `gcf-sources` bucket. Pre-existing issue, not related to BUILD_09. Not blocking E2E test.
+
+**Firebase Hosting Deploy — ❌ INCOMPLETE (frontend bundle stale):**
+  - Hosting was deployed from Firebase Studio earlier, but it deployed the **pre-BUILD_09 build** (bundle `index-DhIAwjMA.js`).
+  - Confirmed via JS bundle analysis: deployed bundle does NOT contain `getCapsuleFrames`, `useCapsuleFrames`, or `capsuleSerial` strings.
+  - **Local build succeeded on Mac Studio:** `npm run build` produced new bundle `index--9GVZv7r.js` (285 KB) — this bundle DOES contain BUILD_09 code.
+  - **Deploy blocked:** `firebase` CLI not installed / not in PATH on Mac Studio. Needs `npm install -g firebase-tools` or use `npx firebase-tools deploy --only hosting`.
+
+**Firestore Data Fix — ✅ COMPLETE:**
+  - Root cause of "No Capsule Frames Loaded": the procedure document `b1026583-9a73-48cb-8a0a-cc4e54b929a7` in `cw-e7c19` Firestore had NO `capsuleSerialNumber` field.
+  - The `useCapsuleFrames` hook receives `procedure?.capsuleSerialNumber` — when undefined, it short-circuits and never calls the Cloud Function.
+  - **Fixed:** Added `capsuleSerialNumber: "TEST-CAPSULE-99"` (string) to the procedure document via Firebase Console UI.
+  - Verified via React fiber inspection: the procedure state in the running app picked up the new field.
+  - **Note:** `seed-demo.ts` already writes `capsuleSerialNumber` to 5 procedures, but the Lisa Anderson procedure was created before that seed change was applied.
+
+**Node.js Environment on Mac Studio:**
+  - Node was NOT installed despite Homebrew formula existing. `brew install node` installed Node 25.8.2 + npm 11.11.1.
+  - `node_modules` was corrupted (OneDrive sync — broken TypeScript symlink). Fixed with `rm -rf node_modules && npm install`.
+  - Warning: `superstatic@10.0.0` requires Node 20/22/24, not 25. Not blocking build but may cause runtime issues.
+
+**Files Modified This Session:**
+  - `functions/src/index.ts` — Added `admin.initializeApp()` guard before imports (committed + pushed)
+  - `HANDOFF.md` — This session log (uncommitted)
+
+**⚠️ Lesson Learned (Lesson 15 — not yet written):** `seed-demo.ts` only seeds `capsuleSerialNumber` on procedures it CREATES. If a procedure already exists in Firestore from a prior seed run, re-running seed does NOT add the new field. Must either: (a) delete existing procedures and re-seed, or (b) manually add the field via Console, or (c) update seed-demo.ts to use `set({...}, { merge: true })` instead of conditional creates.
+
+---
+
+**🚨 IMMEDIATE NEXT STEP (to complete Phase 5 E2E test):**
+
+The frontend build is done (`dist/` folder has the new bundle). Just need to deploy hosting. Run ONE of these from the repo directory on Mac Studio:
+
+```bash
+# Option A: Use npx (no global install needed)
+npx firebase-tools deploy --only hosting
+
+# Option B: Install firebase CLI globally first
+npm install -g firebase-tools
+firebase deploy --only hosting
+```
+
+After deploy completes, hard-refresh the Viewer page (Cmd+Shift+R) at:
+`https://cw-e7c19.web.app/viewer/b1026583-9a73-48cb-8a0a-cc4e54b929a7`
+
+The new bundle contains the `useCapsuleFrames` hook. The procedure already has `capsuleSerialNumber: "TEST-CAPSULE-99"` in Firestore. The `getCapsuleFrames` Cloud Function is deployed. All 3 Phase 0 infra prerequisites are in place.
+
+---
+
+### March 27, 2026 (session 9, continuation of 8) — Hosting Deploy Fix + Image URL Diagnosis (Opus 4.6, Cowork, Mac Studio office)
+- **Scope:** Fix hosting deploy, resolve white screen, diagnose image display issue.
+- **Location:** Office (Mac Studio, CDP-Mac-Studio-10). OneDrive-synced repo.
+
+**Mac Studio Environment Setup:**
+  - Node.js was not installed. `brew install node` installed Node 25.8.2 + npm 11.11.1.
+  - `node_modules` was corrupted by OneDrive sync (broken TypeScript symlink). Fixed with `rm -rf node_modules && npm install`.
+  - `firebase` CLI was not installed. `npx firebase-tools login` + `npx firebase-tools deploy` used instead of global install.
+  - `.env` file was missing on Mac Studio (only existed in Firebase Studio). Created with Firebase config from Console.
+
+**Hosting Deploy — 3 attempts:**
+  1. **Attempt 1 (Mar 26):** Built locally, deployed. Bundle `index--9GVZv7r.js` — built WITHOUT `.env` file. **Result:** White screen, `auth/invalid-api-key` error. All `VITE_FIREBASE_*` values were `undefined`.
+  2. **Attempt 2 (Mar 27):** Created `.env` accidentally in Firebase Studio terminal, not Mac. Re-deployed same broken bundle. **Result:** Still white screen.
+  3. **Attempt 3 (Mar 27):** Created `.env` correctly on Mac Studio. Rebuilt. New bundle `index-D-CQSBmi.js` with correct API key. Deployed. **Result:** App loads! Pipeline data displays. But frame IMAGES show broken icon.
+
+**Pipeline Integration — ✅ PARTIALLY WORKING:**
+  - `getCapsuleFrames` callable: **WORKING.** Returns 53 frames, 47 anomalies for TEST-CAPSULE-99.
+  - Viewer metadata bar: **WORKING.** Shows "Capsule: TEST-CAPSULE-99 | 53 frames (47 anomalies)".
+  - FrameViewer controls: **WORKING.** Shows "1 / 53" counter, playback controls (Play, speed 0.5x/1x/2x/4x, step forward/back).
+  - Frame images: **BROKEN.** `<img>` src is `gs://podium-capsule-raw-images-test/TEST-BATCH-01/TEST-CAPSULE-99/00030000.bmp` — a raw GCS URI that browsers cannot load.
+
+**Root Cause of Image Display Failure:**
+  The `getCapsuleFrames` callable (`functions/src/callable/getCapsuleFrames.ts` lines 71-86) calls `bucket.file(filePath).getSignedUrl()` to convert `gs://` URLs to signed HTTPS URLs. **This is silently failing**, and the catch block on line 84 falls back to returning the raw `gs://` URL:
+  ```
+  catch (err) {
+      console.warn(`[getCapsuleFrames] Failed to sign URL: ${gsUrl}`, err);
+      return gsUrl; // Return original gs:// URL as fallback
+  }
+  ```
+
+  **Why signing fails:** The `cw-e7c19@appspot.gserviceaccount.com` service account lacks `roles/iam.serviceAccountTokenCreator` permission on itself. The `getSignedUrl()` API requires the ability to sign blobs, which needs this role. We granted `roles/storage.objectViewer` (read access) and `roles/datastore.user` (Firestore access) but NOT the signing role.
+
+**Fix (single gcloud command):**
+```bash
+gcloud projects add-iam-policy-binding cw-e7c19 \
+  --member="serviceAccount:cw-e7c19@appspot.gserviceaccount.com" \
+  --role="roles/iam.serviceAccountTokenCreator"
+```
+
+After granting this role, the existing callable code will work — no code changes needed. The signed URLs will be generated as HTTPS URLs and frame images will render in the browser.
+
+**Secondary consideration:** The images are `.bmp` format. Most modern browsers support BMP rendering, but if they don't render after the signing fix, the pipeline may need to convert to PNG/JPEG. This is a Phase 6 concern.
+
+**Also consider:** Removing the silent fallback on line 84 of `getCapsuleFrames.ts`. The fallback masks the error — it would be better to throw or return an error state so the Viewer can display "Image URL generation failed" rather than a broken image icon.
+
+**Files Modified This Session (Mar 27):**
+  - `.env` — Created on Mac Studio (not committed, in .gitignore)
+  - `HANDOFF.md` — This session log (uncommitted)
+
+**Uncommitted:** `HANDOFF.md` only. Commit with:
+```bash
+git add HANDOFF.md && git commit -m "docs: HANDOFF sessions 8-9 — pipeline integration working, image URL signing fix needed" && git push origin main
+```
+
+---
 
 ### March 25, 2026 (session 7) — BUILD_09 Gap Analysis + Implementation Plan + Firestore Inspection + Phases 1–4 Code (Opus 4.6, Cowork)
 - **Scope:** Complete BUILD_09 planning (Steps 2–6), Git diagnostics, pipeline Firestore data inspection, BUILD_09 Phases 1–4 implementation (all code work).
@@ -797,17 +961,17 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 - [x] **Phase 2:** `getCapsuleFrames` callable — `functions/src/callable/getCapsuleFrames.ts` (NEW), `functions/src/index.ts` (rewritten), validators updated
 - [x] **Phase 3:** `useCapsuleFrames` hook — added to `src/lib/hooks.tsx`
 - [x] **Phase 4:** Viewer.tsx integration — hook wiring, loading/error states, capsule metadata, AI finding seeding, frame-finding linking
-- [ ] **Phase 5:** E2E testing — deploy, re-seed, happy path + edge cases (requires Phase 0 infra + office git)
-- [ ] **Phase 6:** Performance optimization (only if Phase 5 reveals issues with large frame sets)
+- [x] **Phase 5:** E2E testing — ✅ Mar 27 (session 10). IAM signing fix applied, frame images render. Error handling improved in callable + FrameViewer. All E2E checks passing.
+- [x] **Phase 6:** Performance optimization — ✅ Not needed. 53 frames load quickly with batched signed URL generation (50/batch). No performance issues observed.
 
 #### BUILD_09: Image Pipeline — Backend (Cameron manual, pipeline GCP project)
 ⚠️ **This work is in `podium-capsule-ingest`, NOT in the ZoCW repo. See `docs/BUILD_09_PREREQUISITE_AUDIT.md` + `docs/BUILD_09_GAP_ANALYSIS.md` for exact commands.**
 
-- [ ] **P0 — IAM grants** — Grant `cw-e7c19` service account `roles/datastore.user` + `roles/storage.objectViewer` on `podium-capsule-ingest`. **HARD BLOCKER for Phase 2 testing.**
-- [ ] **P0 — Composite index** — Create on `capsule_images`: `capsule_id` asc + `filename` asc. **HARD BLOCKER for Phase 2 testing.** *(Corrected: index on `capsule_id`, not `capsule_serial` — see Gap Analysis Finding 5)*
-- [ ] **P1 — CORS** — Apply `cors.json` to `podium-capsule-raw-images-test` bucket. **Blocks Phase 4** (browser image loading).
-- [x] ~~**P2 — Field rename**~~ — **CANCELLED.** Fields already renamed in database. v7.0.0 pipeline writes `capsule_id` + `batch_id`. See Gap Analysis Finding 3.
-- [ ] **P2 — Test data linkage** — Seed ZoCW procedure with `capsuleSerialNumber: "TEST-CAPSULE-99"` to link to existing pipeline test data. *(Confirmed via Firestore inspection: ≥2 processed frames with AI analysis available)*
+- [x] **P0 — IAM grants** — ✅ Mar 26. Granted via gcloud CLI.
+- [x] **P0 — Composite index** — ✅ Mar 26. Created via gcloud CLI.
+- [x] **P1 — CORS** — ✅ Mar 26. Applied via gsutil.
+- [x] ~~**P2 — Field rename**~~ — **CANCELLED.** Fields already renamed in database.
+- [x] **P2 — Test data linkage** — ✅ Mar 26. Added `capsuleSerialNumber: "TEST-CAPSULE-99"` to procedure `b1026583-9a73-48cb-8a0a-cc4e54b929a7` via Firebase Console. Note: other seeded procedures may still be missing this field — re-seed or manually add as needed.
 
 #### Other Remaining Features
 - [ ] **Google sign-in** — Works after Firebase Hosting deploy. Blocked by unauthorized-domain in dev environment. (Priority 2)
@@ -820,41 +984,20 @@ The CEST anatomical locations (14 values) and finding classifications (31 values
 ### 📦 GIT / DEPLOY — Pending Commits & Pushes
 ### ═══════════════════════════════════════════════
 
-#### Uncommitted Changes (accumulated Mar 24–25)
-⚠️ **Git repo is CORRUPTED** (OneDrive tree object loss). Must re-clone at office first. See `docs/LESSONS_LEARNED.md` Lesson 14.
+#### Uncommitted Changes (Mar 26)
+Git repo is healthy. BUILD_09 code committed and pushed Mar 26.
 
-**Recovery procedure (at office, Mar 26):**
-1. Back up these 13 files to Desktop
-2. Rename corrupt repo folder → `zocw-firebase-repo-corrupt`
-3. Fresh clone: `git clone https://github.com/ZoDiagnostics/zocw-firebase-repo.git`
-4. Copy 13 files into fresh clone (preserve directory structure)
-5. Commit + push (see git commands below)
-
-**13 files to commit (docs + BUILD_09 Phases 1–4 code):**
-- `HANDOFF.md` — work queue updates + Mar 24 + Mar 25 session logs
-- `docs/OPUS_BUILD09_PLANNING_PROMPT.md` — Step 1 complete status (from Mar 24)
-- `docs/BUILD_09_PREREQUISITE_AUDIT.md` — **NEW** — Step 1 prerequisite audit (from Mar 24)
-- `docs/BUILD_09_GAP_ANALYSIS.md` — **NEW** — 11 findings, pipeline spec vs ZoCW integration docs (Mar 25)
-- `docs/BUILD_09_IMPLEMENTATION_PLAN.md` — **NEW** — 6-phase build plan with model routing (Mar 25)
-- `docs/LESSONS_LEARNED.md` — Added Lesson 14 (OneDrive git corruption)
-- `src/types/capsule-image.ts` — Phase 1: updated to v7.0.0 pipeline schema
-- `seed-demo.ts` — Phase 1: added capsuleSerialNumber to 5 procedures
-- `functions/src/callable/getCapsuleFrames.ts` — **NEW** Phase 2: cross-project proxy callable
-- `functions/src/index.ts` — Phase 2: rewritten to export all callables + triggers
-- `functions/src/utils/validators.ts` — Phase 2: added getCapsuleFramesInputSchema
-- `src/lib/hooks.tsx` — Phase 3: added useCapsuleFrames hook
-- `src/screens/Viewer.tsx` — Phase 4: full pipeline + AI findings Viewer integration
-
+**Remaining uncommitted:** `HANDOFF.md` only (this session log update). Commit with:
 ```bash
-# After re-clone is complete:
-git add HANDOFF.md docs/OPUS_BUILD09_PLANNING_PROMPT.md docs/BUILD_09_PREREQUISITE_AUDIT.md docs/BUILD_09_GAP_ANALYSIS.md docs/BUILD_09_IMPLEMENTATION_PLAN.md docs/LESSONS_LEARNED.md src/types/capsule-image.ts seed-demo.ts functions/src/callable/getCapsuleFrames.ts functions/src/index.ts functions/src/utils/validators.ts src/lib/hooks.tsx src/screens/Viewer.tsx
-git commit -m "feat: BUILD_09 Phases 1-4 — image pipeline integration (types, callable, hook, Viewer)"
-git push origin main
+git add HANDOFF.md && git commit -m "docs: HANDOFF session 8 — Phase 0 complete, hosting deploy pending" && git push origin main
 ```
 
 #### Deploy Checklist
-- [ ] **Push uncommitted changes** — see command above
-- [ ] **Rebuild + redeploy after BUILD_09 code lands** — `npm run build && npx firebase-tools@latest deploy --only functions,hosting`
+- [x] **Push BUILD_09 code** — ✅ Mar 26
+- [x] **Deploy Cloud Functions** — ✅ Mar 26 (14/16 succeeded; `suggestCodes` + `setInitialUserClaims` failed — pre-existing Cloud Build permissions issue)
+- [x] **Frontend build** — ✅ Mar 26 (`npm run build` succeeded, bundle `index--9GVZv7r.js`)
+- [x] **Deploy hosting** — ✅ Mar 27. Bundle `index-D-CQSBmi.js` with correct `.env` values deployed. App loads, pipeline metadata displays.
+- [ ] **Fix signed URL generation** — Grant `roles/iam.serviceAccountTokenCreator` to `cw-e7c19@appspot.gserviceaccount.com` on project `cw-e7c19`. **THIS IS THE ONE REMAINING STEP for frame images to render.** See session 9 log for exact gcloud command. No code changes needed.
 
 ### ═══════════════════════════════════════════════
 ### 🧪 TESTS — Remaining Test Work
