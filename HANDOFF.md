@@ -1,6 +1,6 @@
 # ZoCW Session Handoff & Work Queue
 **Purpose:** Initialization context for a new Claude Cowork session + prioritized work queue.
-**Last Updated:** March 27, 2026 (late night) — BUILD_13 deployed. Lessons 15–16 added. All test accounts have claims set. Bug numbering at BUG-68.
+**Last Updated:** March 28, 2026 — BUILD_14 complete (Opus 4.6, Cowork). Fixed BUG-69 (ClinicalRoute race condition) and BUG-67 remainder (Procedures.tsx isReadOnly). tsc clean. Ready for commit and deploy. Bug numbering at BUG-69.
 
 ## MANDATORY SESSION RULES
 1. **At session start:** Read this file to understand current state and work queue.
@@ -19,6 +19,87 @@
 ---
 
 ## SESSION LOG
+
+### March 27, 2026 (session 9 / session 17) — Session 9 Testing: BUILD_13 Retests + clinician_admin Role (Sonnet 4.6, Cowork)
+- **Scope:** Part A: retest BUG-65/66/67 as admin@zocw.com. Part C: full clinician_admin role testing as clinadmin@zocw.com.
+- **BUILD_13 bundle confirmed:** `index-DCO4UbfZ.js` (new vs BUILD_12's `index-CNyvf6lZ.js`). Service worker cache cleared before testing.
+
+**Part A — BUG-65/66/67 Admin Retests (admin@zocw.com):**
+- **BUG-65 (Admin Dashboard):** ✅ PASS — Dashboard loads with all 4 metrics (Awaiting Review: 4, In Progress: 3, Completed This Week: 1, Urgent Cases: 2) and Recent Activity. 1 residual non-blocking `permission-denied` listener error remains in console (down from 3). Likely from `notifications` or `users` collection outside patients/procedures. Not blocking.
+- **BUG-66 /viewer RBAC:** ✅ PASS — `/viewer/{id}` immediately redirects to `/dashboard`.
+- **BUG-66 /checkin, /capsule-upload:** ❌ FAIL — Both routes leak through `ClinicalRoute` guard and end at `/report/{id}` via status-guard `useEffect` redirects. **Root cause (BUG-69):** `if (role && !CLINICAL_ROLES.includes(role))` passes when `role === null` before Firebase claims load. Status-guard fires before claims settle.
+- **BUG-66 /sign-deliver:** ❌ FAIL — Admin stays on sign-deliver screen (no status-guard). Role notice shown ("admin does not have signing authority") but no redirect. Same BUG-69 null-role race condition.
+- **BUG-67 /patients:** ✅ PASS — Read-only view: no "+ Register Patient" button, no "New Procedure" row links. Full patient list loads.
+- **BUG-67 /procedures:** ⚠️ PARTIAL — List loads correctly (Firestore fix confirmed), but "+ New Procedure" button and "Edit" links still visible for admin. `isReadOnly` flag from Batch 3 not fully applied in Procedures.tsx.
+
+**Part C — Clinician Admin Role Testing (clinadmin@zocw.com / Dr. James Whitfield) — 5/5 PASS:**
+- **BUG-68:** ✅ FIXED — Login succeeds. `clinadmin@zocw.com` / `password` authenticates as Dr. James Whitfield (clinician_admin role).
+- **C1 Dashboard + Viewer:** ✅ PASS — Dashboard with full metrics. Viewer at `/viewer/{id}` loads fully with 45 findings, add-finding form enabled, "Go to Report →" active (not Sign Restricted).
+- **C2 Signing Authority:** ✅ PASS — `/sign-deliver/{id}` renders, "Sign Report" button present (greyed pending report gen, not role-blocked). No "does not have signing authority" restriction.
+- **C3 Admin Hub:** ✅ PASS — `/admin` shows all 4 tiles (Manage Staff, Practice Settings, Clinic Locations, ICD & CPT Code Management).
+- **C4 Sidebar:** ✅ PASS — Full hybrid sidebar: CLINICAL section (Dashboard, Worklist, Patients, Procedures) + ADMINISTRATION section. Correctly distinct from pure admin and pure clinician_auth.
+- **C5 Patient Write Access:** ✅ PASS — "+ Register Patient" button visible, every row shows "View" AND "New Procedure". Correctly differs from admin read-only.
+
+**New bug registered:**
+- **BUG-69 (High):** `ClinicalRoute` race condition — `role` is null before Firebase claims load; `if (role && !CLINICAL_ROLES.includes(role))` evaluates to `false` when null, allowing clinical component to mount. Status-guard `useEffect` on CheckIn/CapsuleUpload fires before claims settle → redirects admin to `/report`. `/sign-deliver` (no status-guard) renders directly. Fix: change loading guard to `if (loading || (user && !role))` and role check to `if (!role || !CLINICAL_ROLES.includes(role))`.
+
+**BUG-67** remains partially open — Procedures.tsx read-only UI incomplete (+ New Procedure and Edit visible for admin).
+
+**Results: 10 PASS / 3 FAIL / 1 PARTIAL. New: BUG-69. Full details: `TEST_RESULTS_SESSION_9.md` in Claude Demo/.**
+
+**Next session needs (BUILD_14):**
+1. ~~Fix BUG-69 (High): Update `ClinicalRoute` in `src/lib/router.tsx`~~ ✅ DONE (BUILD_14 session 18 below)
+2. ~~Fix BUG-67 remainder (Medium): Audit `Procedures.tsx` isReadOnly~~ ✅ DONE (BUILD_14 session 18 below)
+3. Fix BUG-65 residual (Low): Identify which collection causes 1 remaining permission-denied on admin dashboard (likely `notifications` or `users` listener)
+4. After BUILD_14 deploy: Session 10 retest BUG-69 + BUG-67, then continue admin testing (~100+ scenarios SCR-22 to SCR-25 untested)
+5. After BUILD_14 deploy: continue clinician_admin testing (~25+ scenarios remaining)
+
+---
+
+### March 28, 2026 (session 18) — BUILD_14 Bug Fix Session: Session 9 Failures (Opus 4.6, Cowork)
+- **Scope:** Fix 2 bugs from Session 9 retests: BUG-69 (ClinicalRoute race condition), BUG-67 remainder (Procedures.tsx read-only UI).
+- **Location:** Cowork VM (code changes only, no deploy).
+
+**BATCH 1 — BUG-69 (ClinicalRoute race condition) — ✅ FIXED:**
+- **Root cause:** `ClinicalRoute` in `router.tsx` had two flaws: (1) loading guard `if (loading)` didn't cover the window where `user` was set but `role` was still `null` (claims not yet decoded), and (2) role check `if (role && !CLINICAL_ROLES.includes(role))` treated `null` role as passing (since `null && anything` is falsy).
+- **Fix — Change 1:** Loading guard extended to `if (loading || (user && !role))` — shows "Loading..." until both auth and claims resolve.
+- **Fix — Change 2:** Role check tightened to `if (!role || !CLINICAL_ROLES.includes(role))` — treats null/missing role as unauthorized, redirects to `/dashboard`.
+- **Expected behavior:** Admin navigating to any clinical route sees brief loading state, then redirects to `/dashboard`. No clinical component ever mounts.
+
+**BATCH 2 — BUG-67 remainder (Procedures.tsx read-only UI) — ✅ FIXED:**
+- **Root cause:** `isReadOnly = role === UserRole.ADMIN` evaluated to `false` when `role === null` (before claims load), causing write controls ("+ New Procedure", "Edit") to flash visible during the null-role window.
+- **Fix:** Changed to `isReadOnly = !role || role === UserRole.ADMIN` — treats unresolved role as read-only (restrictive default).
+
+**Build Verification:**
+- `tsc --noEmit` exits 0 (zero TypeScript errors)
+
+**Files Modified (3 files):**
+| File | Change |
+|------|--------|
+| `src/lib/router.tsx` | BUG-69: Extended loading guard + tightened role check in ClinicalRoute. |
+| `src/screens/Procedures.tsx` | BUG-67: Changed isReadOnly to treat null role as read-only. |
+| `HANDOFF.md` | This session log. |
+
+**All fixes: 2/2 completed. tsc clean. Ready for commit + deploy.**
+
+**Cameron post-fix steps (all in Mac Terminal):**
+```bash
+cd ~/Library/CloudStorage/OneDrive-SharedLibraries-ZoDiagnostics/SW\ -\ Software\ Dev\ and\ AI-ML\ -\ General/40-Clinician-Workbench/10-Human-Read-Review/90-Demos-Pitches/Claude\ Demo/zocw-firebase-repo
+find .git -name "*.lock" -delete
+git add src/lib/router.tsx src/screens/Procedures.tsx HANDOFF.md
+git commit -m "BUILD_14: Fix BUG-69 (ClinicalRoute race condition) + BUG-67 (Procedures isReadOnly)
+
+- BUG-69: Extend ClinicalRoute loading guard to cover null-role window, tighten role check
+- BUG-67: Treat null/unresolved role as read-only in Procedures.tsx
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
+git push
+npm run build && npx firebase deploy --only hosting
+```
+
+**Next action:** Session 10 retest BUG-69 + BUG-67, then continue admin + clinician_admin role testing.
+
+---
 
 ### March 27, 2026 (session 12) — BUILD_11 Bug Fix Session: Session 6 Bugs (Opus 4.6, Cowork)
 - **Scope:** Fix 10 bugs from Session 6 testing (BUG-53 through BUG-63), prioritized by severity.

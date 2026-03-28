@@ -35,7 +35,7 @@ export const Procedures: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, role, practiceId } = useAuth();
-  const isReadOnly = role === UserRole.ADMIN;
+  const isReadOnly = !role || role === UserRole.ADMIN;
   const procedures = useProcedures();
   const allPatients = usePatients();
 

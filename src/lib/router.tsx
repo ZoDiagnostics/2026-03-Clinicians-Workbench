@@ -59,7 +59,8 @@ const ClinicalRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, role, loading } = useAuth();
   const location = useLocation();
 
-  if (loading) {
+  // BUG-69: Wait for both auth AND custom claims to resolve before rendering
+  if (loading || (user && !role)) {
     return <div>Loading...</div>;
   }
 
@@ -67,7 +68,8 @@ const ClinicalRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
-  if (role && !CLINICAL_ROLES.includes(role)) {
+  // BUG-69: Treat null/missing role as unauthorized (redirect to dashboard)
+  if (!role || !CLINICAL_ROLES.includes(role)) {
     return <Navigate to="/dashboard" replace />;
   }
 
