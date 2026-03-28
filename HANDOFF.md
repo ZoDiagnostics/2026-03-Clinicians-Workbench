@@ -1,6 +1,6 @@
 # ZoCW Session Handoff & Work Queue
 **Purpose:** Initialization context for a new Claude Cowork session + prioritized work queue.
-**Last Updated:** March 28, 2026 — BUILD_14 complete (Opus 4.6, Cowork). Fixed BUG-69 (ClinicalRoute race condition) and BUG-67 remainder (Procedures.tsx isReadOnly). tsc clean. Ready for commit and deploy. Bug numbering at BUG-69.
+**Last Updated:** March 28, 2026 — BUG-70 hotfix applied (Opus, Cowork). Added `auditLog` sub-collection rule under `practices/{practiceId}` in `firestore.rules`. Needs deploy with `firestore:rules` target. Bug numbering at BUG-70.
 
 ## MANDATORY SESSION RULES
 1. **At session start:** Read this file to understand current state and work queue.
@@ -19,6 +19,60 @@
 ---
 
 ## SESSION LOG
+
+### March 28, 2026 — BUG-70 Hotfix (Opus, Cowork)
+- **Scope:** Fix BUG-70 (Activity Log blank for admin due to Firestore permission-denied on `auditLog`).
+- **Root cause:** `ActivityLog.tsx` queries `practices/${practiceId}/auditLog` (sub-collection path), but Firestore rules only had a top-level `match /auditLog/{entry}` rule. The sub-collection had no matching rule and fell through to default deny.
+- **Fix applied to `firestore.rules`:** Added `match /auditLog/{entry}` sub-collection rule inside the existing `match /practices/{practiceId}` block with `allow read: if inPractice(practiceId) && isAdminOrClinicianAdmin()` and `allow write: if false`.
+- **tsc --noEmit:** ✅ Clean (Firestore rules are not TypeScript, but verified no TS regressions).
+- **Status:** Code committed, needs deploy with `--only hosting,firestore:rules` to push both app bundle and updated rules.
+
+---
+
+### March 28, 2026 (session 10 / session 19) — Session 10 Testing: BUILD_14 Verification + Admin + Clinician Admin Continuation (Sonnet 4.6, Cowork)
+- **Scope:** Part A: retest BUG-69 + BUG-67 on BUILD_14. Part B: continue admin role testing (SCR-22–SCR-25, Operations, Analytics, AI QA). Part C: full clinician_admin C1–C6 test sweep.
+- **BUILD_14 bundle confirmed:** `index-yFvWrWo2.js`. Service worker cache cleared before testing.
+
+**Part A — BUILD_14 Bug Verification:**
+- **BUG-69 (ClinicalRoute race condition):** ✅ FIXED — All 6 clinical routes (`/checkin`, `/capsule-upload`, `/viewer`, `/summary`, `/report`, `/sign-deliver`) correctly redirect admin to `/dashboard`. No clinical component mounts. 6/6 PASS.
+- **BUG-67 (Procedures.tsx isReadOnly):** ✅ FIXED — `/procedures` shows no "+ New Procedure" button, all Actions cells show "—" for admin. `/patients` still correctly read-only (no New Procedure links). 2/2 PASS.
+
+**Part B — Admin Role Testing (admin@zocw.com):**
+- **SCR-22 Manage Staff (AD-016/007/008/011/012/014):** ✅ PASS — Staff list, Edit modal, Invite Staff all functional.
+- **SCR-23 Practice Settings (AD-016):** ✅ PASS — Fields editable, Save Changes present.
+- **SCR-24 Manage Clinics (AD-029):** ✅ PASS — Clinic list, Add Clinic, Edit buttons present.
+- **AD-031 Edit Clinic:** ⚠️ PARTIAL — Edit modal shows Clinic Name field only; no staff assignment in modal. Staff assignment available only via Edit Staff Member on Manage Staff screen. Implementation gap (not a crash).
+- **SCR-25 Subscription (AD-032/EX-931):** ✅ PASS — Subscription page loads with plan + billing info.
+- **Reports Hub:** ✅ PASS — Note: route is `/reports-hub` (not `/reports` — that 404s).
+- **Activity Log (`/activity`):** ❌ FAIL — **BUG-70** — Firestore `permission-denied` on `auditLog` collection; screen blank for admin. Admin missing `auditLog` read permission in Firestore rules.
+- **Operations Dashboard:** ✅ PASS — Pipeline metrics load.
+- **Analytics (`/analytics`):** ✅ PASS — 4 summary metrics + 4 charts render.
+- **AI QA (`/qa`):** ✅ PASS — Route is `/qa` (not `/ai-qa` — that 404s). Dashboard renders: Filters, Sensitivity & Specificity, False Positive Analysis panels. 1 console error = known BUG-65 residual only.
+
+**Part C — Clinician Admin Role Testing (clinadmin@zocw.com / Dr. James Whitfield) — 6/6 PASS:**
+- **C1 Dashboard:** ✅ PASS — 4 metrics (Awaiting Review 4, In Progress 3, Completed This Week 1, Urgent Cases 2), Recent Activity, Start Next Review CTA.
+- **C2 Sidebar (hybrid):** ✅ PASS — Full hybrid: CLINICAL + OPERATIONS + RESOURCES + ADMINISTRATION sections all present.
+- **C3 Patients write access:** ✅ PASS — "+ Register Patient" button + "New Procedure" per row. Contrast vs admin read-only confirmed.
+- **C4 Procedures write access:** ✅ PASS — "+ New Procedure" button + "Edit" on status-appropriate rows (draft/ready for review/capsule received).
+- **C5 Clinical Workflow (`/viewer/{id}`):** ✅ PASS — Viewer loads for clinician_admin (Lisa Anderson, colon eval, draft). Findings (45) displayed, "Go to Report →" available. Not redirected — ClinicalRoute correctly passes clinician_admin.
+- **C6 Admin Screens (`/admin`):** ✅ PASS — All 4 admin hub tiles accessible (Manage Staff, Practice Settings, Clinic Locations, ICD & CPT Code Management).
+
+**Known residual (BUG-65):** 1 `permission-denied` console error per page (admin + clinadmin) — `notifications` sub-collection listener. Non-blocking.
+
+**New bug registered:**
+- **BUG-70 (Medium):** `auditLog` Firestore collection missing `'admin'` in `allow read` rules → Activity Log (`/activity`) blank for admin with permission-denied error.
+
+**Results: 17 PASS / 1 FAIL / 1 PARTIAL. New: BUG-70. Full details: `TEST_RESULTS_SESSION_10.md` in Claude Demo/.**
+
+**Next session needs:**
+1. ~~Fix BUG-70~~ — DONE (this session). Deploy with `firestore:rules` target, then retest `/activity` as admin.
+2. Investigate AD-031: Determine if staff assignment from clinic screen is in scope or deferred
+3. Continue admin role testing — next batch: Worklist (SCR-07), Patient Overview screens, Report Hub detail screens
+4. Continue clinician_admin testing — Worklist, sign-deliver, report screens
+5. Begin clinician_auth (clinician@zocw.com) role testing sweep
+6. Fix BUG-65 residual (Low): `notifications` sub-collection listener permission — admin
+
+---
 
 ### March 27, 2026 (session 9 / session 17) — Session 9 Testing: BUILD_13 Retests + clinician_admin Role (Sonnet 4.6, Cowork)
 - **Scope:** Part A: retest BUG-65/66/67 as admin@zocw.com. Part C: full clinician_admin role testing as clinadmin@zocw.com.

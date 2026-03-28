@@ -118,6 +118,17 @@ service cloud.firestore {
         ]);
         allow create, update, delete: if inPractice(practiceId) && isAdminOrClinicianAdmin();
       }
+
+      /**
+       * Audit Log (sub-collection): admin and clinician_admin can read.
+       * Write-only via Cloud Functions (admin SDK).
+       * BUG-70: ActivityLog screen queries practices/{practiceId}/auditLog,
+       * not top-level /auditLog. This sub-collection rule is required.
+       */
+      match /auditLog/{entry} {
+        allow read: if inPractice(practiceId) && isAdminOrClinicianAdmin();
+        allow write: if false; // Only Cloud Functions can write via admin SDK
+      }
     }
 
     // ============================================================================
