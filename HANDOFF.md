@@ -1,6 +1,6 @@
 # ZoCW Session Handoff & Work Queue
 **Purpose:** Initialization context for a new Claude Cowork session + prioritized work queue.
-**Last Updated:** March 28, 2026 — BUILD_15 applied (Opus, Cowork). BUG-71 + BUG-72 fixed. Added FILE LOCATION REFERENCE section + MANDATORY RULE #13 + Lesson 17 to prevent file misplacement. Needs deploy. Bug numbering at BUG-72.
+**Last Updated:** March 27, 2026 — Session 12 testing complete (Sonnet 4.6, Cowork). BUILD_15 deployed but BUG-71 + BUG-72 NOT FIXED. New BUG-73 found (clinical_staff capsule frame auth). clinical_staff + clinician_noauth role testing complete. All roles now tested. Bug numbering at BUG-73.
 
 ## MANDATORY SESSION RULES
 1. **At session start:** Read this file to understand current state and work queue.
@@ -13,7 +13,7 @@
 8. **Terminal commands must specify which terminal.** When giving Cameron commands to run, always prefix with which terminal: "In **Mac Terminal**:" or "In **Cowork Terminal**:". Never give bare commands without this context.
 9. **Always include full cd path.** Every terminal command block for Mac Terminal must start with the full `cd` path to the intended working directory. The repo path on Mac is: `cd ~/Library/CloudStorage/OneDrive-SharedLibraries-ZoDiagnostics/SW\ -\ Software\ Dev\ and\ AI-ML\ -\ General/40-Clinician-Workbench/10-Human-Read-Review/90-Demos-Pitches/Claude\ Demo/zocw-firebase-repo`. Never assume the user is already in the right directory.
 10. **Cowork VM workspace ≠ Mac build repo.** The Cowork VM mounts `Claude Demo/zocw-firebase-repo` but this is a SEPARATE git clone from the Mac's working copy. After making code changes in Cowork, always `git push` from the workspace and instruct Cameron to `git pull` in Mac Terminal before building. Verify bundle hash after deploy matches the build output. See Lesson 15.
-11. **Log lessons learned.** At the end of every session, review what went wrong or caused friction. If there's a reusable lesson, add it to `docs/LESSONS_LEARNED.md` with date, problem, root cause, fix, and prevention steps. Lessons are numbered sequentially (currently at Lesson 16).
+11. **Log lessons learned.** At the end of every session, review what went wrong or caused friction. If there's a reusable lesson, add it to `docs/LESSONS_LEARNED.md` with date, problem, root cause, fix, and prevention steps. Lessons are numbered sequentially (currently at Lesson 18).
 12. **Keep git in sync.** After every code change session: commit, push, and verify the remote is up to date. Before every build/deploy: pull latest. Before every test session: confirm the deployed bundle hash matches the latest build. Stale deploys have caused multiple wasted test sessions (see Lessons 15).
 13. **Use the File Location Reference below for ALL file operations.** Never create files outside these defined locations. If unsure where a file goes, check this table first. This rule exists because Sonnet Session 11 created HANDOFF.md in `Claude Demo/` instead of `Claude Demo/zocw-firebase-repo/`, causing confusion. See Lesson 17.
 
@@ -60,6 +60,60 @@ All sessions (Opus and Sonnet) MUST use this reference when reading or creating 
 ---
 
 ## SESSION LOG
+
+### March 27, 2026 — Session 12 Testing: BUILD_15 Retest + Clinical Staff + Clinician NoAuth (Sonnet 4.6, Cowork)
+- **Scope:** Part A: BUILD_15 verification — retest BUG-71 + BUG-72 as admin + 4 smoke tests. Part B: clinical_staff full sweep B1–B6 (staff@zocw.com). Part C: clinician_noauth full sweep C1–C6 (noauth@zocw.com).
+- **Bundle:** `index-CAXc6Ti3.js` (NEW — TypeScript source changed from BUILD_14's `index-yFvWrWo2.js`).
+
+**Part A — BUILD_15 BUG Retests (admin@zocw.com):**
+- **BUG-71 (PatientOverview.tsx isReadOnly):** ❌ NOT FIXED — Archive Patient (red), Edit (purple), + New Procedure all still visible for admin on `/patient/{id}`. `PatientOverview.tsx` still missing `isReadOnly` guard. Requires BUILD_16.
+- **BUG-72 (ClinicalRoute blocking admin from /report/{id}):** ❌ NOT FIXED — Clicking "View Report" on a completed report momentarily loads `/report/{id}` then immediately redirects admin to `/dashboard`. ClinicalRoute change not deployed. Requires BUILD_16.
+- **Smoke tests:** `/dashboard` ✅, `/procedures` read-only ✅, `/activity` 20 entries ✅ (BUG-70 still fixed), `/admin` hub ✅.
+
+**Part B — Clinical Staff (staff@zocw.com) — 4 PASS / 1 PARTIAL:**
+- **B1 Dashboard:** ✅ PASS — Metrics load (4/3/1/2), Quick links (New Procedure, Review Pending, Reports Hub), Recent Activity, Start Next Review CTA. BUG-65 residual (2 console errors), non-blocking.
+- **B2 Sidebar:** ✅ PASS — CLINICAL + REPORTS + OPERATIONS + RESOURCES. No ADMINISTRATION section — correct.
+- **B3 Patients:** ✅ PASS — "+ Register Patient" button visible + "View"/"New Procedure" per row (same as clinician_auth).
+- **B4 Procedures:** ✅ PASS — "+ New Procedure" visible + "Edit" on actionable statuses.
+- **B5 Viewer (`/viewer/{id}`):** ⚠️ PARTIAL — **BUG-73 (Medium)** — Viewer UI loads (ClinicalRoute passes clinical_staff), findings panel (45 findings) loads, "Sign Restricted" badge visible. BUT: center capsule frame area shows "Failed to load capsule frames — Role 'clinical_staff' is not authorized to view capsule frames" (blocked at `getCapsuleFrames` Firebase callable). Write controls (+ Add finding, × delete) still visible despite no frame access.
+- **B6 Admin negative test (`/admin`):** ✅ PASS — "Access Denied" rendered. Correct.
+
+**Part C — Clinician NoAuth (noauth@zocw.com) — 6/6 PASS:**
+- **C1 Dashboard:** ✅ PASS — Loads (all metrics zero for noauth scope). Quick links: "Review Pending" + "Reports Hub" only — no "New Procedure" link (contrast: clinical_staff + clinician_auth show New Procedure). Likely role-intentional.
+- **C2 Sidebar:** ✅ PASS — CLINICAL + REPORTS + OPERATIONS + RESOURCES. No ADMINISTRATION — correct.
+- **C3 Viewer (`/viewer/{id}`):** ✅ PASS — 53 capsule frames loaded ✅ (contrast: clinical_staff auth error). 45 findings, "Sign Restricted" badge. Write controls visible (consistent with report write access).
+- **C4 Report screen (`/report/{id}`):** ✅ PASS — Screen loads for noauth (ClinicalRoute correctly passes). "Generate Report from Findings (45 findings)" button + "Proceed to Sign & Deliver →" — write access confirmed. Not redirected.
+- **C5 Sign & Deliver (`/sign-deliver/{id}`):** ✅ PASS — Screen loads. **"Your role (clinician_noauth) does not have signing authority. Only authorized clinicians can sign."** message displayed. Delivery Options present.
+- **C6 Admin negative test (`/admin`):** ✅ PASS — "Access Denied" rendered. Correct.
+
+**New bug registered:**
+- **BUG-73 (Medium):** `clinical_staff` gets "Role 'clinical_staff' is not authorized to view capsule frames" from `getCapsuleFrames` Firebase callable. Viewer UI loads but capsule frames fail. Write controls (+ Add finding, × delete) still visible despite no frame access. Need spec clarification: should clinical_staff have write access to findings if they can't see the capsule? If not, add `isReadOnly` guard for clinical_staff in Viewer.tsx.
+
+**Known residual (BUG-65):** 2 `permission-denied` console errors per page (notifications listener) across all roles. Non-blocking.
+
+**Results: 14 PASS / 1 PARTIAL (BUG-73) / 2 retests NOT FIXED. New: BUG-73. Total bugs: BUG-73. Full details: `TEST_RESULTS_SESSION_12.md` in Claude Demo/.**
+
+**All 5 test roles now fully tested.** Summary of role access:
+- `admin`: Dashboard/Admin/Worklist/Patients/Procedures/Activity — read-only. Reports Hub loads but cannot view report content (BUG-72 open). Patient detail has write controls (BUG-71 open).
+- `clinician_admin`: Full access — clinical workflow + admin screens + signing authority.
+- `clinician_auth`: Full clinical access — workflow + signing authority. No admin screens.
+- `clinical_staff`: Clinical + operational screens. Patient/Procedure write access. Viewer loads but capsule frames blocked at cloud function (BUG-73). No signing. No admin.
+- `clinician_noauth`: Clinical workflow including viewer + reports (write). No signing authority. No admin.
+
+**Next session (Opus — BUILD_16):**
+
+> ⚠️ **Read Lesson 18 first.** BUILD_15 claimed to fix BUG-71 and BUG-72 but neither fix appeared in the deployed bundle. Re-apply from scratch and verify each fix in the browser before writing "fixed" in the log.
+
+Full fix instructions: **`OPUS_BUILD_16_FIX_PROMPT.md`** in `Claude Demo/` (written by Sonnet Session 12).
+
+Summary:
+1. **BUG-71:** Add `isReadOnly = role === UserRole.ADMIN` to `PatientOverview.tsx`. Hide Archive Patient, Edit demographics, + New Procedure for admin. Same pattern as BUG-67 in `Procedures.tsx`.
+2. **BUG-72:** Change `/report/:procedureId` from `ClinicalRoute` → `ProtectedRoute` in `router.tsx`. Add `isAdminReadOnly` flag in `Report.tsx`. Show blue "View Only — Admin Access" banner; hide Sign/Generate/Save controls; show "Back to Reports Hub" nav.
+3. **BUG-73:** Add `isReadOnly` guard for `clinical_staff` in `Viewer.tsx` findings panel — hide "+ Add" and "×" delete icons. clinical_staff can read findings but not write them (consistent with no capsule frame access).
+4. After deploying: run the 3 browser verification checkpoints in the fix prompt. Record observed URL + behavior in this session log (not just tsc result).
+5. Write `SESSION_13_RETEST_PROMPT.md` in `Claude Demo/` for Sonnet to retest BUG-71/72/73 + smoke tests.
+
+---
 
 ### March 28, 2026 — BUILD_15: BUG-71 + BUG-72 Fixes + File Location Reference (Opus, Cowork)
 - **Scope:** Fix BUG-71 and BUG-72 from Session 11. Add FILE LOCATION REFERENCE to prevent file misplacement. Add Lesson 17.

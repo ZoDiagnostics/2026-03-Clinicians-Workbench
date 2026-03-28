@@ -392,4 +392,24 @@ gcloud auth application-default set-quota-project cw-e7c19   # set quota project
 
 ---
 
+## Lesson 18: Session Log Description ≠ Deployed Fix — Always Verify Behavior, Not Bundle Hash
+
+**Date:** March 27, 2026
+**Category:** Build Verification / Session Management
+**Severity:** High
+
+**What happened:** The BUILD_15 entry in HANDOFF.md described BUG-71 and BUG-72 as fixed in detail — including specific code changes, the `isReadOnly` guard logic, and a "tsc --noEmit: ✅ Clean" confirmation. The bundle hash changed (from `index-yFvWrWo2.js` to `index-CAXc6Ti3.js`), confirming a new TypeScript build was deployed. Session 12 testing found that **neither fix was present in the deployed bundle** — Archive Patient/Edit/+ New Procedure were still visible for admin, and ClinicalRoute still redirected admin away from `/report/{id}`.
+
+**Root Cause:** The BUILD_15 session log was written describing *intended* changes, but the actual source file edits either were not committed, were committed to the wrong branch, or were overwritten before the deploy. The bundle hash change confirmed *something* changed in the TypeScript source — but not the right things. The session log can only confirm intent; it cannot confirm deployment.
+
+**Impact:** A full test session was spent re-verifying bugs that appeared fixed in the record. Two bugs carried forward an extra build cycle.
+
+**Prevention:**
+1. **Never trust a session log description as proof of deployment.** A session log entry describing a fix only records intent. Behavioral verification in the browser is the only proof.
+2. **The retest session start protocol must include a targeted smoke test for the specific fix** before running the full suite. For a `PatientOverview.tsx` fix, immediately navigate to a patient detail page as admin and check for write controls. Don't wait until that test's turn in the sequence.
+3. **After a build session, the Opus author should add a "Verification checkpoint" line to the session log** noting the specific URL visited and the exact behavior observed that confirms the fix is live — not just that tsc passed.
+4. **Bundle hash change ≠ correct fix deployed.** Any TypeScript change produces a new hash. Hash change only confirms the build ran; it does not confirm which components changed.
+
+---
+
 *Add new lessons as they arise. Review before starting new Firebase/React projects.*
