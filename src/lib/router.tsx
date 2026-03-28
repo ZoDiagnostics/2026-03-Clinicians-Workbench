@@ -247,11 +247,14 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    // BUG-72: Changed from ClinicalRoute to ProtectedRoute so admin can view reports (read-only).
+    // Report component itself handles isReadOnly for admin (hides generate/sign controls).
+    // Spec PR-018 requires admin read access to signed reports.
     path: '/report/:procedureId',
     element: (
-      <ClinicalRoute>
+      <ProtectedRoute>
         <Report />
-      </ClinicalRoute>
+      </ProtectedRoute>
     ),
   },
   {

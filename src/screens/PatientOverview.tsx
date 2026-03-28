@@ -16,6 +16,8 @@ export function PatientOverview() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { practiceId, loading: authLoading, role } = useAuth();
+  // BUG-71: Admin is read-only on patient detail (same pattern as BUG-67 in Procedures.tsx)
+  const isReadOnly = !role || role === UserRole.ADMIN;
   const [patient, setPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -402,15 +404,22 @@ export function PatientOverview() {
 
             <div className="flex items-center justify-between mb-6">
               <h1 className="text-3xl font-bold text-gray-900">Patient Overview</h1>
-              {/* BUG-58: Archive patient action. BUG-64: React dialog instead of window.confirm */}
-              {!patient.isArchived ? (
-                <button
-                  onClick={() => setArchiveConfirmOpen(true)}
-                  className="text-sm border border-red-300 text-red-600 px-3 py-1.5 rounded hover:bg-red-50"
-                >
-                  Archive Patient
-                </button>
-              ) : (
+              {/* BUG-58: Archive patient action. BUG-64: React dialog instead of window.confirm. BUG-71: Hide for admin */}
+              {!isReadOnly && (
+                !patient.isArchived ? (
+                  <button
+                    onClick={() => setArchiveConfirmOpen(true)}
+                    className="text-sm border border-red-300 text-red-600 px-3 py-1.5 rounded hover:bg-red-50"
+                  >
+                    Archive Patient
+                  </button>
+                ) : (
+                  <span className="text-sm bg-yellow-100 text-yellow-800 px-3 py-1.5 rounded font-medium">
+                    Archived
+                  </span>
+                )
+              )}
+              {isReadOnly && patient.isArchived && (
                 <span className="text-sm bg-yellow-100 text-yellow-800 px-3 py-1.5 rounded font-medium">
                   Archived
                 </span>
@@ -424,7 +433,8 @@ export function PatientOverview() {
                   <h3 className="text-lg font-medium text-gray-900">{patient.firstName} {patient.lastName}</h3>
                   <p className="mt-1 text-sm text-gray-500">MRN: {patient.mrn}</p>
                 </div>
-                {!editingDemographics && [UserRole.CLINICIAN_AUTH, UserRole.CLINICIAN_ADMIN, UserRole.ADMIN].includes(role!) && (
+                {/* BUG-71: Remove ADMIN from edit list — admin is read-only on patient detail */}
+                {!isReadOnly && !editingDemographics && [UserRole.CLINICIAN_AUTH, UserRole.CLINICIAN_ADMIN].includes(role!) && (
                   <button
                     onClick={() => setEditingDemographics(true)}
                     className="text-sm bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700"
@@ -606,12 +616,15 @@ export function PatientOverview() {
                     >
                       Date {procDateSort === 'desc' ? '↓ Newest' : '↑ Oldest'}
                     </button>
-                    <button
-                      onClick={() => navigate(`/procedures?patientId=${id}`)}
-                      className="text-sm bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700"
-                    >
-                      + New Procedure
-                    </button>
+                    {/* BUG-71: Hide + New Procedure for admin (read-only) */}
+                    {!isReadOnly && (
+                      <button
+                        onClick={() => navigate(`/procedures?patientId=${id}`)}
+                        className="text-sm bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700"
+                      >
+                        + New Procedure
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div className="border-t border-gray-200">

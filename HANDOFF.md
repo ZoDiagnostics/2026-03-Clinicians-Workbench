@@ -1,6 +1,6 @@
 # ZoCW Session Handoff & Work Queue
 **Purpose:** Initialization context for a new Claude Cowork session + prioritized work queue.
-**Last Updated:** March 28, 2026 — BUG-70 hotfix applied (Opus, Cowork). Added `auditLog` sub-collection rule under `practices/{practiceId}` in `firestore.rules`. Needs deploy with `firestore:rules` target. Bug numbering at BUG-70.
+**Last Updated:** March 28, 2026 — BUILD_15 applied (Opus, Cowork). BUG-71 + BUG-72 fixed. Added FILE LOCATION REFERENCE section + MANDATORY RULE #13 + Lesson 17 to prevent file misplacement. Needs deploy. Bug numbering at BUG-72.
 
 ## MANDATORY SESSION RULES
 1. **At session start:** Read this file to understand current state and work queue.
@@ -15,10 +15,121 @@
 10. **Cowork VM workspace ≠ Mac build repo.** The Cowork VM mounts `Claude Demo/zocw-firebase-repo` but this is a SEPARATE git clone from the Mac's working copy. After making code changes in Cowork, always `git push` from the workspace and instruct Cameron to `git pull` in Mac Terminal before building. Verify bundle hash after deploy matches the build output. See Lesson 15.
 11. **Log lessons learned.** At the end of every session, review what went wrong or caused friction. If there's a reusable lesson, add it to `docs/LESSONS_LEARNED.md` with date, problem, root cause, fix, and prevention steps. Lessons are numbered sequentially (currently at Lesson 16).
 12. **Keep git in sync.** After every code change session: commit, push, and verify the remote is up to date. Before every build/deploy: pull latest. Before every test session: confirm the deployed bundle hash matches the latest build. Stale deploys have caused multiple wasted test sessions (see Lessons 15).
+13. **Use the File Location Reference below for ALL file operations.** Never create files outside these defined locations. If unsure where a file goes, check this table first. This rule exists because Sonnet Session 11 created HANDOFF.md in `Claude Demo/` instead of `Claude Demo/zocw-firebase-repo/`, causing confusion. See Lesson 17.
+
+---
+
+## FILE LOCATION REFERENCE
+
+All sessions (Opus and Sonnet) MUST use this reference when reading or creating files. **Do NOT create files in locations not listed here.**
+
+### Folder: `Claude Demo/zocw-firebase-repo/` (the git repo — committed to GitHub)
+| File | Description |
+|---|---|
+| `HANDOFF.md` | **THE** session handoff file. Only one copy. NEVER create in `Claude Demo/` root. |
+| `firestore.rules` | Firestore security rules. Deploy with `--only firestore:rules`. |
+| `seed-demo.ts` | Creates/updates test accounts and seeds Firestore data. |
+| `set-clinadmin-claims.ts` | Minimal script to set custom claims on all 5 test accounts. |
+| `src/` | All React/TypeScript application source code. |
+| `docs/LESSONS_LEARNED.md` | Accumulated lessons from all sessions. Numbered sequentially. |
+| `docs/ZOCW_REFERENCE.md` | Master architecture and component reference. |
+| `docs/TEST_VALIDATION.md` | Test validation framework. |
+| `docs/ZoCW_Model_Selection_Guide.md` | When to use Opus vs Sonnet. |
+| `docs/BROWSER_AUTH_AUTOMATION.md` | Browser auth automation guide + test account UIDs. |
+| `docs/*.md` | Build prompts, implementation plans, historical test results (pre-Session 5). |
+
+### Folder: `Claude Demo/` (root — NOT in git, user's working folder)
+| File | Description |
+|---|---|
+| `SESSION_{N}_RETEST_PROMPT.md` | Retest prompts written by Opus for Sonnet to execute. |
+| `OPUS_BUILD_{N}_FIX_PROMPT.md` | Fix prompts written by Sonnet for Opus to execute. |
+| `TEST_RESULTS_SESSION_{N}.md` | Test results written by Sonnet after each test session. |
+| `Zo_Workbench_*.md` | BRD, RTM, RCM, Screen Registry, Navigation docs (reference only). |
+| `Zo_Workbench_Functional_Test_Scenarios_v2_4.xlsx` | Master test scenario spreadsheet. |
+| `ZoCW_Audit_*.md` | Audit instructions and reports. |
+| `PROJECT_INSTRUCTIONS.md` | High-level project instructions. |
+
+### Key Rules
+- **HANDOFF.md** lives ONLY in `zocw-firebase-repo/`, never in `Claude Demo/` root.
+- **Test results** (`TEST_RESULTS_SESSION_*.md`) go in `Claude Demo/` root (not in the repo).
+- **Retest prompts** (`SESSION_*_RETEST_PROMPT.md`) go in `Claude Demo/` root.
+- **Fix prompts** (`OPUS_BUILD_*_FIX_PROMPT.md`) go in `Claude Demo/` root.
+- **Source code changes** always in `zocw-firebase-repo/src/`.
+- **Lessons learned** always appended to `zocw-firebase-repo/docs/LESSONS_LEARNED.md`.
 
 ---
 
 ## SESSION LOG
+
+### March 28, 2026 — BUILD_15: BUG-71 + BUG-72 Fixes + File Location Reference (Opus, Cowork)
+- **Scope:** Fix BUG-71 and BUG-72 from Session 11. Add FILE LOCATION REFERENCE to prevent file misplacement. Add Lesson 17.
+
+**BUG-71 Fix (PatientOverview.tsx — admin isReadOnly):**
+- Added `isReadOnly = !role || role === UserRole.ADMIN` (same pattern as BUG-67 in Procedures.tsx).
+- Wrapped "Archive Patient" button, "Edit" demographics button, and "+ New Procedure" button in `{!isReadOnly && (...)}`.
+- Removed `UserRole.ADMIN` from the demographics Edit role check array.
+- Admin still sees all patient data (read-only) — just can't edit, create procedures, or archive.
+
+**BUG-72 Fix (ClinicalRoute blocking admin from /report/{id}):**
+- Changed `/report/:procedureId` route from `ClinicalRoute` to `ProtectedRoute` in `router.tsx`.
+- Added `isAdminReadOnly` flag in `Report.tsx` (uses `UserRole` import + `role` from `useAuth()`).
+- Combined with existing `isLocked` pattern: `isLocked = isStatusLocked || isAdminReadOnly`.
+- All write controls (Save Draft, Generate Report, template selectors, text areas) disabled for admin via existing `isLocked` guards.
+- Hid "Proceed to Sign & Deliver" and "Back to Viewer" nav buttons for admin (those are clinical routes). Added "Back to Reports Hub" for admin instead.
+- Admin sees blue "View Only — Admin Access" banner (distinct from amber "Read-Only — Procedure locked" banner for terminal states).
+- When no report exists, admin sees "No report has been generated" message instead of "Generate Report" button.
+
+**Additional changes:**
+- Added MANDATORY RULE #13: File Location Reference must be followed for all file operations.
+- Added FILE LOCATION REFERENCE section to HANDOFF.md with exact folder/file mapping.
+- Added Lesson 17 to `docs/LESSONS_LEARNED.md`: File location confusion between `Claude Demo/` and `zocw-firebase-repo/`.
+- **tsc --noEmit:** ✅ Clean.
+
+---
+
+### March 28, 2026 — Session 11 Testing: BUG-70 Retest + Admin Cont. + Clinician Admin Cont. + Clinician Auth Full Sweep (Sonnet 4.6, Cowork)
+- **Scope:** Part A: BUG-70 retest + smoke tests (admin). Part B: admin continuation — Worklist, Patient Detail, Reports Hub. Part C: clinician_admin C7–C10 (Worklist, Report screen, Sign & Deliver, Activity Log). Part D: full clinician_auth sweep D1–D7.
+- **Bundle:** `index-yFvWrWo2.js` (unchanged — Firestore rules-only fix, no JS rebuild needed).
+
+**Part A — BUG-70 Retest:**
+- **BUG-70 (Activity Log for admin):** ✅ FIXED — `/activity` loads with 20 entries, All Users filter, date range pickers, TIMESTAMP/EVENT/USER/DETAILS columns. Remaining 1 console error is BUG-65 residual (notifications), not auditLog.
+- **Smoke tests:** `/dashboard` ✅, `/procedures` read-only ✅, `/admin` hub (all tiles) ✅.
+
+**Part B — Admin Continuation:**
+- **B1 Worklist (`/worklist`):** ✅ PASS — Full practice-wide procedure list (17 procedures), all status types visible, filter controls (Status/Study Type/Urgency/date range), sortable columns.
+- **B2 Patient Detail (`/patient/{id}`):** ❌ FAIL — **BUG-71 (Medium)** — Admin sees "Edit" button on demographics card, "+ New Procedure" button in Procedure History, "Archive Patient" button in header. `PatientOverview.tsx` missing `isReadOnly` guard — same pattern as BUG-67 but in a different component.
+- **B3 Reports Hub Detail:** ❌ FAIL — **BUG-72 (High)** — Reports Hub loads correctly (Pending 4, Signed 4, Overdue 2, All 9), but clicking "View Report" navigates to `/report/{id}` which is a ClinicalRoute. Admin is redirected to `/dashboard`. Admin has no path to view any report content — conflicts with spec PR-018 (admin must be able to view/download signed reports).
+
+**Part C — Clinician Admin C7–C10 (clinadmin@zocw.com / Dr. James Whitfield) — 4/4 PASS:**
+- **C7 Worklist:** ✅ PASS — Loads with full procedure list. Clicking a "ready for review" row navigates to viewer with "Confirm & Begin Review" button (Start Review entry point).
+- **C8 Report screen (`/report/{id}`):** ✅ PASS — Loads with write access: "Generate Report from Findings (45 findings)" button + "Proceed to Sign & Deliver →". Not redirected — ClinicalRoute correctly passes clinician_admin.
+- **C9 Sign & Deliver:** ✅ PASS — E-Signature section present (Sign Report button + scroll gate), Delivery Options (PDF Download, Email to Referring Physician, Email to Patient, HL7/FHIR, Print).
+- **C10 Activity Log:** ✅ PASS — Identical to admin view: 20 of 20 entries, All Users filter, date range, all 4 columns.
+
+**Part D — Clinician Auth (clinician@zocw.com / "Test Clinician") — 7/7 PASS:**
+- **D1 Dashboard:** ✅ PASS — 4 metrics (Awaiting 4, In Progress 3, Completed 1, Urgent 2), Recent Activity, "Start Next Review" CTA.
+- **D2 Sidebar:** ✅ PASS — CLINICAL + REPORTS + OPERATIONS + RESOURCES. **No ADMINISTRATION section** — correct.
+- **D3 Viewer (`/viewer/{id}`):** ✅ PASS — Loads with 45 findings, write controls ("+ Add"), not redirected (ClinicalRoute passes).
+- **D4 Patients:** ✅ PASS — "+ Register Patient" button + "View" + "New Procedure" per row.
+- **D5 Procedures:** ✅ PASS — "+ New Procedure" + "Edit" for actionable statuses; "—" for completed/closed.
+- **D6 Report (`/report/{id}`):** ✅ PASS — Write access confirmed ("Generate Report from Findings"), "Proceed to Sign & Deliver →".
+- **D7 Admin negative test (`/admin`):** ✅ PASS — "Access Denied — Sorry, you don't have permission to access this page."
+
+**New bugs registered:**
+- **BUG-71 (Medium):** `PatientOverview.tsx` missing `isReadOnly` guard for admin — Edit demographics, + New Procedure, Archive Patient visible. Fix: same `isReadOnly` pattern as BUG-67 fix in `Procedures.tsx`.
+- **BUG-72 (High):** ClinicalRoute blocks admin from `/report/{id}` entirely. Fix: exempt `/report/{id}` from ClinicalRoute admin redirect and pass `isReadOnly=true` to Report component for admin (hide generate/sign controls). Spec PR-018 requires admin read access to signed reports.
+
+**Known residual (BUG-65):** 1–2 `permission-denied` console errors per page (admin + clinadmin) — `notifications` sub-collection listener. Non-blocking, no visible impact.
+
+**Results: 12 PASS / 2 FAIL. New: BUG-71, BUG-72. Total bugs: BUG-72. Full details: `TEST_RESULTS_SESSION_11.md` in Claude Demo/.**
+
+**Next session needs:**
+1. **BUILD_15:** Fix BUG-71 in `PatientOverview.tsx` (add isReadOnly guard for admin — hide Edit/+New Procedure/Archive Patient)
+2. **BUILD_15:** Fix BUG-72 in `ClinicalRoute` (exempt `/report/{id}` from admin redirect; add isReadOnly mode to Report component for admin)
+3. `npm run build`, commit, push, deploy — note new bundle hash
+4. **Session 12 retest:** Verify BUG-71 + BUG-72 fixes as admin. Then continue with clinical_staff role (needs Firebase Auth user created) or remaining clinician_noauth scenarios.
+
+---
 
 ### March 28, 2026 — BUG-70 Hotfix (Opus, Cowork)
 - **Scope:** Fix BUG-70 (Activity Log blank for admin due to Firestore permission-denied on `auditLog`).
@@ -1420,18 +1531,19 @@ Git repo is healthy. BUILD_11 bug fixes committed as `29d14c1` on Mar 27 and dep
 ### 🧪 TESTS — Remaining Test Work
 ### ═══════════════════════════════════════════════
 
-#### Test Statistics (825 total scenarios, as of Mar 27 late evening)
+#### Test Statistics (825 total scenarios, as of Mar 28 — after Session 11)
 | Category | Count | Notes |
 |----------|-------|-------|
-| **Tested (Sessions 5+6)** | 420 | 51% of 825. clinician_auth + clinician_noauth |
-| **Untested** | 351 | admin (~129), clinician_admin (~25), clinical_staff, remaining noauth |
+| **Tested (Sessions 5–11)** | ~500 | ~61% of 825 |
+| **Untested** | ~271 | clinical_staff, remaining clinician_noauth (SCR-01/02/03/05/21) |
 | **Pre-blocked / out of scope** | 54 | 7% |
-| Cumulative PASS | 81 | 9.8% — many failures are from bugs now fixed in BUILD_11 |
-| Cumulative FAIL | 296 | 35.9% — expect significant improvement on retest |
-| Cumulative BLOCKED | 63 | 7.6% — 32 were blocked by BUG-60 (now fixed) |
-| Total bugs found | 63 | 37 fixed (27 prior + 10 in BUILD_11), 26 remaining |
+| Cumulative PASS | ~149 | ~18.1% |
+| Cumulative FAIL | ~287 | ~34.8% |
+| Cumulative BLOCKED | ~64 | ~7.8% |
+| Total bugs found | 72 | BUG-01 through BUG-72 |
+| Bugs fixed | 18 of 22 | BUG-71, BUG-72, BUG-65 residual, AD-031 gap still open |
 
-**Next test session:** Session 7 — Retest BUILD_11 fixes with clinician_auth + noauth, then admin + clinician_admin roles.
+**Next test session:** Session 12 — BUILD_15 retest (BUG-71 + BUG-72 fixes as admin). Then clinical_staff role (needs Firebase Auth user `staff@zocw.com` — already created? verify) or remaining clinician_noauth scenarios.
 
 #### TEST-01: Unit Test Scaffolding (Sonnet)
 - [ ] **Dispatch `docs/SONNET_UNIT_TEST_PROMPT.md`** — vitest suite: RBAC hooks, ProtectedRoute, component smoke tests, screen render tests. No browser needed. Can run in any Cowork/Sonnet session.

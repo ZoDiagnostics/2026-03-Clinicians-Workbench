@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth, useReport, useFindings, useActiveProcedure, usePatients, updateReport } from '../lib/hooks';
-import { ReportStatus, ProcedureStatus, StudyType } from '../types/enums';
+import { ReportStatus, ProcedureStatus, StudyType, UserRole } from '../types/enums';
 import { getReportSectionText, SimpleReportSections } from '../types/report';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
@@ -58,13 +58,16 @@ interface CodeSuggestion {
 const Report: React.FC = () => {
   const { procedureId } = useParams<{ procedureId: string }>();
   const navigate = useNavigate();
-  const { user, practiceId } = useAuth();
+  const { user, practiceId, role } = useAuth();
   const report = useReport(procedureId);
   const findings = useFindings(procedureId);
   const procedure = useActiveProcedure(procedureId);
   const allPatients = usePatients();
 
   const patient = procedure ? allPatients.find(p => p.id === procedure.patientId) : null;
+
+  // BUG-72: Admin can view reports but not edit/generate/sign
+  const isAdminReadOnly = !role || role === UserRole.ADMIN;
 
   // BUG-13: Report is read-only when procedure is in a terminal state
   const LOCKED_STATUSES: string[] = [
@@ -73,7 +76,9 @@ const Report: React.FC = () => {
     ProcedureStatus.CLOSED,
     ProcedureStatus.VOID,
   ];
-  const isLocked = procedure ? LOCKED_STATUSES.includes(procedure.status) : false;
+  const isStatusLocked = procedure ? LOCKED_STATUSES.includes(procedure.status) : false;
+  // BUG-72: Combine status lock with admin read-only — both make report non-editable
+  const isLocked = isStatusLocked || isAdminReadOnly;
 
   // Editable sections
   const [findingsText, setFindingsText] = useState('');
@@ -252,21 +257,40 @@ const Report: React.FC = () => {
               <span className="text-xs text-gray-400">{procedure.studyType?.replace(/_/g, ' ')}</span>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={() => navigate(`/viewer/${procedureId}`)} className="text-xs text-indigo-600 hover:text-indigo-800">
-                &larr; Back to Viewer
-              </button>
-              <button onClick={() => navigate(`/sign-deliver/${procedureId}`)}
-                className="text-xs bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700">
-                Proceed to Sign & Deliver →
-              </button>
+              {/* BUG-72: Admin can't navigate to viewer or sign-deliver (clinical routes) */}
+              {!isAdminReadOnly && (
+                <>
+                  <button onClick={() => navigate(`/viewer/${procedureId}`)} className="text-xs text-indigo-600 hover:text-indigo-800">
+                    &larr; Back to Viewer
+                  </button>
+                  <button onClick={() => navigate(`/sign-deliver/${procedureId}`)}
+                    className="text-xs bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700">
+                    Proceed to Sign & Deliver →
+                  </button>
+                </>
+              )}
+              {isAdminReadOnly && (
+                <button onClick={() => navigate('/reports-hub')} className="text-xs text-indigo-600 hover:text-indigo-800">
+                  &larr; Back to Reports Hub
+                </button>
+              )}
             </div>
           </div>
         )}
 
         <main className="flex-1 overflow-y-auto">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            {/* BUG-13: Read-only banner for locked procedures */}
-            {isLocked && (
+            {/* BUG-13: Read-only banner for locked procedures. BUG-72: Also shown for admin read-only */}
+            {isAdminReadOnly && (
+              <div className="bg-blue-50 border border-blue-300 rounded-lg p-4 mb-4 flex items-center gap-3">
+                <span className="text-blue-600 text-xl">👁</span>
+                <div>
+                  <p className="text-blue-800 font-semibold text-sm">View Only — Admin Access</p>
+                  <p className="text-blue-700 text-xs mt-0.5">You are viewing this report as an administrator. Editing, generating, and signing are restricted to clinical roles.</p>
+                </div>
+              </div>
+            )}
+            {isStatusLocked && !isAdminReadOnly && (
               <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 mb-4 flex items-center gap-3">
                 <span className="text-amber-600 text-xl">🔒</span>
                 <div>
@@ -302,14 +326,20 @@ const Report: React.FC = () => {
               )}
             </div>
 
-            {/* No report yet — offer to create one */}
-            {!report && (
+            {/* No report yet — offer to create one (not for admin) */}
+            {!report && !isAdminReadOnly && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6 text-center">
                 <p className="text-yellow-800 mb-4">No report exists for this procedure yet.</p>
                 <button onClick={handleCreateReport}
                   className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700">
                   Generate Report from Findings ({findings.length} findings)
                 </button>
+              </div>
+            )}
+            {/* BUG-72: Admin sees informational message when no report exists */}
+            {!report && isAdminReadOnly && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6 text-center">
+                <p className="text-gray-600">No report has been generated for this procedure yet.</p>
               </div>
             )}
 

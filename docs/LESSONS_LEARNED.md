@@ -372,4 +372,24 @@ gcloud auth application-default set-quota-project cw-e7c19   # set quota project
 
 ---
 
+## Lesson 17: File Location Confusion Between Claude Demo/ and zocw-firebase-repo/
+
+**Date:** March 28, 2026
+**Category:** Session Management
+
+**Problem:** Sonnet Session 11 created `HANDOFF.md` in `Claude Demo/` (the parent folder) instead of `Claude Demo/zocw-firebase-repo/` (the git repo). This caused confusion because there were temporarily two HANDOFF files — one correct, one misplaced.
+
+**Root Cause:** The Cowork VM mounts `Claude Demo/` as the workspace. Without explicit guidance, a new session may default to creating files in the mount root rather than the repo subdirectory. The file naming conventions were implicit rather than documented.
+
+**Fix:** Added MANDATORY SESSION RULE #13 and a FILE LOCATION REFERENCE table to HANDOFF.md. The table specifies exactly which files go where:
+- `HANDOFF.md`, source code, `docs/` → inside `zocw-firebase-repo/` (committed to git)
+- Test results, retest prompts, fix prompts → `Claude Demo/` root (not in git)
+
+**Prevention:**
+1. Every session reads HANDOFF.md first, which now includes the file location table.
+2. Rule 13 explicitly forbids creating files outside defined locations.
+3. If a session creates a file in the wrong place, the next session should detect and correct it during HANDOFF review.
+
+---
+
 *Add new lessons as they arise. Review before starting new Firebase/React projects.*
